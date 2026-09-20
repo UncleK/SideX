@@ -74,7 +74,7 @@
     tree: null,
     expandedThreadIds: new Set(),
     activeView: "root", // "root" or { type: "drilldown", parentId: string }
-    activeComposerReplyId: null,
+    replyTarget: null, // Comment model being replied to, or null for focal tweet
     loading: false,
     error: "",
     isResizing: false
@@ -595,9 +595,11 @@
     const isDrillDown = state.activeView && typeof state.activeView === "object" && state.activeView.type === "drilldown";
     const drillDownParent = isDrillDown ? state.tree?.byId.get(state.activeView.parentId) : null;
     const userAvatar = getCurrentUserAvatar();
-    const replyPlaceholder = isDrillDown
-      ? t("replyToUser", { handle: drillDownParent?.author?.handle || (getLocale() === "zh" ? "此人" : "user") })
-      : t("replyToAuthor", { handle: state.focalModel?.author?.handle || (getLocale() === "zh" ? "楼主" : "author") });
+    const replyPlaceholder = state.replyTarget
+      ? t("replyToUser", { handle: state.replyTarget.author.handle })
+      : isDrillDown
+        ? t("replyToUser", { handle: drillDownParent?.author?.handle || (getLocale() === "zh" ? "此人" : "user") })
+        : t("replyToAuthor", { handle: state.focalModel?.author?.handle || (getLocale() === "zh" ? "楼主" : "author") });
 
     root.innerHTML = `
       <div class="sidepeek-resize-handle sidepeek-resize-handle-left" title="${getLocale() === "zh" ? "拖动左边缘调整宽度，双击恢复默认" : "Drag left edge to resize, double-click to reset"}">
@@ -631,6 +633,10 @@
             ${userAvatar ? `<img src="${userAvatar}" class="sidepeek-footer-avatar" alt="" />` : `<div class="sidepeek-footer-avatar-default">${ICONS.user}</div>`}
           </div>
           <div class="sidepeek-footer-main">
+            <div class="sidepeek-footer-reply-target" style="${state.replyTarget ? 'display:flex;' : 'display:none;'}">
+              <span class="sidepeek-reply-target-text">${state.replyTarget ? `${t("replyToTag")} @${state.replyTarget.author.handle}` : ""}</span>
+              <button type="button" class="sidepeek-cancel-reply-target" title="✕">✕</button>
+            </div>
             <textarea class="sidepeek-footer-textarea" rows="1" placeholder="${replyPlaceholder}"></textarea>
             <div class="sidepeek-footer-preview-area"></div>
             <div class="sidepeek-footer-toolbar">
@@ -824,8 +830,6 @@
             <span class="sidepeek-action-btn-surface">${ICONS.share}</span>
           </button>
         </div>
-        <!-- Inline Accordion Composer Container -->
-        <div class="sidepeek-inline-composer" id="composer-${model.id}"></div>
       </div>
     `;
 
@@ -842,7 +846,10 @@
     const actBookmark = item.querySelector(".sidepeek-act-bookmark");
     const actShare = item.querySelector(".sidepeek-act-share");
 
-    actReply?.addEventListener("click", () => toggleInlineComposer(model));
+    actReply?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      setReplyTarget(model);
+    });
     actRepost?.addEventListener("click", () => handleToggleAction(model, "repost", actRepost));
     actLike?.addEventListener("click", () => handleToggleAction(model, "like", actLike));
     actBookmark?.addEventListener("click", () => handleToggleAction(model, "bookmark", actBookmark));
@@ -855,11 +862,6 @@
         openLightbox(img.dataset.full || img.src);
       });
     });
-
-    // If composer is active for this item
-    if (state.activeComposerReplyId === model.id) {
-      renderInlineComposer(item.querySelector(`#composer-${model.id}`), model);
-    }
 
     return item;
   }
@@ -932,191 +934,42 @@
   }
 
   // ==========================================================================
-  // Inline Accordion Composer & Paste Image Upload
+  // Bottom Reply Target Management
   // ==========================================================================
-  function toggleInlineComposer(model) {
-    if (state.activeComposerReplyId === model.id) {
-      state.activeComposerReplyId = null;
-    } else {
-      state.activeComposerReplyId = model.id;
+  function setReplyTarget(model) {
+    state.replyTarget = model;
+    const footer = document.querySelector(".sidepeek-footer-composer");
+    if (!footer) return;
+    const targetBox = footer.querySelector(".sidepeek-footer-reply-target");
+    const targetText = footer.querySelector(".sidepeek-reply-target-text");
+    const textarea = footer.querySelector(".sidepeek-footer-textarea");
+    if (targetBox && targetText && textarea) {
+      targetText.textContent = `${t("replyToTag")} @${model.author.handle}`;
+      targetBox.style.display = "flex";
+      textarea.placeholder = t("replyToUser", { handle: model.author.handle });
+      textarea.focus();
+      textarea.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
-    renderDrawer();
-  }
-
-  function renderInlineComposer(container, targetModel) {
-    if (!container) return;
-    container.classList.add("expanded");
-
-    let pastedMediaId = null;
-    let pastedBlob = null;
-
-    container.innerHTML = `
-      <div class="sidepeek-composer-inner">
-        <textarea class="sidepeek-composer-textarea" placeholder="${t("replyToWithPaste", { handle: targetModel.author.handle })}"></textarea>
-        <div class="sidepeek-composer-preview-area"></div>
-        <div class="sidepeek-composer-footer">
-          <span class="sidepeek-composer-hint">${t("ctrlEnterHint")}</span>
-          <div class="sidepeek-composer-btns">
-            <button type="button" class="sidepeek-btn-cancel">${t("cancelBtn")}</button>
-            <button type="button" class="sidepeek-btn-submit">${t("sendBtn")}</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    const textarea = container.querySelector(".sidepeek-composer-textarea");
-    const previewArea = container.querySelector(".sidepeek-composer-preview-area");
-    const cancelBtn = container.querySelector(".sidepeek-btn-cancel");
-    const submitBtn = container.querySelector(".sidepeek-btn-submit");
-
-    textarea.focus();
-
-    cancelBtn.addEventListener("click", () => {
-      container.classList.remove("expanded");
-      state.activeComposerReplyId = null;
-    });
-
-    // Paste Image listener
-    textarea.addEventListener("paste", async (event) => {
-      const items = event.clipboardData?.items;
-      if (!items) return;
-      for (const item of items) {
-        if (item.type.startsWith("image/")) {
-          event.preventDefault();
-          const file = item.getAsFile();
-          if (!file) continue;
-
-          pastedBlob = file;
-          const reader = new FileReader();
-          reader.onload = async () => {
-            const dataUrl = reader.result;
-            const base64 = dataUrl.split(",")[1];
-
-            // Render thumbnail preview immediately
-            previewArea.innerHTML = `
-              <div class="sidepeek-pasted-preview">
-                <img src="${dataUrl}" alt="" />
-                <button type="button" class="sidepeek-remove-img-btn" title="✕">✕</button>
-              </div>
-            `;
-            previewArea.querySelector(".sidepeek-remove-img-btn")?.addEventListener("click", () => {
-              previewArea.innerHTML = "";
-              pastedMediaId = null;
-              pastedBlob = null;
-            });
-
-            // Upload via page-bridge in background
-            try {
-              submitBtn.disabled = true;
-              submitBtn.textContent = t("uploading");
-              const res = await requestPage("UPLOAD_MEDIA", { base64, mimeType: file.type, size: file.size });
-              pastedMediaId = res.mediaId;
-            } catch (err) {
-              showToast(err.message || t("uploadFailed"));
-              previewArea.innerHTML = "";
-              pastedMediaId = null;
-            } finally {
-              submitBtn.disabled = false;
-              submitBtn.textContent = t("sendBtn");
-            }
-          };
-          reader.readAsDataURL(file);
-          break;
-        }
-      }
-    });
-
-    // Submit handler: Optimistic In-Place Append (无刷新直接添加到回复)
-    async function doSubmit() {
-      const text = textarea.value.trim();
-      if (!text && !pastedMediaId) return;
-
-      submitBtn.disabled = true;
-      submitBtn.textContent = t("sending");
-
-      try {
-        const mediaIds = pastedMediaId ? [pastedMediaId] : [];
-        await requestPage("CREATE_REPLY", {
-          tweetId: targetModel.id,
-          text,
-          mediaIds
-        });
-
-        const currentUser = getCurrentUserInfo();
-        const mediaSnapshot = pastedBlob ? [{ type: "photo", url: previewArea.querySelector("img")?.src || "" }] : [];
-
-        // Close inline composer immediately
-        container.classList.remove("expanded");
-        state.activeComposerReplyId = null;
-        container.innerHTML = "";
-
-        // Create Optimistic Comment Model
-        const optimisticId = `local-${Date.now()}`;
-        const newReplyModel = {
-          id: optimisticId,
-          text,
-          createdAt: new Date().toISOString(),
-          author: {
-            name: currentUser.name,
-            handle: currentUser.handle,
-            avatar: currentUser.avatar,
-            verified: false
-          },
-          inReplyToHandle: targetModel.author.handle,
-          counts: { replies: 0, reposts: 0, likes: 0, bookmarks: 0 },
-          flags: { liked: false, reposted: false, bookmarked: false },
-          media: mediaSnapshot,
-          url: ""
-        };
-
-        // Add to state tree
-        if (!state.tree.childrenMap.has(targetModel.id)) {
-          state.tree.childrenMap.set(targetModel.id, []);
-        }
-        state.tree.childrenMap.get(targetModel.id).push(newReplyModel);
-        state.tree.byId.set(newReplyModel.id, newReplyModel);
-
-        // Update targetModel reply count
-        targetModel.counts.replies = (targetModel.counts.replies || 0) + 1;
-        const parentArticle = container.closest(".sidepeek-comment-item");
-        if (parentArticle) {
-          const replyCountSpan = parentArticle.querySelector(".sidepeek-act-reply span span");
-          if (replyCountSpan) replyCountSpan.textContent = formatCount(targetModel.counts.replies);
-        }
-
-        // Render child comment node
-        const childNode = renderCommentNode(newReplyModel, false, true);
-        childNode.classList.add("sidepeek-just-posted");
-
-        // Insert into DOM
-        const threadGroup = parentArticle?.closest(".sidepeek-thread-group");
-        if (threadGroup) {
-          threadGroup.appendChild(childNode);
-        } else if (parentArticle && parentArticle.parentNode) {
-          parentArticle.parentNode.insertBefore(childNode, parentArticle.nextSibling);
-        }
-
-        childNode.scrollIntoView({ behavior: "smooth", block: "nearest" });
-        showToast(t("replySent"));
-      } catch (err) {
-        showToast(err.message || t("replyFailed"));
-        submitBtn.disabled = false;
-        submitBtn.textContent = t("sendBtn");
-      }
-    }
-
-    submitBtn.addEventListener("click", doSubmit);
-    textarea.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        doSubmit();
-      }
-    });
   }
 
   function initFooterComposer(root, isDrillDown, drillDownParent) {
     const footer = root.querySelector(".sidepeek-footer-composer");
     if (!footer) return;
+
+    const replyTargetBox = footer.querySelector(".sidepeek-footer-reply-target");
+    const replyTargetText = footer.querySelector(".sidepeek-reply-target-text");
+    const cancelTargetBtn = footer.querySelector(".sidepeek-cancel-reply-target");
+
+    cancelTargetBtn?.addEventListener("click", () => {
+      state.replyTarget = null;
+      if (replyTargetBox) replyTargetBox.style.display = "none";
+      if (textarea) {
+        textarea.placeholder = isDrillDown
+          ? t("replyToUser", { handle: drillDownParent?.author?.handle || (getLocale() === "zh" ? "此人" : "user") })
+          : t("replyToAuthor", { handle: state.focalModel?.author?.handle || (getLocale() === "zh" ? "楼主" : "author") });
+        textarea.focus();
+      }
+    });
 
     const textarea = footer.querySelector(".sidepeek-footer-textarea");
     const previewArea = footer.querySelector(".sidepeek-footer-preview-area");
@@ -1708,6 +1561,9 @@
       submitBtn.disabled = true;
       submitBtn.textContent = t("sending");
 
+      const repliedModel = state.replyTarget;
+      const effectiveTargetId = repliedModel ? repliedModel.id : (isDrillDown && drillDownParent ? drillDownParent.id : state.focalTweetId);
+
       try {
         let finalText = text;
         if (activePoll) {
@@ -1716,7 +1572,7 @@
 
         const mediaIds = pastedMediaId ? [pastedMediaId] : [];
         await requestPage("CREATE_REPLY", {
-          tweetId: targetTweetId,
+          tweetId: effectiveTargetId,
           text: finalText,
           mediaIds
         });
@@ -1733,6 +1589,11 @@
         activePoll = null;
         activeSchedule = null;
         activeLocation = null;
+        state.replyTarget = null;
+        if (replyTargetBox) replyTargetBox.style.display = "none";
+        textarea.placeholder = isDrillDown
+          ? t("replyToUser", { handle: drillDownParent?.author?.handle || (getLocale() === "zh" ? "此人" : "user") })
+          : t("replyToAuthor", { handle: state.focalModel?.author?.handle || (getLocale() === "zh" ? "楼主" : "author") });
         submitBtn.textContent = t("replyBtn");
         updateComposerState();
         closeAllPopovers();
@@ -1749,7 +1610,7 @@
             avatar: currentUser.avatar,
             verified: false
           },
-          inReplyToHandle: isDrillDown && drillDownParent ? drillDownParent.author.handle : state.focalModel?.author?.handle || "",
+          inReplyToHandle: repliedModel ? repliedModel.author.handle : (isDrillDown && drillDownParent ? drillDownParent.author.handle : state.focalModel?.author?.handle || ""),
           counts: { replies: 0, reposts: 0, likes: 0, bookmarks: 0 },
           flags: { liked: false, reposted: false, bookmarked: false },
           media: mediaSnapshot,
@@ -1763,7 +1624,35 @@
           const emptyBox = body.querySelector(".sidepeek-empty-box");
           if (emptyBox) emptyBox.remove();
 
-          if (isDrillDown && drillDownParent) {
+          if (repliedModel) {
+            // Replying to a specific comment: add as child
+            if (!state.tree.childrenMap.has(repliedModel.id)) {
+              state.tree.childrenMap.set(repliedModel.id, []);
+            }
+            state.tree.childrenMap.get(repliedModel.id).push(newReplyModel);
+            state.tree.byId.set(newReplyModel.id, newReplyModel);
+
+            // Update reply count on replied comment
+            repliedModel.counts.replies = (repliedModel.counts.replies || 0) + 1;
+            const targetArticle = body.querySelector(`article[data-id="${repliedModel.id}"]`);
+            if (targetArticle) {
+              const replyCountSpan = targetArticle.querySelector(".sidepeek-act-reply span span");
+              if (replyCountSpan) replyCountSpan.textContent = formatCount(repliedModel.counts.replies);
+            }
+
+            const node = renderCommentNode(newReplyModel, false, true);
+            node.classList.add("sidepeek-just-posted");
+
+            const threadGroup = targetArticle?.closest(".sidepeek-thread-group");
+            if (threadGroup) {
+              threadGroup.appendChild(node);
+            } else if (targetArticle && targetArticle.parentNode) {
+              targetArticle.parentNode.insertBefore(node, targetArticle.nextSibling);
+            } else {
+              body.appendChild(node);
+            }
+            node.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          } else if (isDrillDown && drillDownParent) {
             // Append to drilldown list
             if (!state.tree.childrenMap.has(drillDownParent.id)) {
               state.tree.childrenMap.set(drillDownParent.id, []);
