@@ -814,6 +814,14 @@
     return `<span class="sidepeek-verified-badge" title="${label}" style="color: ${color};"><svg viewBox="0 0 22 22" aria-label="${label}" role="img"><g><path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.887-1.687-.47-.45-1.054-.755-1.687-.887-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.887-.45.47-.755 1.054-.886 1.687-.13.633-.084 1.29.139 1.897-.585.274-1.082.705-1.435 1.246-.354.54-.551 1.17-.57 1.816.019.646.216 1.276.57 1.817.353.54.85 0.972 1.435 1.245-.223.608-.27 1.265-.14 1.898.131.633.436 1.217.886 1.686.47.45 1.055.756 1.69.887.636.13 1.295.084 1.903-.139.272.585.704 1.084 1.244 1.439.54.354 1.167.551 1.813.568.647-.017 1.274-.214 1.814-.569s.971-.854 1.245-1.44c.604.224 1.26.271 1.893.14.633-.13 1.217-.436 1.687-.887.45-.47.756-1.053.887-1.686.13-.633.083-1.29-.14-1.898.586-.273 1.084-.705 1.438-1.246.354-.54.551-1.17.57-1.816zM9.662 14.85l-3.429-3.428 1.293-1.302 2.136 2.136 5.445-5.445 1.302 1.302-6.747 6.737z" fill="currentColor"></path></g></svg></span>`;
   }
 
+  function cleanCommentBody(text, inReplyToHandle) {
+    if (!text) return "";
+    if (inReplyToHandle) {
+      return text.replace(/^(?:@[A-Za-z0-9_]+\s*)+/, "").trim();
+    }
+    return text;
+  }
+
   function renderCommentNode(model, hasThreadLine = false, isChild = false) {
     const item = document.createElement("article");
     item.className = `sidepeek-comment-item${isChild ? " sidepeek-child-comment" : ""}`;
@@ -833,7 +841,7 @@
           <a class="sidepeek-time" href="${model.url}" target="_blank">${formatTime(model.createdAt)}</a>
         </div>
         ${model.inReplyToHandle ? `<div class="sidepeek-reply-to-tag">${t("replyToTag")} <a href="https://x.com/${model.inReplyToHandle}" target="_blank">@${model.inReplyToHandle}</a></div>` : ""}
-        <div class="sidepeek-text">${escapeHtml(model.text)}</div>
+        <div class="sidepeek-text">${escapeHtml(cleanCommentBody(model.text, model.inReplyToHandle))}</div>
         ${renderMediaBox(model.media)}
         <div class="sidepeek-action-bar">
           <button type="button" class="sidepeek-action-btn sidepeek-act-reply" title="${t("replyAction")}">

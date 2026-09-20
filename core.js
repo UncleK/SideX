@@ -136,6 +136,18 @@
       text = text.replace(/\s*https:\/\/t\.co\/[A-Za-z0-9]+$/, "").trim();
     }
 
+    // 清理回复推文中由 X 自动附加在开头的 @用户名 前缀（因顶部已渲染「回复 @xxx」标签）
+    const inReplyToHandle = String(legacy.in_reply_to_screen_name || "");
+    const inReplyToId = String(legacy.in_reply_to_status_id_str || "");
+    if (inReplyToHandle || inReplyToId) {
+      const range = legacy.display_text_range;
+      if (Array.isArray(range) && range.length === 2 && typeof range[0] === "number" && range[0] > 0 && typeof note?.text !== "string") {
+        text = text.slice(range[0]).trim();
+      } else {
+        text = text.replace(/^(?:@[A-Za-z0-9_]+\s*)+/, "").trim();
+      }
+    }
+
     return {
       id,
       url: handle && id ? `https://x.com/${handle}/status/${id}` : id ? `https://x.com/i/status/${id}` : "",
