@@ -1808,7 +1808,7 @@
   // ==========================================================================
   // Timeline Click Interceptor & Focal Tweet Show More
   // ==========================================================================
-  async function fetchThread(tweetId) {
+  async function fetchThread(tweetId, isAutoOpened = false) {
     state.loading = true;
     state.error = "";
     state.expandedThreadIds.clear();
@@ -1821,6 +1821,19 @@
       state.replies = replies;
       state.tree = Core.buildConversationTree(replies, tweetId);
       state.loading = false;
+
+      // 如果是通过路由自动检测触发（如进入通知回复或详情页），且该帖子没有下一级回复：
+      // 自动收起侧边栏，避免弹空侧栏遮挡界面，让用户直接在原生页面阅读对话
+      if (isAutoOpened && replies.length === 0) {
+        state.open = false;
+        if (state.focalArticle) {
+          state.focalArticle.classList.remove("sidepeek-focal-active");
+          state.focalArticle = null;
+        }
+        renderDrawer();
+        return;
+      }
+
       renderDrawer();
     } catch (err) {
       state.loading = false;
@@ -1862,7 +1875,7 @@
 
       // Try to find focal article on detail page
       let focalArticle = findDetailFocalArticle(tweetId);
-      openDrawerForTweet(tweetId, focalArticle);
+      openDrawerForTweet(tweetId, focalArticle, true);
 
       // If focalArticle wasn't mounted yet by React, retry finding it to expand long text
       if (!focalArticle) {
@@ -1898,7 +1911,7 @@
     }
   }
 
-  function openDrawerForTweet(tweetId, articleNode) {
+  function openDrawerForTweet(tweetId, articleNode, isAutoOpened = false) {
     userClosedTweetId = null;
     lastHandledDetailTweetId = tweetId;
 
@@ -1921,7 +1934,7 @@
     state.activeView = "root";
     state.activeComposerReplyId = null;
     renderDrawer();
-    fetchThread(tweetId);
+    fetchThread(tweetId, isAutoOpened);
   }
 
   function closeDrawer() {
@@ -1962,6 +1975,28 @@
     );
   }
 
+  function getArticleReplyCount(article) {
+    if (!article) return 0;
+    const replyBtn = article.querySelector('[data-testid="reply"]');
+    if (!replyBtn) return 0;
+    const text = replyBtn.textContent?.trim() || "";
+    if (!text) return 0;
+    if (/k/i.test(text)) {
+      const m = text.match(/([\d.]+)/);
+      return m ? Math.round(parseFloat(m[1]) * 1000) : 0;
+    }
+    if (/m/i.test(text)) {
+      const m = text.match(/([\d.]+)/);
+      return m ? Math.round(parseFloat(m[1]) * 1000000) : 0;
+    }
+    if (/万/.test(text)) {
+      const m = text.match(/([\d.]+)/);
+      return m ? Math.round(parseFloat(m[1]) * 10000) : 0;
+    }
+    const digits = text.replace(/[^\d]/g, "");
+    return digits ? parseInt(digits, 10) : 0;
+  }
+
   function handleTimelineClick(event) {
     if (!isSideXEnabled) return;
     if (state.isResizing) return;
@@ -1983,6 +2018,15 @@
       return;
     }
 
+    // 在通知页面中，如果是没有下一级回复的最新评论，不要拦截弹侧栏，让原生逻辑跳转到原回复贴
+    const isNotificationsPage = location.pathname.startsWith("/notifications");
+    if (isNotificationsPage) {
+      const replyCount = getArticleReplyCount(article);
+      if (replyCount === 0) {
+        return;
+      }
+    }
+
     if (shouldSkipClick(event.target)) return;
 
     // Find tweet URL & ID
@@ -1996,7 +2040,7 @@
     event.preventDefault();
     event.stopImmediatePropagation();
 
-    openDrawerForTweet(tweetId, article);
+    openDrawerForTweet(tweetId, article, false);
   }
 
   document.addEventListener("click", handleTimelineClick, true);
