@@ -20,8 +20,6 @@
 
   <br />
   <img src="demo/demo.gif" alt="SideX 演示动图" width="100%" />
-  <br /><br />
-  <img src="docs/hero-showcase-zh.svg" alt="SideX 中文界面演示" width="100%" />
   <br />
 </div>
 

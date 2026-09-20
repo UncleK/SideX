@@ -20,8 +20,6 @@
 
   <br />
   <img src="demo/demo.gif" alt="SideX Demo" width="100%" />
-  <br /><br />
-  <img src="docs/hero-showcase-en.svg" alt="SideX UI Showcase" width="100%" />
   <br />
 </div>
 
