@@ -1,7 +1,7 @@
 (function attachSidePeekCore(root) {
   "use strict";
 
-  const STATUS_PATTERN = /^\/(?:i\/web\/)?([^/?#]+)\/status\/(\d+)/i;
+  const STATUS_PATTERN = /^\/(?:i\/web\/status\/(\d+)|i\/article\/(\d+)|([^/?#]+)\/status\/(\d+))/i;
   const PROFILE_PATTERN = /^\/([A-Za-z0-9_]+)\/?$/;
 
   function normalizePostUrl(href, baseUrl = "https://x.com/") {
@@ -15,7 +15,9 @@
     if (!/^(?:x|twitter)\.com$/i.test(url.hostname.replace(/^www\./, ""))) return null;
     const match = url.pathname.match(STATUS_PATTERN);
     if (!match) return null;
-    return `https://x.com/${match[1]}/status/${match[2]}`;
+    const id = match[1] || match[2] || match[4];
+    const handle = match[3] || "i";
+    return `https://x.com/${handle}/status/${id}`;
   }
 
   function postIdFromUrl(href) {

@@ -550,13 +550,13 @@ article[data-testid="tweet"].sidepeek-focal-active {
 }
 
 /* ==========================================================================
-   1:1 Action Bar (Reply, Repost, Like, Bookmark, Share)
+   1:1 Action Bar (Reply, Repost, Like, Views, Bookmark, Share)
    ========================================================================== */
 .sidepeek-action-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  max-width: 340px;
+  max-width: 400px;
   margin-top: 4px;
   color: var(--sp-muted);
 }
@@ -620,6 +620,13 @@ article[data-testid="tweet"].sidepeek-focal-active {
 }
 .sidepeek-act-like.active svg {
   fill: var(--sp-like);
+}
+
+.sidepeek-act-views:hover {
+  color: var(--sp-accent);
+}
+.sidepeek-act-views:hover .sidepeek-action-btn-surface {
+  background: rgba(29, 155, 240, 0.1);
 }
 
 .sidepeek-act-bookmark:hover,

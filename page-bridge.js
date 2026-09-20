@@ -489,8 +489,28 @@
     }
   });
 
+  function patchHistory() {
+    const origPush = history.pushState;
+    const origReplace = history.replaceState;
+    history.pushState = function sidePeekPushState(...args) {
+      const result = Reflect.apply(origPush, this, args);
+      try {
+        window.postMessage({ source: PAGE_SOURCE, type: "URL_CHANGED", url: location.href }, location.origin);
+      } catch {}
+      return result;
+    };
+    history.replaceState = function sidePeekReplaceState(...args) {
+      const result = Reflect.apply(origReplace, this, args);
+      try {
+        window.postMessage({ source: PAGE_SOURCE, type: "URL_CHANGED", url: location.href }, location.origin);
+      } catch {}
+      return result;
+    };
+  }
+
   patchXhr();
   patchFetch();
+  patchHistory();
   getWebpackRuntime();
   window.postMessage({ source: PAGE_SOURCE, type: "READY" }, location.origin);
 })();

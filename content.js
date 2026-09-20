@@ -12,8 +12,9 @@
   const ICONS = {
     reply: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M1.751 10c0-4.42 3.584-8 8.005-8h4.366c4.49 0 8.129 3.64 8.129 8.13 0 2.96-1.607 5.68-4.196 7.11l-8.054 4.46v-3.69h-.067c-4.49.1-8.183-3.51-8.183-8.01zm8.005-6c-3.317 0-6.005 2.69-6.005 6 0 3.37 2.77 6.08 6.138 6.01l.351-.01h1.761v2.3l5.087-2.81c1.951-1.08 3.163-3.13 3.163-5.36 0-3.39-2.744-6.13-6.129-6.13H9.756z"></path></g></svg>`,
     repost: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z"></path></g></svg>`,
-    like: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M16.697 5.5c-1.222-.06-2.679.51-3.89 2.16l-.805 1.09-.806-1.09C9.984 6.01 8.526 5.44 7.304 5.5c-2.415.11-4.3 2.08-4.3 4.55 0 2.24 1.08 4.65 3.2 7.14 2.64 3.09 5.86 5.51 6.3 5.83l.5.38.5-.38c.44-.32 3.66-2.74 6.3-5.83 2.12-2.49 3.2-4.9 3.2-7.14 0-2.47-1.885-4.44-4.3-4.55zm-4.7 15.65C10.74 20.27 3.5 14.52 3.5 10.05c0-3.58 2.73-6.52 6.29-6.55 1.83-.02 3.52.83 4.71 2.37 1.19-1.54 2.88-2.39 4.71-2.37 3.56.03 6.29 2.97 6.29 6.55 0 4.47-7.24 10.22-8.5 11.1z"></path></g></svg>`,
+    like: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M12 21.638h-.014C9.403 21.59 1.95 14.856 1.95 8.478c0-3.064 2.525-5.754 5.403-5.754 2.29 0 3.83 1.58 4.646 2.73.814-1.148 2.354-2.73 4.645-2.73 2.88 0 5.404 2.69 5.404 5.755 0 6.376-7.454 13.11-10.037 13.157H12zM7.354 4.225c-2.08 0-3.903 1.988-3.903 4.255 0 5.74 7.034 11.596 8.55 11.658 1.518-.062 8.55-5.917 8.55-11.658 0-2.267-1.823-4.255-3.903-4.255-2.528 0-3.94 2.936-3.952 2.965-.23.562-1.156.562-1.387 0-.014-.03-1.425-2.965-3.954-2.965z"></path></g></svg>`,
     likeSolid: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M20.884 13.19c-1.351 2.48-4.001 5.12-8.379 7.67l-.505.3-.505-.3c-4.379-2.55-7.029-5.19-8.38-7.67-1.36-2.5-1.41-4.86-.514-6.67.887-1.79 2.647-2.91 4.601-3.01 1.651-.09 3.368.56 4.798 2.01 1.429-1.45 3.146-2.1 4.796-2.01 1.954.1 3.714 1.22 4.601 3.01.896 1.81.846 4.17-.514 6.67z"></path></g></svg>`,
+    views: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M8.75 21V3h2v18h-2zM18 21V8.5h2V21h-2zM4 21l.004-10h2L6 21H4zm9.248 0v-7h2v7h-2z"></path></g></svg>`,
     bookmark: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M4 4.5C4 3.12 5.119 2 6.5 2h11C18.881 2 20 3.12 20 4.5v18.44l-8-5.71-8 5.71V4.5zM6.5 4c-.276 0-.5.22-.5.5v14.56l6-4.29 6 4.29V4.5c0-.28-.224-.5-.5-.5h-11z"></path></g></svg>`,
     bookmarkSolid: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M4 4.5C4 3.12 5.119 2 6.5 2h11C18.881 2 20 3.12 20 4.5v18.44l-8-5.71-8 5.71V4.5z"></path></g></svg>`,
     share: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M12 2.59l5.7 5.7-1.41 1.42L13 6.41V16h-2V6.41L7.71 9.71 6.3 8.29 12 2.59zM21 15l-.02 3.51c0 1.38-1.12 2.49-2.5 2.49H5.5C4.11 21.09 3 19.98 3 18.6L3 15h2l.01 3.6c0 .28.22.5.5.5h12.98c.28 0 .5-.22.5-.5L19 15h2z"></path></g></svg>`,
@@ -97,6 +98,10 @@
 
   window.addEventListener("message", (event) => {
     if (event.source !== window || event.origin !== location.origin || event.data?.source !== PAGE_SOURCE) return;
+    if (event.data?.type === "URL_CHANGED") {
+      checkDetailPageAutoOpen();
+      return;
+    }
     const request = pendingRequests.get(event.data.requestId);
     if (!request) return;
     window.clearTimeout(request.timer);
@@ -192,6 +197,7 @@
       replyAction: "回复",
       repostAction: "转发",
       likeAction: "喜欢",
+      viewsAction: "浏览量",
       bookmarkAction: "书签",
       shareAction: "复制链接",
       linkCopied: "链接已复制到剪贴板",
@@ -284,6 +290,7 @@
       replyAction: "Reply",
       repostAction: "Repost",
       likeAction: "Like",
+      viewsAction: "Views",
       bookmarkAction: "Bookmark",
       shareAction: "Copy link",
       linkCopied: "Link copied to clipboard",
@@ -837,6 +844,9 @@
           </button>
           <button type="button" class="sidepeek-action-btn sidepeek-act-like ${model.flags.liked ? "active" : ""}" title="${t("likeAction")}">
             <span class="sidepeek-action-btn-surface">${model.flags.liked ? ICONS.likeSolid : ICONS.like} <span>${formatCount(model.counts.likes)}</span></span>
+          </button>
+          <button type="button" class="sidepeek-action-btn sidepeek-act-views" title="${t("viewsAction")}">
+            <span class="sidepeek-action-btn-surface">${ICONS.views} <span>${formatCount(model.counts.views)}</span></span>
           </button>
           <button type="button" class="sidepeek-action-btn sidepeek-act-bookmark ${model.flags.bookmarked ? "active" : ""}" title="${t("bookmarkAction")}">
             <span class="sidepeek-action-btn-surface">${model.flags.bookmarked ? ICONS.bookmarkSolid : ICONS.bookmark}</span>
@@ -1819,7 +1829,79 @@
     }
   }
 
+  let userClosedTweetId = null;
+  let lastHandledDetailTweetId = null;
+  let lastCheckedUrl = "";
+
+  function findDetailFocalArticle(tweetId) {
+    if (!tweetId) return null;
+    // Look for tweet article that contains link to this status
+    const matching = document.querySelector(`article[data-testid="tweet"] a[href*="/status/${tweetId}"]`)?.closest('article[data-testid="tweet"]');
+    if (matching) return matching;
+    // Or the primary tweet article on the detail page
+    return document.querySelector('article[data-testid="tweet"]');
+  }
+
+  function checkDetailPageAutoOpen() {
+    if (!isSideXEnabled) return;
+    if (state.isResizing) return;
+    const currentUrl = location.href;
+    if (currentUrl === lastCheckedUrl) return;
+    lastCheckedUrl = currentUrl;
+
+    const tweetId = Core.postIdFromUrl(currentUrl);
+
+    if (tweetId) {
+      // If the user explicitly closed this same tweet on this page, don't re-open
+      if (tweetId === userClosedTweetId) return;
+
+      // If already open for this tweet, nothing to do
+      if (state.open && state.focalTweetId === tweetId) return;
+
+      lastHandledDetailTweetId = tweetId;
+
+      // Try to find focal article on detail page
+      let focalArticle = findDetailFocalArticle(tweetId);
+      openDrawerForTweet(tweetId, focalArticle);
+
+      // If focalArticle wasn't mounted yet by React, retry finding it to expand long text
+      if (!focalArticle) {
+        let retries = 0;
+        const retryTimer = setInterval(() => {
+          retries++;
+          const article = findDetailFocalArticle(tweetId);
+          if (article) {
+            clearInterval(retryTimer);
+            if (state.focalTweetId === tweetId && state.open) {
+              if (state.focalArticle) {
+                state.focalArticle.classList.remove("sidepeek-focal-active");
+              }
+              state.focalArticle = article;
+              state.focalArticle.classList.add("sidepeek-focal-active");
+              const showMore = article.querySelector?.('[data-testid="tweet-text-show-more-link"]');
+              if (showMore) showMore.click();
+            }
+          } else if (retries >= 15) {
+            clearInterval(retryTimer);
+          }
+        }, 200);
+      }
+    } else {
+      // Navigated away from a detail page (e.g. back to /home, /explore)
+      userClosedTweetId = null;
+      if (lastHandledDetailTweetId) {
+        lastHandledDetailTweetId = null;
+        if (state.open) {
+          closeDrawer();
+        }
+      }
+    }
+  }
+
   function openDrawerForTweet(tweetId, articleNode) {
+    userClosedTweetId = null;
+    lastHandledDetailTweetId = tweetId;
+
     // 1. Update focal tweet highlight
     if (state.focalArticle) {
       state.focalArticle.classList.remove("sidepeek-focal-active");
@@ -1844,6 +1926,7 @@
 
   function closeDrawer() {
     state.open = false;
+    userClosedTweetId = state.focalTweetId;
     if (state.focalArticle) {
       state.focalArticle.classList.remove("sidepeek-focal-active");
       state.focalArticle = null;
@@ -1932,4 +2015,12 @@
       }
     }
   });
+
+  // URL Watcher: detect SPA transitions, Back/Forward navigation, and auto-open on detail pages
+  window.addEventListener("popstate", checkDetailPageAutoOpen);
+  window.addEventListener("hashchange", checkDetailPageAutoOpen);
+  setInterval(checkDetailPageAutoOpen, 300);
+
+  // Initial check on load
+  checkDetailPageAutoOpen();
 })();
