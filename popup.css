@@ -1,0 +1,264 @@
+:root {
+  --sidex-bg: #000000;
+  --sidex-card-bg: #16181c;
+  --sidex-border: #2f3336;
+  --sidex-text: #e7e9ea;
+  --sidex-muted: #71767b;
+  --sidex-primary: #1d9bf0;
+  --sidex-primary-hover: #1a8cd8;
+  --sidex-success: #00ba7c;
+  --sidex-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --sidex-bg: #ffffff;
+    --sidex-card-bg: #f7f9f9;
+    --sidex-border: #eff3f4;
+    --sidex-text: #0f1419;
+    --sidex-muted: #536471;
+    --sidex-primary: #1d9bf0;
+    --sidex-primary-hover: #1a8cd8;
+    --sidex-success: #00ba7c;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 320px;
+  background-color: var(--sidex-bg);
+  color: var(--sidex-text);
+  font-family: var(--sidex-font);
+  font-size: 13px;
+  line-height: 1.4;
+  user-select: none;
+}
+
+.sidex-popup {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Header */
+.sidex-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 4px;
+}
+
+.sidex-popup-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sidex-popup-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+.sidex-popup-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidex-popup-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.sidex-popup-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: rgba(29, 155, 240, 0.15);
+  color: var(--sidex-primary);
+}
+
+/* Language Segmented Control */
+.sidex-lang-group {
+  display: flex;
+  background: var(--sidex-card-bg);
+  border: 1px solid var(--sidex-border);
+  border-radius: 16px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.sidex-lang-btn {
+  border: none;
+  background: transparent;
+  color: var(--sidex-muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sidex-lang-btn:hover {
+  color: var(--sidex-text);
+}
+
+.sidex-lang-btn.active {
+  background: var(--sidex-primary);
+  color: #ffffff;
+}
+
+/* Cards */
+.sidex-card {
+  background: var(--sidex-card-bg);
+  border: 1px solid var(--sidex-border);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+/* Switch Card */
+.sidex-switch-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sidex-switch-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidex-switch-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sidex-switch-desc {
+  font-size: 12px;
+  color: var(--sidex-muted);
+}
+
+/* iOS / Joy-Con Style Toggle Switch */
+.sidex-toggle {
+  position: relative;
+  display: inline-block;
+  width: 46px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.sidex-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.sidex-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: var(--sidex-border);
+  transition: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 26px;
+}
+
+.sidex-toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: #ffffff;
+  transition: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+input:checked + .sidex-toggle-slider {
+  background-color: var(--sidex-primary);
+}
+
+input:checked + .sidex-toggle-slider:before {
+  transform: translateX(20px);
+}
+
+/* Actions Card */
+.sidex-actions-card {
+  padding: 10px 14px;
+}
+
+.sidex-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidex-action-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sidex-text);
+}
+
+.sidex-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 16px;
+  border: 1px solid var(--sidex-border);
+  background: transparent;
+  color: var(--sidex-text);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sidex-action-btn:hover {
+  background: rgba(29, 155, 240, 0.1);
+  border-color: var(--sidex-primary);
+  color: var(--sidex-primary);
+}
+
+/* Footer & Hints */
+.sidex-popup-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--sidex-border);
+}
+
+.sidex-hint-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.sidex-hint-key {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: var(--sidex-card-bg);
+  border: 1px solid var(--sidex-border);
+  color: var(--sidex-muted);
+}
+
+.sidex-hint-text {
+  color: var(--sidex-muted);
+}

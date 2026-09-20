@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SideX</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="sidex-popup">
+    <!-- Header -->
+    <header class="sidex-popup-header">
+      <div class="sidex-popup-brand">
+        <img src="icons/icon-32.png" alt="SideX Logo" class="sidex-popup-logo" />
+        <div class="sidex-popup-title-group">
+          <span class="sidex-popup-title">SideX</span>
+          <span class="sidex-popup-badge">v1.0.0</span>
+        </div>
+      </div>
+      <!-- Language Switcher in Header -->
+      <div class="sidex-lang-group" id="sidex-lang-group">
+        <button type="button" class="sidex-lang-btn" data-lang="zh">中</button>
+        <button type="button" class="sidex-lang-btn" data-lang="en">EN</button>
+      </div>
+    </header>
+
+    <!-- Main Switch Card -->
+    <div class="sidex-card sidex-switch-card">
+      <div class="sidex-switch-info">
+        <div class="sidex-switch-title" id="txt-switch-title">插件状态</div>
+        <div class="sidex-switch-desc" id="txt-switch-desc">点击推文原地展开评论流</div>
+      </div>
+      <label class="sidex-toggle">
+        <input type="checkbox" id="sidex-toggle-input" checked />
+        <span class="sidex-toggle-slider"></span>
+      </label>
+    </div>
+
+    <!-- Features / Quick Actions -->
+    <div class="sidex-card sidex-actions-card">
+      <div class="sidex-action-row">
+        <div class="sidex-action-label" id="txt-reset-label">抽屉宽度</div>
+        <button type="button" class="sidex-action-btn" id="btn-reset-width">
+          <svg viewBox="0 0 256 256" width="14" height="14" fill="currentColor">
+            <path d="M224,128a96,96,0,1,1-21.84-60.61L224,48v48H176l18.53-18.53A80,80,0,1,0,207.82,136H224A95.54,95.54,0,0,1,224,128Z"/>
+          </svg>
+          <span id="txt-reset-btn">恢复默认</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Shortcut Hints & Footer -->
+    <footer class="sidex-popup-footer">
+      <div class="sidex-hint-row">
+        <span class="sidex-hint-key">Ctrl + \</span>
+        <span class="sidex-hint-text" id="txt-hint-toggle">切换侧栏展开/收起</span>
+      </div>
+      <div class="sidex-hint-row">
+        <span class="sidex-hint-key">Esc</span>
+        <span class="sidex-hint-text" id="txt-hint-esc">关闭抽屉或大图</span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

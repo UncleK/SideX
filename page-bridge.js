@@ -20,9 +20,11 @@
     repost: { active: "DeleteRetweet", inactive: "CreateRetweet" },
     bookmark: { active: "DeleteBookmark", inactive: "CreateBookmark" }
   });
+  const DEFAULT_BEARER = "Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA";
   const captured = {
     auth: Object.create(null),
     templates: new Map(),
+    queryIds: new Map(),
     translationTemplate: null
   };
   const operationCache = new Map();
@@ -63,7 +65,10 @@
     }
     const match = url.match(GRAPHQL_PATH);
     if (!match) return;
-    captured.templates.set(match[2], {
+    const queryId = match[1];
+    const operationName = match[2];
+    captured.queryIds.set(operationName, queryId);
+    captured.templates.set(operationName, {
       url,
       method: String(methodValue || "GET").toUpperCase(),
       headers,
@@ -179,6 +184,17 @@
         // Module might be environment-specific
       }
     }
+
+    if (captured.queryIds.has(operationName)) {
+      const op = {
+        queryId: captured.queryIds.get(operationName),
+        operationName,
+        metadata: { featureSwitches: [], fieldToggles: [] }
+      };
+      operationCache.set(operationName, op);
+      return op;
+    }
+
     return null;
   }
 
@@ -238,10 +254,9 @@
     const headers = {
       "content-type": "application/json",
       "x-twitter-active-user": captured.auth["x-twitter-active-user"] || "yes",
-      "x-twitter-auth-type": captured.auth["x-twitter-auth-type"] || "OAuth2Session"
+      "x-twitter-auth-type": captured.auth["x-twitter-auth-type"] || "OAuth2Session",
+      "authorization": captured.auth.authorization || DEFAULT_BEARER
     };
-    if (!captured.auth.authorization) throw new Error("尚未捕获到 X 登录请求，请刷新 X 页面后重试");
-    headers.authorization = captured.auth.authorization;
     for (const name of ["x-twitter-client-language", "x-client-uuid"]) {
       if (captured.auth[name]) headers[name] = captured.auth[name];
     }
@@ -284,7 +299,7 @@
       });
     }
     const json = await response.json().catch(() => null);
-    if (!response.ok || json?.errors?.length) {
+    if (!response.ok || (!json?.data && json?.errors?.length)) {
       const message = json?.errors?.[0]?.message || `X 请求失败（${response.status}）`;
       throw new Error(message);
     }
@@ -308,7 +323,7 @@
       cache: "no-store"
     });
     const json = await response.json().catch(() => null);
-    if (!response.ok || json?.errors?.length) throw new Error(json?.errors?.[0]?.message || `X 请求失败（${response.status}）`);
+    if (!response.ok || (!json?.data && json?.errors?.length)) throw new Error(json?.errors?.[0]?.message || `X 请求失败（${response.status}）`);
     return json;
   }
 
@@ -357,7 +372,8 @@
     const byteArray = new Uint8Array(byteNumbers);
     const blob = new Blob([byteArray], { type: mimeType || "image/png" });
 
-    const uploadUrl = "/i/api/1.1/media/upload.json";
+    const host = location.hostname.includes("twitter.com") ? "upload.twitter.com" : "upload.x.com";
+    const uploadUrl = `https://${host}/i/media/upload.json`;
     
     // Step 1: INIT
     const initHeaders = await requestHeaders(uploadUrl, "POST", true);
@@ -377,7 +393,10 @@
     });
     const initJson = await initRes.json().catch(() => null);
     const mediaId = initJson?.media_id_string || String(initJson?.media_id || "");
-    if (!mediaId) throw new Error("初始化图片上传失败");
+    if (!mediaId) {
+      const errMsg = initJson?.errors?.[0]?.message || `初始化图片上传失败 (${initRes.status})`;
+      throw new Error(errMsg);
+    }
 
     // Step 2: APPEND
     const appendHeaders = await requestHeaders(uploadUrl, "POST", true);
@@ -394,7 +413,11 @@
       credentials: "include",
       body: appendForm
     });
-    if (!appendRes.ok) throw new Error("上传图片数据失败");
+    if (!appendRes.ok) {
+      const appendJson = await appendRes.json().catch(() => null);
+      const errMsg = appendJson?.errors?.[0]?.message || `上传图片数据失败 (${appendRes.status})`;
+      throw new Error(errMsg);
+    }
 
     // Step 3: FINALIZE
     const finalizeHeaders = await requestHeaders(uploadUrl, "POST", true);
@@ -411,6 +434,10 @@
       body: finalizeParams.toString()
     });
     const finalizeJson = await finalizeRes.json().catch(() => null);
+    if (!finalizeRes.ok) {
+      const errMsg = finalizeJson?.errors?.[0]?.message || `完成图片上传失败 (${finalizeRes.status})`;
+      throw new Error(errMsg);
+    }
     return finalizeJson?.media_id_string || mediaId;
   }
 

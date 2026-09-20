@@ -113,11 +113,50 @@
   }
 
   // ==========================================================================
-  // Internationalization (i18n)
+  // Extension State & Internationalization (i18n)
   // ==========================================================================
+  let isSideXEnabled = true;
+  let overrideLocale = null;
+
   function getLocale() {
+    if (overrideLocale === "zh" || overrideLocale === "en") return overrideLocale;
     const htmlLang = (document.documentElement.lang || navigator.language || "en").toLowerCase();
     return htmlLang.startsWith("zh") ? "zh" : "en";
+  }
+
+  const storage = chrome?.storage?.sync || chrome?.storage?.local;
+  if (storage) {
+    storage.get({ sidex_enabled: true, sidex_lang: null }, (res) => {
+      isSideXEnabled = res.sidex_enabled !== false;
+      if (res.sidex_lang) overrideLocale = res.sidex_lang;
+      if (!isSideXEnabled) {
+        closeDrawer();
+        const root = document.getElementById(ROOT_ID);
+        if (root) root.style.display = "none";
+      }
+    });
+
+    chrome.storage.onChanged.addListener((changes) => {
+      if (changes.sidex_enabled !== undefined) {
+        isSideXEnabled = changes.sidex_enabled.newValue !== false;
+        const root = document.getElementById(ROOT_ID);
+        if (!isSideXEnabled) {
+          closeDrawer();
+          if (root) root.style.display = "none";
+        } else {
+          if (root) root.style.display = "";
+        }
+      }
+      if (changes.sidex_lang !== undefined) {
+        overrideLocale = changes.sidex_lang.newValue;
+        if (state.open) renderDrawer();
+      }
+      if (changes.sidex_reset_width_trigger !== undefined) {
+        localStorage.removeItem("sidepeek_custom_width_v2");
+        updateDrawerPosition();
+        showToast(t("widthResetToast"));
+      }
+    });
   }
 
   const TRANSLATIONS = {
@@ -558,6 +597,7 @@
           <span class="sidepeek-count-badge">(${isDrillDown ? (state.tree?.childrenMap.get(drillDownParent?.id)?.length || 0) : (state.tree?.rootReplies.length || 0)})</span>
         </div>
         <div class="sidepeek-header-actions">
+          <button type="button" class="sidepeek-icon-btn sidepeek-btn-lang" title="${getLocale() === 'zh' ? 'Switch to English' : '切换为中文'}"><span style="font-size: 11px; font-weight: 700; line-height: 1;">${getLocale() === 'zh' ? 'EN' : '中'}</span></button>
           <button type="button" class="sidepeek-icon-btn sidepeek-btn-reset-width" title="${t("resetWidth")}">${ICONS.resetWidth}</button>
           ${state.focalModel?.url ? `<a href="${state.focalModel.url}" target="_blank" class="sidepeek-icon-btn" title="${t("openOnX")}">${ICONS.external}</a>` : ""}
           <button type="button" class="sidepeek-icon-btn sidepeek-btn-close" aria-label="${t("closeSidebar")}">${ICONS.close}</button>
@@ -621,6 +661,13 @@
     initFooterComposer(root, isDrillDown, drillDownParent);
 
     // Event listeners on header
+    root.querySelector(".sidepeek-btn-lang")?.addEventListener("click", () => {
+      const nextLang = getLocale() === "zh" ? "en" : "zh";
+      overrideLocale = nextLang;
+      if (storage) storage.set({ sidex_lang: nextLang });
+      renderDrawer();
+      showToast(nextLang === "zh" ? "已切换为中文" : "Switched to English");
+    });
     root.querySelector(".sidepeek-btn-close")?.addEventListener("click", closeDrawer);
     if (isDrillDown) {
       root.querySelector(".sidepeek-back-btn")?.addEventListener("click", () => {
@@ -1910,6 +1957,7 @@
   }
 
   function handleTimelineClick(event) {
+    if (!isSideXEnabled) return;
     if (state.isResizing) return;
     if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
 
@@ -1949,6 +1997,7 @@
 
   // ESC key to close (Lightbox first, then Drawer)
   document.addEventListener("keydown", (event) => {
+    if (!isSideXEnabled) return;
     if (event.key === "Escape") {
       const lightbox = document.getElementById("sidepeek-lightbox");
       if (lightbox && lightbox.classList.contains("active")) {
