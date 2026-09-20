@@ -18,6 +18,10 @@
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
     <img src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" alt="PRs Welcome" />
   </p>
+
+  <br />
+  <img src="docs/hero-banner.png" alt="SideX Showcase" width="100%" />
+  <br />
 </div>
 
 ---
@@ -46,10 +50,20 @@
   * 点击推文即刻自动展开“显示更多”（Show more），无需手动寻觅折叠按钮。
 * 🧵 **树状对话流与层级下钻（Thread & Drill-down）**
   * 告别官方平铺杂乱的评论展示，自动解析父子回复关系，以清晰的 `Thread Line` 组织树状结构；支持点击“展开子回复”下钻浏览独立分支。
+
+<div align="center">
+  <img src="docs/feature-thread.png" alt="对话树下钻演示" width="90%" />
+</div>
+
 * 🖼️ **原生级多媒体与大图画廊（Media & Lightbox）**
   * 评论区完整支持多图网格、高清原图点击全屏放大画廊、视频/动图原生播放。
 * 💬 **行内手风琴回复与剪贴板贴图（Inline Composer）**
   * 随时针对任意层级评论展开回复框，支持 `Ctrl+V` 直接粘贴剪贴板图片并自动上传，支持 `Ctrl+Enter` 快速发送。
+
+<div align="center">
+  <img src="docs/feature-composer.png" alt="行内回复与贴图演示" width="90%" />
+</div>
+
 * 🔄 **完全无感的互动同步（Live Actions）**
   * 侧栏内支持点赞、转推、添加书签、复制推文链接，状态与 X 原生页面实时双向同步。
 * 🎨 **三色自适应主题与自由拉伸（Adaptive Themes & Resizable）**
@@ -72,7 +86,7 @@
    * Chrome / Brave: `chrome://extensions/`
    * Edge: `edge://extensions/`
 3. **开启右上角的「开发者模式」（Developer mode）**。
-4. **点击「加载已解压的扩展程序」（Load unpacked）**，选中克隆下来的 `SideX` 文件夹。
+4. **点击「加载未打包的扩展程序」（部分浏览器显示为「加载已解压的扩展程序」/ Load unpacked）**，选中克隆下来的 `SideX` 文件夹。
 5. 打开 [x.com](https://x.com) 或 [twitter.com](https://twitter.com)，在任意时间线点击帖子，即可享受就地展开的沉浸式评论流！
 
 ---
@@ -135,7 +149,7 @@ SideX is a Manifest V3 extension compatible with all Chromium-based browsers (Ch
    * Chrome / Brave: `chrome://extensions/`
    * Edge: `edge://extensions/`
 3. **Enable "Developer mode"** in the top-right corner.
-4. **Click "Load unpacked"** and select the cloned `SideX` directory.
+4. **Click "Load unpacked"** (加载未打包的扩展程序) and select the cloned `SideX` directory.
 5. Navigate to [x.com](https://x.com) or [twitter.com](https://twitter.com) and click on any tweet to experience seamless in-place reading!
 
 ---
@@ -150,6 +164,7 @@ SideX/
 ├── content.js          # DOM lifecycle, drawer rendering, events & interaction logic
 ├── sidebar.css         # Minimalist responsive styling & multi-theme adaptation
 ├── icons/              # Brand-safe Switch-inspired icons (16, 32, 48, 128px)
+├── docs/               # Showcase mockups & visual illustrations
 ├── LICENSE             # MIT License
 └── README.md           # Bilingual project documentation
 ```
