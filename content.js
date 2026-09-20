@@ -2003,48 +2003,9 @@
 
   document.addEventListener("click", handleTimelineClick, true);
 
-  // Keyboard shortcuts: ESC to close, Ctrl+\ / Cmd+\ to toggle drawer
+  // ESC key to close (Lightbox first, then Drawer)
   document.addEventListener("keydown", (event) => {
     if (!isSideXEnabled) return;
-
-    // Ctrl + \ or Cmd + \ (Toggle sidebar drawer)
-    if ((event.ctrlKey || event.metaKey) && (event.key === "\\" || event.code === "Backslash")) {
-      event.preventDefault();
-      event.stopPropagation();
-      if (state.open) {
-        closeDrawer();
-      } else if (state.focalTweetId) {
-        state.open = true;
-        renderDrawer();
-      } else {
-        // Find top-most visible tweet in viewport and open it
-        const tweets = document.querySelectorAll('article[data-testid="tweet"]');
-        let found = false;
-        for (const tweet of tweets) {
-          const rect = tweet.getBoundingClientRect();
-          if (rect.top >= 0 && rect.top < window.innerHeight) {
-            const hrefs = [...tweet.querySelectorAll('a[href*="/status/"]')].map(a => a.getAttribute("href"));
-            const ownUrl = Core.selectOwnPostUrl(hrefs, null, location.href);
-            const tweetId = ownUrl ? Core.postIdFromUrl(ownUrl) : null;
-            if (tweetId) {
-              openDrawerForTweet(tweetId, tweet);
-              found = true;
-              break;
-            }
-          }
-        }
-        if (!found && tweets.length > 0) {
-          const firstTweet = tweets[0];
-          const hrefs = [...firstTweet.querySelectorAll('a[href*="/status/"]')].map(a => a.getAttribute("href"));
-          const ownUrl = Core.selectOwnPostUrl(hrefs, null, location.href);
-          const tweetId = ownUrl ? Core.postIdFromUrl(ownUrl) : null;
-          if (tweetId) openDrawerForTweet(tweetId, firstTweet);
-        }
-      }
-      return;
-    }
-
-    // ESC key to close (Lightbox first, then Drawer)
     if (event.key === "Escape") {
       const lightbox = document.getElementById("sidepeek-lightbox");
       if (lightbox && lightbox.classList.contains("active")) {

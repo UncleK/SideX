@@ -7,7 +7,6 @@
   const resetLabel = document.getElementById("txt-reset-label");
   const resetBtn = document.getElementById("btn-reset-width");
   const resetBtnText = document.getElementById("txt-reset-btn");
-  const hintToggle = document.getElementById("txt-hint-toggle");
   const hintEsc = document.getElementById("txt-hint-esc");
   const langGroup = document.getElementById("sidex-lang-group");
 
@@ -20,7 +19,6 @@
       resetLabel: "抽屉宽度",
       resetBtn: "恢复默认",
       resetDone: "已恢复！",
-      hintToggle: "切换侧栏展开/收起",
       hintEsc: "关闭抽屉或大图"
     },
     en: {
@@ -31,7 +29,6 @@
       resetLabel: "Drawer Width",
       resetBtn: "Reset",
       resetDone: "Restored!",
-      hintToggle: "Toggle sidebar expand/collapse",
       hintEsc: "Close drawer or lightbox"
     }
   };
@@ -57,7 +54,6 @@
     }
     resetLabel.textContent = s.resetLabel;
     resetBtnText.textContent = s.resetBtn;
-    hintToggle.textContent = s.hintToggle;
     hintEsc.textContent = s.hintEsc;
 
     // Update active language button
