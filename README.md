@@ -47,22 +47,26 @@
 
 Compatible with Chrome, Edge, Brave, Arc, and other Chromium browsers:
 
-### Option 1: Quick Install via Release (Recommended)
-1. Download the latest **`SideX-v1.0.0.zip`** from [Releases](https://github.com/UncleK/SideX/releases).
-2. Extract the downloaded zip file to a permanent folder.
-3. Open your browser extension manager:
+### Method 1: CRX Drag & Drop (Fastest)
+1. Download **`SideX-v1.0.0.crx`** from [Releases](https://github.com/UncleK/SideX/releases).
+2. Open your browser extension manager:
    * Chrome / Brave: `chrome://extensions/`
    * Edge: `edge://extensions/`
-4. Turn on **"Developer mode"** in the top-right corner.
-5. Click **"Load unpacked"** and select the extracted folder.
+3. Turn on **"Developer mode"** in the top-right corner.
+4. Drag and drop the downloaded `.crx` file into the extensions page to install.
+   *(Note: If Chrome displays a security prompt blocking third-party CRX drag-and-drop, please use Method 2 below).*
 
-### Option 2: Clone via Git
+### Method 2: ZIP Package (100% Reliable, Recommended)
+1. Download **`SideX-v1.0.0.zip`** from [Releases](https://github.com/UncleK/SideX/releases) and extract it.
+2. In `chrome://extensions/` (with "Developer mode" on), click **"Load unpacked"** and select the extracted folder.
+
+### Method 3: Clone via Git (For Developers)
 ```bash
 git clone https://github.com/UncleK/SideX.git
 ```
-Then load the cloned `SideX` folder as an unpacked extension.
+Then click **"Load unpacked"** and select the cloned `SideX` folder.
 
-6. Open [x.com](https://x.com) or [twitter.com](https://twitter.com) and click any tweet to start reading!
+5. Open [x.com](https://x.com) or [twitter.com](https://twitter.com) and click any tweet to start reading!
 
 ---
 

@@ -47,22 +47,26 @@
 
 适用于 Chrome、Edge、Brave、Arc 等所有 Chromium 浏览器：
 
-### 方式一：下载 Release 压缩包（推荐，无需 Git）
-1. 前往 [Releases 页面](https://github.com/UncleK/SideX/releases) 下载最新的 **`SideX-v1.0.0.zip`**。
-2. 将下载的压缩包解压到固定文件夹。
-3. 打开浏览器扩展管理页面：
+### 方式一：CRX 文件直接拖拽安装（最快）
+1. 前往 [Releases 页面](https://github.com/UncleK/SideX/releases) 下载 **`SideX-v1.0.0.crx`**。
+2. 打开浏览器扩展管理页面：
    * Chrome / Brave: `chrome://extensions/`
    * Edge: `edge://extensions/`
-4. 开启右上角的**「开发者模式」**。
-5. 点击左上角**「加载未打包的扩展程序」**（部分浏览器为「加载已解压的扩展程序」/ Load unpacked），选择解压后的文件夹即可。
+3. 开启右上角的**「开发者模式」**。
+4. 将下载的 `.crx` 文件直接**拖拽**到该扩展管理页面中完成安装。
+   *(注：较新版本的 Chrome 可能会弹出安全拦截提示禁止安装非商店 CRX，遇到此类情况请使用下方的「方式二」)*。
 
-### 方式二：通过 Git 源码安装
+### 方式二：下载 ZIP 压缩包（100% 成功，推荐）
+1. 前往 [Releases 页面](https://github.com/UncleK/SideX/releases) 下载 **`SideX-v1.0.0.zip`** 并解压。
+2. 在扩展管理页面开启「开发者模式」后，点击左上角**「加载未打包的扩展程序」**（部分浏览器为「加载已解压的扩展程序」/ Load unpacked），选择解压后的文件夹即可。
+
+### 方式三：通过 Git 源码安装（开发者）
 ```bash
 git clone https://github.com/UncleK/SideX.git
 ```
 在扩展管理页面点击「加载未打包的扩展程序」，选择克隆的 `SideX` 文件夹即可。
 
-6. 打开 [x.com](https://x.com) 或 [twitter.com](https://twitter.com)，点击任意推文即可享受就地展开的评论流！
+5. 打开 [x.com](https://x.com) 或 [twitter.com](https://twitter.com)，点击任意推文即可享受就地展开的评论流！
 
 ---
 
