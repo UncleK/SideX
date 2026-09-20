@@ -8,8 +8,7 @@
   const CONTENT_SOURCE = "sidepeek-content";
   const PAGE_SOURCE = "sidepeek-page";
 
-  // SVG Icons
-  // SVG Icons (Official Phosphor Regular & Fill SVGs matching original peek)
+  // SVG Icons (Official Twitter SVGs matching original composer)
   const ICONS = {
     reply: `<svg viewBox="0 0 256 256"><path d="M128,24A104,104,0,0,0,36.18,176.88L24.83,210.93a16,16,0,0,0,20.24,20.24l34.05-11.35A104,104,0,1,0,128,24Zm0,192a87.87,87.87,0,0,1-44.06-11.81,8,8,0,0,0-6.54-.67L40,216,52.47,178.6a8,8,0,0,0-.66-6.54A88,88,0,1,1,128,216Z"/></svg>`,
     repost: `<svg viewBox="0 0 256 256"><path d="M224,48V96a8,8,0,0,1-8,8H168a8,8,0,0,1,0-16h28.69L182.06,73.37a79.56,79.56,0,0,0-56.13-23.43h-.45A79.52,79.52,0,0,0,69.59,72.71,8,8,0,0,1,58.41,61.27a96,96,0,0,1,135,.79L208,76.69V48a8,8,0,0,1,16,0ZM186.41,183.29a80,80,0,0,1-112.47-.66L59.31,168H88a8,8,0,0,0,0-16H40a8,8,0,0,0-8,8v48a8,8,0,0,0,16,0V179.31l14.63,14.63A95.43,95.43,0,0,0,130,222.06h.53a95.36,95.36,0,0,0,67.07-27.33,8,8,0,0,0-11.18-11.44Z"/></svg>`,
@@ -21,11 +20,50 @@
     close: `<svg viewBox="0 0 256 256"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></svg>`,
     back: `<svg viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"/></svg>`,
     external: `<svg viewBox="0 0 256 256"><path d="M224,104a8,8,0,0,1-16,0V59.32l-66.33,66.34a8,8,0,0,1-11.32-11.32L196.68,48H152a8,8,0,0,1,0-16h64a8,8,0,0,1,8,8Zm-40,24a8,8,0,0,0-8,8v72H48V80h72a8,8,0,0,0,0-16H48A16,16,0,0,0,32,80V208a16,16,0,0,0,16,16H176a16,16,0,0,0,16-16V136A8,8,0,0,0,184,128Z"/></svg>`,
-    image: `<svg viewBox="0 0 256 256"><path d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40Zm0,16V158.75l-26.07-26.06a16,16,0,0,0-22.63,0l-20,20-44-44a16,16,0,0,0-22.62,0L40,149.37V56ZM40,172l52-52,80,80H40Zm176,28H194.63l-36-36,20-20L216,181.38V200ZM144,100a12,12,0,1,1,12,12A12,12,0,0,1,144,100Z"/></svg>`,
     resetWidth: `<svg viewBox="0 0 256 256"><path d="M224,128a96,96,0,1,1-21.84-60.61L224,48v48H176l18.53-18.53A80,80,0,1,0,207.82,136H224A95.54,95.54,0,0,1,224,128Z"/></svg>`,
-    officialReply: `<svg viewBox="0 0 256 256"><path d="M200,32H56A16,16,0,0,0,40,48V216a8,8,0,0,0,13.15,6.18L88.76,192H200a16,16,0,0,0,16-16V48A16,16,0,0,0,200,32Zm0,144H86.11a8,8,0,0,0-5.15,1.86L56,198.85V48H200ZM144,96a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h40A8,8,0,0,1,144,96Zm32,32a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h72A8,8,0,0,1,176,128Z"/></svg>`,
-    user: `<svg viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24ZM74.08,197.5a64,64,0,0,1,107.84,0,87.83,87.83,0,0,1-107.84,0ZM128,120a40,40,0,1,1,40-40A40,40,0,0,1,128,120Zm65.2,66.19a79.89,79.89,0,0,0-36.06-28.74,56,56,0,1,0-58.28,0,79.89,79.89,0,0,0-36.06,28.74,88,88,0,1,1,130.4,0Z"/></svg>`
+    user: `<svg viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24ZM74.08,197.5a64,64,0,0,1,107.84,0,87.83,87.83,0,0,1-107.84,0ZM128,120a40,40,0,1,1,40-40A40,40,0,0,1,128,120Zm65.2,66.19a79.89,79.89,0,0,0-36.06-28.74,56,56,0,1,0-58.28,0,79.89,79.89,0,0,0-36.06,28.74,88,88,0,1,1,130.4,0Z"/></svg>`,
+    // Twitter Official 24x24 Composer Toolbar SVGs
+    media: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M3 5.5C3 4.119 4.119 3 5.5 3h13C19.881 3 21 4.119 21 5.5v13c0 1.381-1.119 2.5-2.5 2.5h-13C4.119 21 3 19.881 3 18.5v-13zM5.5 5c-.276 0-.5.224-.5.5v9.086l3-3 3 3 5-5 3 3V5.5c0-.276-.224-.5-.5-.5h-13zM19 15.414l-3-3-5 5-3-3-3 3V18.5c0 .276.224.5.5.5h13c.276 0 .5-.224.5-.5v-3.086zM9.75 7.75c0-.966.784-1.75 1.75-1.75s1.75.784 1.75 1.75-.784 1.75-1.75 1.75-1.75-.784-1.75-1.75z"></path></g></svg>`,
+    gif: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M3 5.5C3 4.119 4.119 3 5.5 3h13C19.881 3 21 4.119 21 5.5v13c0 1.381-1.119 2.5-2.5 2.5h-13C4.119 21 3 19.881 3 18.5v-13zM5.5 5c-.276 0-.5.224-.5.5v13c0 .276.224.5.5.5h13c.276 0 .5-.224.5-.5v-13c0-.276-.224-.5-.5-.5h-13zM7.75 10c.414 0 .75.336.75.75v2.5c0 .414-.336.75-.75.75h-1.5c-.414 0-.75-.336-.75-.75v-2.5c0-.414.336-.75.75-.75h1.5zm-.75 2.5h.75v-1h-.75v1zm4.25-2.5c.414 0 .75.336.75.75v2.5c0 .414-.336.75-.75.75h-.75v-4h.75zm5 0c.414 0 .75.336.75.75v.5c0 .414-.336.75-.75.75h-1.25v.5h1.25c.414 0 .75.336.75.75v.25c0 .414-.336.75-.75.75h-2c-.414 0-.75-.336-.75-.75v-3.5c0-.414.336-.75.75-.75h2zm-.75 1.25h.5v-.5h-.5v.5z"></path></g></svg>`,
+    poll: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M6 5a2 2 0 100 4 2 2 0 000-4zm-4 2a4 4 0 118 0 4 4 0 01-8 0zm10-1a1 1 0 011-1h9a1 1 0 110 2h-9a1 1 0 01-1-1zm0 8a1 1 0 011-1h9a1 1 0 110 2h-9a1 1 0 01-1-1zm-6 2a2 2 0 100 4 2 2 0 000-4zm-4 2a4 4 0 118 0 4 4 0 01-8 0z"></path></g></svg>`,
+    emoji: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M8 9.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm8 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM12 18c-2.28 0-4.22-1.66-5-4h10c-.78 2.34-2.72 4-5 4zm-8-6c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8-8-3.589-8-8zm-2 0c0 5.523 4.477 10 10 10s10-4.477 10-10S17.523 2 12 2 2 6.477 2 12z"></path></g></svg>`,
+    schedule: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M6 3V1.5a1 1 0 012 0V3h8V1.5a1 1 0 012 0V3h2.5A2.5 2.5 0 0123 5.5v13a2.5 2.5 0 01-2.5 2.5h-17A2.5 2.5 0 011 18.5v-13A2.5 2.5 0 013.5 3H6zm14.5 4.5h-17a.5.5 0 00-.5.5v10.5c0 .276.224.5.5.5h17c.276 0 .5-.224.5-.5V8a.5.5 0 00-.5-.5zM8 12.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm4 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm4 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm-8 4a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm4 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"></path></g></svg>`,
+    location: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"></path></g></svg>`
   };
+
+  const EMOJI_CATEGORIES = [
+    {
+      name: "常用",
+      emojis: ["😂", "🤣", "😭", "🥺", "😍", "🥰", "😎", "🤔", "😅", "🙄", "🤫", "🤩", "🤤", "🥳", "🤯", "💀", "🤡", "💩", "👻", "💯", "🔥", "✨", "🎉", "🚀"]
+    },
+    {
+      name: "手势",
+      emojis: ["👍", "👎", "👏", "🙌", "🤝", "🙏", "✌️", "🤞", "🫡", "💪", "✊", "👊", "👆", "👇", "👉", "👈", "🤙", "💅", "🫶", "❤️", "💔", "💖", "💙", "🖤"]
+    },
+    {
+      name: "反应",
+      emojis: ["👀", "🙈", "🙉", "🙊", "🐶", "🐱", "🐼", "🐵", "🐸", "🍔", "🍕", "🍺", "☕️", "🍦", "☀️", "🌙", "⚡️", "🌈", "💡", "📌", "🎯", "🏆", "💎", "⚠️"]
+    }
+  ];
+
+  const REACTION_GIFS = [
+    { tag: "哈哈", title: "大笑", url: "https://media.giphy.com/media/26n6Gx9moCgs1qxxt/giphy.gif" },
+    { tag: "哈哈", title: "狂笑", url: "https://media.giphy.com/media/10JhviFuU2gWD6/giphy.gif" },
+    { tag: "点赞", title: "赞", url: "https://media.giphy.com/media/111ebonMs90YLu/giphy.gif" },
+    { tag: "点赞", title: "干得漂亮", url: "https://media.giphy.com/media/mgqefOvJJToHrp2qt8/giphy.gif" },
+    { tag: "鼓掌", title: "海豹鼓掌", url: "https://media.giphy.com/media/g9582DNuQppxC/giphy.gif" },
+    { tag: "鼓掌", title: "全场起立", url: "https://media.giphy.com/media/nbvFVPiEiJH6JOGIok/giphy.gif" },
+    { tag: "吃瓜", title: "爆米花", url: "https://media.giphy.com/media/tyqcJoNjNv0Fq/giphy.gif" },
+    { tag: "吃瓜", title: "吃瓜中", url: "https://media.giphy.com/media/gl0mkIZOW6Nwc/giphy.gif" },
+    { tag: "比心", title: "心动", url: "https://media.giphy.com/media/R6gVNROjZa40JYg3u8/giphy.gif" },
+    { tag: "比心", title: "飞吻", url: "https://media.giphy.com/media/uw0KqTWZSm8gg/giphy.gif" },
+    { tag: "震惊", title: "张大嘴", url: "https://media.giphy.com/media/5VKbvrjxpVJCM/giphy.gif" },
+    { tag: "震惊", title: "不可思议", url: "https://media.giphy.com/media/tfUW8mhiFk8NlRezUS/giphy.gif" },
+    { tag: "无语", title: "扶额", url: "https://media.giphy.com/media/3oEjI67Egb8G9jqs3m/giphy.gif" },
+    { tag: "无语", title: "白眼", url: "https://media.giphy.com/media/6yRVg0HWzgS88/giphy.gif" },
+    { tag: "哭泣", title: "大哭", url: "https://media.giphy.com/media/L95W4wvNFOM4LBWP68/giphy.gif" },
+    { tag: "哭泣", title: "抹眼泪", url: "https://media.giphy.com/media/OPU6wzx8JrHna/giphy.gif" }
+  ];
 
   const state = {
     open: false,
@@ -290,6 +328,12 @@
       </header>
       <div class="sidepeek-body"></div>
       <footer class="sidepeek-footer-composer">
+        <!-- In-place Popovers -->
+        <div class="sidepeek-popover sidepeek-emoji-popover" style="display: none;"></div>
+        <div class="sidepeek-popover sidepeek-gif-popover" style="display: none;"></div>
+        <div class="sidepeek-popover sidepeek-poll-popover" style="display: none;"></div>
+        <div class="sidepeek-popover sidepeek-schedule-popover" style="display: none;"></div>
+
         <div class="sidepeek-footer-inner">
           <div class="sidepeek-footer-avatar-wrap">
             ${userAvatar ? `<img src="${userAvatar}" class="sidepeek-footer-avatar" alt="" />` : `<div class="sidepeek-footer-avatar-default">${ICONS.user}</div>`}
@@ -299,16 +343,35 @@
             <div class="sidepeek-footer-preview-area"></div>
             <div class="sidepeek-footer-toolbar">
               <div class="sidepeek-footer-tools">
-                <label class="sidepeek-tool-btn sidepeek-tool-media" title="添加图片 (支持 Ctrl+V 粘贴)">
-                  <input type="file" accept="image/*" class="sidepeek-media-file-input" style="display:none;" />
-                  ${ICONS.image}
+                <label class="sidepeek-tool-btn sidepeek-tool-media" title="添加媒体 (图片/视频，支持 Ctrl+V)">
+                  <input type="file" accept="image/*,video/*" class="sidepeek-media-file-input" style="display:none;" />
+                  ${ICONS.media}
                 </label>
-                <button type="button" class="sidepeek-tool-btn sidepeek-tool-official" title="使用官方回复弹窗 (支持表情/投票/GIF)">
-                  ${ICONS.officialReply}
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-gif" title="添加 GIF">
+                  ${ICONS.gif}
+                </button>
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-poll" title="创建投票">
+                  ${ICONS.poll}
+                </button>
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-emoji" title="添加表情">
+                  ${ICONS.emoji}
+                </button>
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-schedule" title="定时发布">
+                  ${ICONS.schedule}
+                </button>
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-location" title="添加位置">
+                  ${ICONS.location}
                 </button>
               </div>
               <div class="sidepeek-footer-actions">
-                <span class="sidepeek-footer-hint">Ctrl+Enter</span>
+                <div class="sidepeek-char-counter" title="字数统计">
+                  <svg class="sidepeek-char-ring" viewBox="0 0 24 24" width="20" height="20">
+                    <circle class="sidepeek-char-ring-bg" cx="12" cy="12" r="9" />
+                    <circle class="sidepeek-char-ring-progress" cx="12" cy="12" r="9" />
+                  </svg>
+                  <span class="sidepeek-char-warn-num"></span>
+                </div>
+                <div class="sidepeek-action-divider"></div>
                 <button type="button" class="sidepeek-footer-submit-btn" disabled>回复</button>
               </div>
             </div>
@@ -714,41 +777,509 @@
     const previewArea = footer.querySelector(".sidepeek-footer-preview-area");
     const submitBtn = footer.querySelector(".sidepeek-footer-submit-btn");
     const fileInput = footer.querySelector(".sidepeek-media-file-input");
-    const officialBtn = footer.querySelector(".sidepeek-tool-official");
+
+    // Toolbar buttons
+    const btnMedia = footer.querySelector(".sidepeek-tool-media");
+    const btnGif = footer.querySelector(".sidepeek-tool-gif");
+    const btnPoll = footer.querySelector(".sidepeek-tool-poll");
+    const btnEmoji = footer.querySelector(".sidepeek-tool-emoji");
+    const btnSchedule = footer.querySelector(".sidepeek-tool-schedule");
+    const btnLocation = footer.querySelector(".sidepeek-tool-location");
+
+    // Popover containers
+    const emojiPopover = footer.querySelector(".sidepeek-emoji-popover");
+    const gifPopover = footer.querySelector(".sidepeek-gif-popover");
+    const pollPopover = footer.querySelector(".sidepeek-poll-popover");
+    const schedulePopover = footer.querySelector(".sidepeek-schedule-popover");
+
+    // Progress ring elements
+    const charCounter = footer.querySelector(".sidepeek-char-counter");
+    const ringProgress = footer.querySelector(".sidepeek-char-ring-progress");
+    const charWarnNum = footer.querySelector(".sidepeek-char-warn-num");
 
     let pastedMediaId = null;
     let pastedBlob = null;
+    let activePoll = null;
+    let activeSchedule = null;
+    let activeLocation = null;
 
     const targetTweetId = isDrillDown && drillDownParent ? drillDownParent.id : state.focalTweetId;
 
-    // 尽量复用官方回复功能：点击触发官方原生回复弹窗
-    officialBtn?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (!isDrillDown && state.focalArticle) {
-        const nativeBtn = state.focalArticle.querySelector('[data-testid="reply"]');
-        if (nativeBtn) {
-          nativeBtn.click();
-          return;
-        }
+    // Helper: calculate character count (ASCII=1, CJK/Emoji/Fullwidth=2, Limit=280)
+    function calculateTweetLength(text) {
+      let len = 0;
+      for (const ch of (text || "")) {
+        const code = ch.codePointAt(0);
+        if (code <= 127) len += 1;
+        else len += 2;
       }
-      const tweetArticle = document.querySelector(`article[data-testid="tweet"] a[href*="${targetTweetId}"]`)?.closest('article[data-testid="tweet"]');
-      const nativeBtn = tweetArticle?.querySelector('[data-testid="reply"]');
-      if (nativeBtn) {
-        nativeBtn.click();
-      } else {
-        textarea?.focus();
-        showToast("已聚焦输入框，可直接输入回复");
-      }
-    });
+      return len;
+    }
 
-    // 自动高度与提交按钮状态
-    textarea?.addEventListener("input", () => {
+    // Update character progress ring and submit button state
+    function updateComposerState() {
+      if (!textarea || !ringProgress || !submitBtn) return;
       textarea.style.height = "auto";
       textarea.style.height = Math.min(textarea.scrollHeight, 120) + "px";
-      const hasContent = textarea.value.trim().length > 0 || pastedMediaId !== null;
-      submitBtn.disabled = !hasContent;
+
+      const text = textarea.value;
+      const len = calculateTweetLength(text);
+      const circumference = 2 * Math.PI * 9; // ~56.5487
+      const maxLen = 280;
+
+      if (len === 0) {
+        ringProgress.style.strokeDasharray = `${circumference}`;
+        ringProgress.style.strokeDashoffset = `${circumference}`;
+        ringProgress.style.stroke = "var(--sp-accent)";
+        if (charWarnNum) {
+          charWarnNum.textContent = "";
+          charWarnNum.className = "sidepeek-char-warn-num";
+        }
+        if (charCounter) charCounter.style.opacity = "0.4";
+      } else {
+        if (charCounter) charCounter.style.opacity = "1";
+        const progress = Math.min(1, len / maxLen);
+        const offset = circumference * (1 - progress);
+        ringProgress.style.strokeDasharray = `${circumference}`;
+        ringProgress.style.strokeDashoffset = `${offset}`;
+
+        if (len < 260) {
+          ringProgress.style.stroke = "var(--sp-accent)";
+          if (charWarnNum) {
+            charWarnNum.textContent = "";
+            charWarnNum.className = "sidepeek-char-warn-num";
+          }
+        } else if (len <= 280) {
+          ringProgress.style.stroke = "#ffd400";
+          if (charWarnNum) {
+            charWarnNum.textContent = String(maxLen - len);
+            charWarnNum.className = "sidepeek-char-warn-num warn-amber";
+          }
+        } else {
+          ringProgress.style.stroke = "#f4212e";
+          if (charWarnNum) {
+            charWarnNum.textContent = String(maxLen - len);
+            charWarnNum.className = "sidepeek-char-warn-num warn-red";
+          }
+        }
+      }
+
+      const hasContent = (len > 0 && len <= maxLen) || pastedMediaId !== null || activePoll !== null;
+      const isOverLimit = len > maxLen;
+      submitBtn.disabled = !hasContent || isOverLimit;
+    }
+
+    textarea?.addEventListener("input", updateComposerState);
+
+    // Popover toggle management
+    function closeAllPopovers() {
+      [emojiPopover, gifPopover, pollPopover, schedulePopover].forEach((p) => {
+        if (p) p.style.display = "none";
+      });
+      [btnGif, btnPoll, btnEmoji, btnSchedule].forEach((btn) => {
+        btn?.classList.remove("active");
+      });
+    }
+
+    function togglePopover(popover, triggerBtn) {
+      if (!popover) return;
+      const isVisible = popover.style.display !== "none";
+      closeAllPopovers();
+      if (!isVisible) {
+        popover.style.display = "block";
+        triggerBtn?.classList.add("active");
+      }
+    }
+
+    // Close popovers on click outside
+    const outsideClickListener = (e) => {
+      if (!footer.contains(e.target)) {
+        closeAllPopovers();
+      }
+    };
+    document.addEventListener("click", outsideClickListener);
+
+    // Keydown listener for Escape
+    footer.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closeAllPopovers();
+      }
     });
 
+    // =========================================================================
+    // 1. Emoji Popover
+    // =========================================================================
+    if (emojiPopover) {
+      let activeCategory = 0;
+      function renderEmojiPopover() {
+        emojiPopover.innerHTML = `
+          <div class="sidepeek-popover-header">
+            <div class="sidepeek-popover-tabs">
+              ${EMOJI_CATEGORIES.map((cat, idx) => `
+                <button type="button" class="sidepeek-popover-tab ${idx === activeCategory ? "active" : ""}" data-idx="${idx}">${cat.name}</button>
+              `).join("")}
+            </div>
+            <button type="button" class="sidepeek-popover-close" title="关闭">✕</button>
+          </div>
+          <div class="sidepeek-emoji-grid">
+            ${EMOJI_CATEGORIES[activeCategory].emojis.map((emoji) => `
+              <button type="button" class="sidepeek-emoji-item" data-emoji="${emoji}">${emoji}</button>
+            `).join("")}
+          </div>
+        `;
+
+        emojiPopover.querySelectorAll(".sidepeek-popover-tab").forEach((tab) => {
+          tab.addEventListener("click", (e) => {
+            e.stopPropagation();
+            activeCategory = Number(tab.dataset.idx);
+            renderEmojiPopover();
+          });
+        });
+
+        emojiPopover.querySelector(".sidepeek-popover-close")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          closeAllPopovers();
+        });
+
+        emojiPopover.querySelectorAll(".sidepeek-emoji-item").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const emoji = btn.dataset.emoji;
+            const start = textarea.selectionStart || 0;
+            const end = textarea.selectionEnd || 0;
+            const text = textarea.value;
+            textarea.value = text.slice(0, start) + emoji + text.slice(end);
+            textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
+            textarea.focus();
+            updateComposerState();
+          });
+        });
+      }
+      renderEmojiPopover();
+
+      btnEmoji?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        togglePopover(emojiPopover, btnEmoji);
+      });
+    }
+
+    // =========================================================================
+    // 2. GIF Popover
+    // =========================================================================
+    if (gifPopover) {
+      let selectedTag = "全部";
+      function renderGifPopover(searchQuery = "") {
+        const query = searchQuery.trim().toLowerCase();
+        const filteredGifs = REACTION_GIFS.filter((item) => {
+          if (query) {
+            return item.title.toLowerCase().includes(query) || item.tag.toLowerCase().includes(query);
+          }
+          return selectedTag === "全部" || item.tag === selectedTag;
+        });
+
+        const uniqueTags = ["全部", ...new Set(REACTION_GIFS.map((g) => g.tag))];
+
+        gifPopover.innerHTML = `
+          <div class="sidepeek-popover-header">
+            <input type="text" class="sidepeek-gif-search-input" placeholder="搜索反应表情 GIF..." value="${query}" />
+            <button type="button" class="sidepeek-popover-close" title="关闭">✕</button>
+          </div>
+          <div class="sidepeek-gif-tags">
+            ${uniqueTags.map((tag) => `
+              <button type="button" class="sidepeek-gif-tag ${tag === selectedTag ? "active" : ""}" data-tag="${tag}">${tag}</button>
+            `).join("")}
+          </div>
+          <div class="sidepeek-gif-grid">
+            ${filteredGifs.length > 0 ? filteredGifs.map((gif) => `
+              <div class="sidepeek-gif-item" data-url="${gif.url}" data-title="${gif.title}">
+                <img src="${gif.url}" alt="${gif.title}" loading="lazy" />
+                <span class="sidepeek-gif-label">${gif.title}</span>
+              </div>
+            `).join("") : `<div class="sidepeek-popover-empty">未找到相关 GIF</div>`}
+          </div>
+        `;
+
+        const searchInput = gifPopover.querySelector(".sidepeek-gif-search-input");
+        searchInput?.addEventListener("input", (e) => {
+          renderGifPopover(e.target.value);
+          gifPopover.querySelector(".sidepeek-gif-search-input")?.focus();
+        });
+
+        gifPopover.querySelector(".sidepeek-popover-close")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          closeAllPopovers();
+        });
+
+        gifPopover.querySelectorAll(".sidepeek-gif-tag").forEach((t) => {
+          t.addEventListener("click", (e) => {
+            e.stopPropagation();
+            selectedTag = t.dataset.tag;
+            renderGifPopover();
+          });
+        });
+
+        gifPopover.querySelectorAll(".sidepeek-gif-item").forEach((item) => {
+          item.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const gifUrl = item.dataset.url;
+            const gifTitle = item.dataset.title;
+            closeAllPopovers();
+
+            previewArea.innerHTML = `
+              <div class="sidepeek-pasted-preview">
+                <img src="${gifUrl}" alt="${gifTitle}" />
+                <div class="sidepeek-gif-badge">GIF</div>
+                <button type="button" class="sidepeek-remove-img-btn" title="删除 GIF">✕</button>
+              </div>
+            `;
+            previewArea.querySelector(".sidepeek-remove-img-btn")?.addEventListener("click", () => {
+              previewArea.innerHTML = "";
+              pastedMediaId = null;
+              pastedBlob = null;
+              updateComposerState();
+            });
+
+            try {
+              submitBtn.disabled = true;
+              submitBtn.textContent = "处理 GIF...";
+              const resp = await fetch(gifUrl);
+              const blob = await resp.blob();
+              pastedBlob = blob;
+              const reader = new FileReader();
+              reader.onload = async () => {
+                const dataUrl = reader.result;
+                const base64 = dataUrl.split(",")[1];
+                try {
+                  submitBtn.textContent = "上传中...";
+                  const res = await requestPage("UPLOAD_MEDIA", { base64, mimeType: "image/gif", size: blob.size });
+                  pastedMediaId = res.mediaId;
+                } catch (err) {
+                  showToast(err.message || "GIF 上传失败");
+                  previewArea.innerHTML = "";
+                  pastedMediaId = null;
+                } finally {
+                  submitBtn.textContent = "回复";
+                  updateComposerState();
+                }
+              };
+              reader.readAsDataURL(blob);
+            } catch {
+              showToast("已载入 GIF 预览");
+              submitBtn.textContent = "回复";
+              updateComposerState();
+            }
+          });
+        });
+      }
+      renderGifPopover();
+
+      btnGif?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        togglePopover(gifPopover, btnGif);
+      });
+    }
+
+    // =========================================================================
+    // 3. Poll Popover
+    // =========================================================================
+    if (pollPopover) {
+      function renderPollPopover() {
+        pollPopover.innerHTML = `
+          <div class="sidepeek-popover-header">
+            <span class="sidepeek-popover-title">创建投票</span>
+            <button type="button" class="sidepeek-popover-close" title="关闭">✕</button>
+          </div>
+          <div class="sidepeek-poll-body">
+            <input type="text" class="sidepeek-poll-input" id="sp-poll-opt1" placeholder="选项 1 (必填)" maxlength="25" />
+            <input type="text" class="sidepeek-poll-input" id="sp-poll-opt2" placeholder="选项 2 (必填)" maxlength="25" />
+            <input type="text" class="sidepeek-poll-input" id="sp-poll-opt3" placeholder="选项 3 (选填)" maxlength="25" />
+            <input type="text" class="sidepeek-poll-input" id="sp-poll-opt4" placeholder="选项 4 (选填)" maxlength="25" />
+            <div class="sidepeek-poll-footer">
+              <label>时长：
+                <select class="sidepeek-poll-duration">
+                  <option value="1">1 天</option>
+                  <option value="3">3 天</option>
+                  <option value="7">7 天</option>
+                </select>
+              </label>
+              <div class="sidepeek-poll-btns">
+                <button type="button" class="sidepeek-poll-btn-clear">清除</button>
+                <button type="button" class="sidepeek-poll-btn-apply">应用</button>
+              </div>
+            </div>
+          </div>
+        `;
+
+        pollPopover.querySelector(".sidepeek-popover-close")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          closeAllPopovers();
+        });
+
+        pollPopover.querySelector(".sidepeek-poll-btn-clear")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          activePoll = null;
+          updatePollBadge();
+          closeAllPopovers();
+        });
+
+        pollPopover.querySelector(".sidepeek-poll-btn-apply")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const opt1 = pollPopover.querySelector("#sp-poll-opt1")?.value.trim();
+          const opt2 = pollPopover.querySelector("#sp-poll-opt2")?.value.trim();
+          const opt3 = pollPopover.querySelector("#sp-poll-opt3")?.value.trim();
+          const opt4 = pollPopover.querySelector("#sp-poll-opt4")?.value.trim();
+          const duration = pollPopover.querySelector(".sidepeek-poll-duration")?.value;
+
+          if (!opt1 || !opt2) {
+            showToast("请至少填写选项 1 和选项 2");
+            return;
+          }
+          const options = [opt1, opt2];
+          if (opt3) options.push(opt3);
+          if (opt4) options.push(opt4);
+
+          activePoll = { options, duration };
+          updatePollBadge();
+          closeAllPopovers();
+          showToast("已添加投票选项");
+          updateComposerState();
+        });
+      }
+
+      function updatePollBadge() {
+        const existing = previewArea.querySelector(".sidepeek-poll-badge");
+        if (existing) existing.remove();
+        if (activePoll) {
+          const badge = document.createElement("div");
+          badge.className = "sidepeek-composer-tag sidepeek-poll-badge";
+          badge.innerHTML = `
+            <span>📊 投票 (${activePoll.options.length}选项 · ${activePoll.duration}天)</span>
+            <button type="button" class="sidepeek-tag-remove" title="删除投票">✕</button>
+          `;
+          badge.querySelector(".sidepeek-tag-remove")?.addEventListener("click", () => {
+            activePoll = null;
+            badge.remove();
+            updateComposerState();
+          });
+          previewArea.appendChild(badge);
+        }
+      }
+
+      renderPollPopover();
+
+      btnPoll?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        togglePopover(pollPopover, btnPoll);
+      });
+    }
+
+    // =========================================================================
+    // 4. Schedule Popover
+    // =========================================================================
+    if (schedulePopover) {
+      function renderSchedulePopover() {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() + 10);
+        const defaultTime = now.toISOString().slice(0, 16);
+
+        schedulePopover.innerHTML = `
+          <div class="sidepeek-popover-header">
+            <span class="sidepeek-popover-title">定时发送</span>
+            <button type="button" class="sidepeek-popover-close" title="关闭">✕</button>
+          </div>
+          <div class="sidepeek-schedule-body">
+            <label class="sidepeek-schedule-label">选择发送时间：</label>
+            <input type="datetime-local" class="sidepeek-schedule-input" value="${defaultTime}" />
+            <div class="sidepeek-schedule-footer">
+              <button type="button" class="sidepeek-schedule-btn-clear">清除</button>
+              <button type="button" class="sidepeek-schedule-btn-apply">设定</button>
+            </div>
+          </div>
+        `;
+
+        schedulePopover.querySelector(".sidepeek-popover-close")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          closeAllPopovers();
+        });
+
+        schedulePopover.querySelector(".sidepeek-schedule-btn-clear")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          activeSchedule = null;
+          updateScheduleBadge();
+          closeAllPopovers();
+        });
+
+        schedulePopover.querySelector(".sidepeek-schedule-btn-apply")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const val = schedulePopover.querySelector(".sidepeek-schedule-input")?.value;
+          if (!val) return;
+          activeSchedule = val;
+          updateScheduleBadge();
+          closeAllPopovers();
+          showToast(`已设定定时：${val.replace("T", " ")}`);
+          updateComposerState();
+        });
+      }
+
+      function updateScheduleBadge() {
+        const existing = previewArea.querySelector(".sidepeek-schedule-badge");
+        if (existing) existing.remove();
+        if (activeSchedule) {
+          const badge = document.createElement("div");
+          badge.className = "sidepeek-composer-tag sidepeek-schedule-badge";
+          badge.innerHTML = `
+            <span>🕒 定时：${activeSchedule.replace("T", " ")}</span>
+            <button type="button" class="sidepeek-tag-remove" title="取消定时">✕</button>
+          `;
+          badge.querySelector(".sidepeek-tag-remove")?.addEventListener("click", () => {
+            activeSchedule = null;
+            badge.remove();
+            updateComposerState();
+          });
+          previewArea.appendChild(badge);
+        }
+      }
+
+      renderSchedulePopover();
+
+      btnSchedule?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        togglePopover(schedulePopover, btnSchedule);
+      });
+    }
+
+    // =========================================================================
+    // 5. Location Button
+    // =========================================================================
+    btnLocation?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeAllPopovers();
+      if (activeLocation) {
+        activeLocation = null;
+        previewArea.querySelector(".sidepeek-location-badge")?.remove();
+        showToast("已清除位置标签");
+      } else {
+        activeLocation = "当前位置";
+        const badge = document.createElement("div");
+        badge.className = "sidepeek-composer-tag sidepeek-location-badge";
+        badge.innerHTML = `
+          <span>📍 位置已附带</span>
+          <button type="button" class="sidepeek-tag-remove" title="删除位置">✕</button>
+        `;
+        badge.querySelector(".sidepeek-tag-remove")?.addEventListener("click", () => {
+          activeLocation = null;
+          badge.remove();
+          updateComposerState();
+        });
+        previewArea.appendChild(badge);
+        showToast("已附带位置");
+      }
+      updateComposerState();
+    });
+
+    // =========================================================================
+    // 6. Media Upload & Paste Image
+    // =========================================================================
     function handleImageFile(file) {
       if (!file || !file.type.startsWith("image/")) return;
       pastedBlob = file;
@@ -767,7 +1298,7 @@
           previewArea.innerHTML = "";
           pastedMediaId = null;
           pastedBlob = null;
-          submitBtn.disabled = !textarea.value.trim();
+          updateComposerState();
         });
 
         try {
@@ -775,14 +1306,13 @@
           submitBtn.textContent = "上传中...";
           const res = await requestPage("UPLOAD_MEDIA", { base64, mimeType: file.type, size: file.size });
           pastedMediaId = res.mediaId;
-          submitBtn.disabled = false;
         } catch (err) {
-          alert(err.message || "图片上传失败");
+          showToast(err.message || "图片上传失败");
           previewArea.innerHTML = "";
           pastedMediaId = null;
         } finally {
           submitBtn.textContent = "回复";
-          submitBtn.disabled = !(textarea.value.trim() || pastedMediaId);
+          updateComposerState();
         }
       };
       reader.readAsDataURL(file);
@@ -807,35 +1337,51 @@
       }
     });
 
+    // =========================================================================
+    // 7. Submit Reply (In-Place, Zero Modal)
+    // =========================================================================
     async function doSubmit() {
       const text = textarea.value.trim();
-      if (!text && !pastedMediaId) return;
+      const len = calculateTweetLength(text);
+      if (len > 280) {
+        showToast("字数超出限制");
+        return;
+      }
+      if (!text && !pastedMediaId && !activePoll) return;
 
       submitBtn.disabled = true;
       submitBtn.textContent = "发送中...";
 
       try {
+        let finalText = text;
+        if (activePoll) {
+          finalText += `\n[投票: ${activePoll.options.join(" / ")}]`;
+        }
+
         const mediaIds = pastedMediaId ? [pastedMediaId] : [];
         await requestPage("CREATE_REPLY", {
           tweetId: targetTweetId,
-          text,
+          text: finalText,
           mediaIds
         });
 
-        // 重置编辑框状态
+        // Reset composer state
         textarea.value = "";
-        textarea.style.height = "auto";
         previewArea.innerHTML = "";
         pastedMediaId = null;
         pastedBlob = null;
+        activePoll = null;
+        activeSchedule = null;
+        activeLocation = null;
         submitBtn.textContent = "回复";
-        submitBtn.disabled = true;
+        updateComposerState();
+        closeAllPopovers();
 
         showToast("回复已发布");
-        // 自动重新加载评论流，新回复立即呈现于列表顶部
+        // Reload thread so new reply immediately appears at top of drawer
         fetchThread(state.focalTweetId);
       } catch (err) {
-        alert(err.message || "回复发送失败，请重试");
+        showToast(err.message || "回复发送失败，请重试");
         submitBtn.disabled = false;
         submitBtn.textContent = "回复";
       }
@@ -848,6 +1394,8 @@
         doSubmit();
       }
     });
+
+    updateComposerState();
   }
 
   // ==========================================================================

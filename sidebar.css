@@ -877,58 +877,107 @@ article[data-testid="tweet"].sidepeek-focal-active {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 2px;
+  padding-top: 4px;
 }
 
 .sidepeek-footer-tools {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 }
 
 .sidepeek-tool-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border: none;
   border-radius: 50%;
   background: transparent;
   color: var(--sp-accent);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, transform 0.1s;
 }
 
 .sidepeek-tool-btn:hover {
-  background: rgba(29, 155, 240, 0.1);
+  background: rgba(29, 155, 240, 0.12);
+}
+
+.sidepeek-tool-btn.active {
+  background: rgba(29, 155, 240, 0.18);
+  color: var(--sp-accent);
 }
 
 .sidepeek-tool-btn svg {
-  width: 17px;
-  height: 17px;
+  width: 18px;
+  height: 18px;
   fill: currentColor;
 }
 
+/* Character Ring & Actions */
 .sidepeek-footer-actions {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.sidepeek-footer-hint {
-  font-size: 11px;
-  color: var(--sp-muted);
-  user-select: none;
+.sidepeek-char-counter {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: opacity 0.2s ease;
+}
+
+.sidepeek-char-ring {
+  transform: rotate(-90deg);
+  display: block;
+}
+
+.sidepeek-char-ring-bg {
+  fill: none;
+  stroke: var(--sp-border);
+  stroke-width: 2.2;
+}
+
+.sidepeek-char-ring-progress {
+  fill: none;
+  stroke: var(--sp-accent);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.15s ease, stroke 0.2s ease;
+}
+
+.sidepeek-char-warn-num {
+  font-size: 11.5px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-width: 14px;
+  text-align: center;
+}
+
+.sidepeek-char-warn-num.warn-amber {
+  color: #ffd400;
+}
+
+.sidepeek-char-warn-num.warn-red {
+  color: #f4212e;
+}
+
+.sidepeek-action-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--sp-border);
+  margin: 0 2px;
 }
 
 .sidepeek-footer-submit-btn {
-  padding: 5px 14px;
+  padding: 6px 16px;
   border: none;
-  border-radius: 16px;
+  border-radius: 9999px;
   background: var(--sp-accent);
   color: #fff;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 700;
   cursor: pointer;
   transition: opacity 0.15s, background 0.15s;
@@ -941,5 +990,390 @@ article[data-testid="tweet"].sidepeek-focal-active {
 
 .sidepeek-footer-submit-btn:not(:disabled):hover {
   opacity: 0.9;
+}
+
+/* ==========================================================================
+   In-place Popovers (Emoji, GIF, Poll, Schedule)
+   ========================================================================== */
+.sidepeek-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 10px;
+  right: 10px;
+  background: var(--sp-bg);
+  border: 1px solid var(--sp-border);
+  border-radius: 16px;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.28);
+  z-index: 1000;
+  overflow: hidden;
+  animation: sidepeek-popover-in 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes sidepeek-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sidepeek-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--sp-border);
+  gap: 8px;
+}
+
+.sidepeek-popover-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--sp-fg);
+}
+
+.sidepeek-popover-close {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--sp-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidepeek-popover-close:hover {
+  background: var(--sp-soft);
+  color: var(--sp-fg);
+}
+
+.sidepeek-popover-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sidepeek-popover-tab {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--sp-muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidepeek-popover-tab:hover {
+  background: var(--sp-soft);
+  color: var(--sp-fg);
+}
+
+.sidepeek-popover-tab.active {
+  background: rgba(29, 155, 240, 0.12);
+  color: var(--sp-accent);
+  font-weight: 700;
+}
+
+/* Emoji Grid */
+.sidepeek-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  padding: 10px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.sidepeek-emoji-item {
+  width: 100%;
+  height: 38px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, transform 0.12s;
+}
+
+.sidepeek-emoji-item:hover {
+  background: var(--sp-soft);
+  transform: scale(1.18);
+}
+
+/* GIF Popover */
+.sidepeek-gif-search-input {
+  flex: 1;
+  border: 1px solid var(--sp-border);
+  border-radius: 14px;
+  background: var(--sp-soft);
+  color: var(--sp-fg);
+  font-size: 12.5px;
+  padding: 4px 10px;
+  outline: none;
+}
+
+.sidepeek-gif-search-input:focus {
+  border-color: var(--sp-accent);
+}
+
+.sidepeek-gif-tags {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--sp-border);
+}
+
+.sidepeek-gif-tags::-webkit-scrollbar {
+  display: none;
+}
+
+.sidepeek-gif-tag {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--sp-soft);
+  color: var(--sp-fg);
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidepeek-gif-tag:hover {
+  background: rgba(29, 155, 240, 0.12);
+  color: var(--sp-accent);
+}
+
+.sidepeek-gif-tag.active {
+  background: var(--sp-accent);
+  color: #fff;
+}
+
+.sidepeek-gif-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 10px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.sidepeek-gif-item {
+  position: relative;
+  height: 100px;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--sp-soft);
+  border: 1px solid var(--sp-border);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.sidepeek-gif-item:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.sidepeek-gif-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sidepeek-gif-label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 3px 6px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.75));
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.sidepeek-gif-badge {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+}
+
+.sidepeek-popover-empty {
+  grid-column: span 2;
+  text-align: center;
+  padding: 24px 0;
+  font-size: 12.5px;
+  color: var(--sp-muted);
+}
+
+/* Poll Popover */
+.sidepeek-poll-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+
+.sidepeek-poll-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--sp-border);
+  border-radius: 8px;
+  background: var(--sp-soft);
+  color: var(--sp-fg);
+  font-size: 13px;
+  outline: none;
+}
+
+.sidepeek-poll-input:focus {
+  border-color: var(--sp-accent);
+}
+
+.sidepeek-poll-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--sp-muted);
+}
+
+.sidepeek-poll-duration {
+  background: var(--sp-soft);
+  border: 1px solid var(--sp-border);
+  border-radius: 6px;
+  color: var(--sp-fg);
+  padding: 2px 6px;
+  font-size: 12px;
+  outline: none;
+}
+
+.sidepeek-poll-btns {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidepeek-poll-btn-clear,
+.sidepeek-schedule-btn-clear {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--sp-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sidepeek-poll-btn-clear:hover,
+.sidepeek-schedule-btn-clear:hover {
+  background: var(--sp-soft);
+  color: var(--sp-fg);
+}
+
+.sidepeek-poll-btn-apply,
+.sidepeek-schedule-btn-apply {
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--sp-accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sidepeek-poll-btn-apply:hover,
+.sidepeek-schedule-btn-apply:hover {
+  opacity: 0.9;
+}
+
+/* Schedule Popover */
+.sidepeek-schedule-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.sidepeek-schedule-label {
+  font-size: 12.5px;
+  color: var(--sp-muted);
+}
+
+.sidepeek-schedule-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--sp-border);
+  border-radius: 8px;
+  background: var(--sp-soft);
+  color: var(--sp-fg);
+  font-size: 13px;
+  outline: none;
+}
+
+.sidepeek-schedule-input:focus {
+  border-color: var(--sp-accent);
+}
+
+.sidepeek-schedule-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* Composer Tags / Badges in preview area */
+.sidepeek-composer-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(29, 155, 240, 0.1);
+  color: var(--sp-accent);
+  border: 1px solid rgba(29, 155, 240, 0.25);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.sidepeek-tag-remove {
+  background: transparent;
+  border: 0;
+  color: var(--sp-accent);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.75;
+}
+
+.sidepeek-tag-remove:hover {
+  opacity: 1;
 }
 
