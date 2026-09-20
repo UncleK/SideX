@@ -47,16 +47,22 @@
 
 适用于 Chrome、Edge、Brave、Arc 等所有 Chromium 浏览器：
 
-1. **下载或克隆本仓库**：
-   ```bash
-   git clone https://github.com/UncleK/SideX.git
-   ```
-2. **打开浏览器扩展管理页面**：
+### 方式一：下载 Release 压缩包（推荐，无需 Git）
+1. 前往 [Releases 页面](https://github.com/UncleK/SideX/releases) 下载最新的 **`SideX-v1.0.0.zip`**。
+2. 将下载的压缩包解压到固定文件夹。
+3. 打开浏览器扩展管理页面：
    * Chrome / Brave: `chrome://extensions/`
    * Edge: `edge://extensions/`
-3. **开启右上角的「开发者模式」**。
-4. **点击「加载未打包的扩展程序」**（部分浏览器为「加载已解压的扩展程序」/ Load unpacked），选中 `SideX` 文件夹。
-5. 打开 [x.com](https://x.com) 或 [twitter.com](https://twitter.com)，点击任意推文即可享受就地展开的评论流！
+4. 开启右上角的**「开发者模式」**。
+5. 点击左上角**「加载未打包的扩展程序」**（部分浏览器为「加载已解压的扩展程序」/ Load unpacked），选择解压后的文件夹即可。
+
+### 方式二：通过 Git 源码安装
+```bash
+git clone https://github.com/UncleK/SideX.git
+```
+在扩展管理页面点击「加载未打包的扩展程序」，选择克隆的 `SideX` 文件夹即可。
+
+6. 打开 [x.com](https://x.com) 或 [twitter.com](https://twitter.com)，点击任意推文即可享受就地展开的评论流！
 
 ---
 

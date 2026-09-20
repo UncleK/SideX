@@ -47,16 +47,22 @@
 
 Compatible with Chrome, Edge, Brave, Arc, and other Chromium browsers:
 
-1. **Clone or download this repo**:
-   ```bash
-   git clone https://github.com/UncleK/SideX.git
-   ```
-2. **Open your browser extension manager**:
+### Option 1: Quick Install via Release (Recommended)
+1. Download the latest **`SideX-v1.0.0.zip`** from [Releases](https://github.com/UncleK/SideX/releases).
+2. Extract the downloaded zip file to a permanent folder.
+3. Open your browser extension manager:
    * Chrome / Brave: `chrome://extensions/`
    * Edge: `edge://extensions/`
-3. **Turn on "Developer mode"** in the top-right corner.
-4. **Click "Load unpacked"** and select the `SideX` folder.
-5. Open [x.com](https://x.com) or [twitter.com](https://twitter.com) and click any tweet to start reading!
+4. Turn on **"Developer mode"** in the top-right corner.
+5. Click **"Load unpacked"** and select the extracted folder.
+
+### Option 2: Clone via Git
+```bash
+git clone https://github.com/UncleK/SideX.git
+```
+Then load the cloned `SideX` folder as an unpacked extension.
+
+6. Open [x.com](https://x.com) or [twitter.com](https://twitter.com) and click any tweet to start reading!
 
 ---
 
