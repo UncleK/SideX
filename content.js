@@ -1856,14 +1856,25 @@
       target.closest("a[href]") ||
       target.closest("button") ||
       target.closest('[role="button"]') ||
+      target.closest('[role="link"]') ||
+      target.closest('[data-testid="card.wrapper"]') ||
+      target.closest('[data-testid="quoteTweet"]') ||
+      target.closest('[data-testid*="card."]') ||
+      target.closest('[data-testid*="Card"]') ||
+      target.closest('[data-testid="article-card"]') ||
       target.closest("video") ||
       target.closest("audio") ||
       target.closest("input") ||
       target.closest("textarea") ||
       target.closest('[data-testid="like"]') ||
+      target.closest('[data-testid="unlike"]') ||
       target.closest('[data-testid="retweet"]') ||
+      target.closest('[data-testid="unretweet"]') ||
       target.closest('[data-testid="reply"]') ||
       target.closest('[data-testid="bookmark"]') ||
+      target.closest('[data-testid="removeBookmark"]') ||
+      target.closest('[data-testid="caret"]') ||
+      target.closest('[aria-haspopup="menu"]') ||
       target.closest('[data-testid="tweet-text-show-more-link"]')
     );
   }
