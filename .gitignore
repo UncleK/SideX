@@ -9,7 +9,8 @@ desktop.ini
 *.swp
 *.swo
 
-# Node / Scratch / Logs
+# Node / Scratch / Logs / Dist
 node_modules/
 *.log
 scratch/
+dist/

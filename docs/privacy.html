@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SideX - Privacy Policy</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --card-bg: #1e2732;
+      --text: #e7e9ea;
+      --text-dim: #71767b;
+      --accent: #1d9bf0;
+      --border: #2f3336;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px 32px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+    h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+    .date {
+      color: var(--text-dim);
+      font-size: 14px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+    }
+    h2 {
+      font-size: 20px;
+      margin: 28px 0 12px;
+      color: var(--accent);
+    }
+    p, ul {
+      margin-bottom: 16px;
+      font-size: 15px;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    li {
+      margin-bottom: 8px;
+    }
+    code {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-family: monospace;
+    }
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Privacy Policy for SideX</h1>
+    <div class="date">Last updated: September 20, 2026</div>
+
+    <p>Thank you for choosing <strong>SideX</strong> ("the Extension"). We respect your privacy and are committed to protecting it. This Privacy Policy explains our practices regarding user data and permissions.</p>
+
+    <h2>1. No Data Collection or Transmission</h2>
+    <p>SideX is an entirely client-side productivity extension:</p>
+    <ul>
+      <li><strong>No Personal Data Collected:</strong> SideX does not collect, record, or track your personal information, browsing history, identity, IP address, or passwords.</li>
+      <li><strong>No External Servers:</strong> SideX does not operate remote servers, analytics, or telemetry services. All actions occur locally within your browser.</li>
+    </ul>
+
+    <h2>2. Permissions and Their Use</h2>
+    <p>SideX requests only the minimum permissions necessary for its functionality:</p>
+    <ul>
+      <li><code>storage</code>: Used solely to store local UI preferences (e.g. customized sidebar width and settings) via <code>chrome.storage.local</code>. Data never leaves your device.</li>
+      <li><code>host_permissions</code> (<code>https://x.com/*</code>, <code>https://twitter.com/*</code>): Used strictly to inject the necessary scripts and styles into X (Twitter) web pages so that the side comment drawer can be displayed. It has no access to any other websites.</li>
+    </ul>
+
+    <h2>3. Account Security & Session</h2>
+    <p>SideX operates directly within your active browser session:</p>
+    <ul>
+      <li>It does not intercept, store, or transmit your login credentials or cookies.</li>
+      <li>All interactions (e.g. liking, replying, loading threads) are performed directly through your own authenticated session with X.</li>
+    </ul>
+
+    <h2>4. Third-Party Services</h2>
+    <p>SideX contains no third-party tracking scripts, ads, or analytics services.</p>
+
+    <h2>5. Open Source & Transparency</h2>
+    <p>SideX is fully open source. You can inspect the source code at any time on GitHub: <a href="https://github.com/UncleK/SideX" target="_blank" rel="noopener">https://github.com/UncleK/SideX</a>.</p>
+
+    <h2>6. Contact</h2>
+    <p>If you have any questions or feedback, please open an issue at: <a href="https://github.com/UncleK/SideX/issues" target="_blank" rel="noopener">GitHub Issues</a>.</p>
+  </div>
+</body>
+</html>
