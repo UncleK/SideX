@@ -1,8 +1,7 @@
 <div align="center">
-  <img src="icons/icon-128.png" alt="SideX Logo" width="90" height="90" />
-  <h1>SideX</h1>
-  <p><strong>点击推文即可在右侧自动加载评论流，主帖长文原位自动展开</strong></p>
-  <p><em>无需跳页的沉浸式 X 阅读扩展</em></p>
+  <a href="https://github.com/UncleK/SideX">
+    <img src="docs/banner.png" alt="SideX - 沉浸式侧边评论流" width="100%" />
+  </a>
 
   <p>
     <a href="README.md">🇺🇸 English</a> •
@@ -14,6 +13,7 @@
 
   <p>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
+    <img src="https://img.shields.io/badge/Version-1.0.4-00b4f8?style=flat-square" alt="Version 1.0.4" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -48,7 +48,7 @@
 适用于 Chrome、Edge、Brave、Arc 等所有 Chromium 浏览器：
 
 ### 方式一：CRX 文件直接拖拽安装（最快）
-1. 前往 [Releases 页面](https://github.com/UncleK/SideX/releases) 下载 **`SideX-v1.0.0.crx`**。
+1. 前往 [Releases 页面](https://github.com/UncleK/SideX/releases) 下载 **`SideX-v1.0.4.crx`**。
 2. 打开浏览器扩展管理页面：
    * Chrome / Brave: `chrome://extensions/`
    * Edge: `edge://extensions/`
@@ -57,7 +57,7 @@
    *(注：较新版本的 Chrome 可能会弹出安全拦截提示禁止安装非商店 CRX，遇到此类情况请使用下方的「方式二」)*。
 
 ### 方式二：下载 ZIP 压缩包（100% 成功，推荐）
-1. 前往 [Releases 页面](https://github.com/UncleK/SideX/releases) 下载 **`SideX-v1.0.0.zip`** 并解压。
+1. 前往 [Releases 页面](https://github.com/UncleK/SideX/releases) 下载 **`SideX-v1.0.4.zip`** 并解压。
 2. 在扩展管理页面开启「开发者模式」后，点击左上角**「加载未打包的扩展程序」**（部分浏览器为「加载已解压的扩展程序」/ Load unpacked），选择解压后的文件夹即可。
 
 ### 方式三：通过 Git 源码安装（开发者）

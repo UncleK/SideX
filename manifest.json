@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "SideX - 沉浸式侧边评论流 (for X)",
   "short_name": "SideX",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "在 X (Twitter) 网页端右侧就地停靠极简评论流，原地展开主帖长文，支持子对话下钻与行内图片回复（第三方效率工具，非官方产品）。",
   "permissions": ["storage"],
   "host_permissions": [

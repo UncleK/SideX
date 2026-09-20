@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1280px;
+    height: 560px;
+    background: #080b11;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    color: #f7f9f9;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 64px;
+  }
+
+  /* Deep space cyber background */
+  .bg-glow-left {
+    position: absolute;
+    top: -80px;
+    left: -80px;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(29, 155, 240, 0.22) 0%, rgba(0, 199, 242, 0.08) 45%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .bg-glow-right {
+    position: absolute;
+    bottom: -100px;
+    right: 60px;
+    width: 650px;
+    height: 650px;
+    background: radial-gradient(circle, rgba(0, 163, 255, 0.18) 0%, rgba(29, 155, 240, 0.06) 50%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .bg-grid {
+    position: absolute;
+    inset: 0;
+    background-image: 
+      radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+      linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 28px 28px, 56px 56px, 56px 56px;
+    opacity: 0.6;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Left Side: Brand & Hero copy */
+  .brand-section {
+    position: relative;
+    z-index: 1;
+    max-width: 580px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .brand-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .brand-icon-wrapper {
+    width: 68px;
+    height: 68px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 0 24px rgba(0, 200, 245, 0.55));
+  }
+  .brand-icon-wrapper img {
+    width: 68px;
+    height: 68px;
+    display: block;
+  }
+
+  .brand-titles {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .brand-name-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .brand-title {
+    font-size: 46px;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #ffffff 0%, #e2f1ff 40%, #1d9bf0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 4px 20px rgba(29, 155, 240, 0.3);
+    line-height: 1;
+  }
+  .version-badge {
+    padding: 3px 10px;
+    background: rgba(29, 155, 240, 0.15);
+    border: 1px solid rgba(29, 155, 240, 0.4);
+    border-radius: 999px;
+    color: #00b4f8;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .platform-badge {
+    padding: 3px 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    color: #8b98a5;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .hero-taglines {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .tagline-cn {
+    font-size: 28px;
+    font-weight: 800;
+    color: #f7f9f9;
+    letter-spacing: -0.3px;
+    line-height: 1.25;
+  }
+  .tagline-highlight {
+    background: linear-gradient(90deg, #00d2ff, #1d9bf0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .tagline-en {
+    font-size: 16px;
+    color: #8b98a5;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+  }
+
+  /* 4 Pillars Features */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .feature-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(18, 26, 38, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 10px 14px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  }
+  .feature-icon-box {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: rgba(29, 155, 240, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+  .feature-text {
+    display: flex;
+    flex-direction: column;
+  }
+  .feature-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #e7e9ea;
+  }
+  .feature-desc {
+    font-size: 11px;
+    color: #71767b;
+  }
+
+  /* Right Side: High-fidelity Floating Drawer */
+  .preview-wrapper {
+    position: relative;
+    z-index: 1;
+    width: 480px;
+    height: 480px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .preview-dock {
+    width: 440px;
+    background: rgba(13, 19, 29, 0.88);
+    border: 1px solid rgba(29, 155, 240, 0.38);
+    border-radius: 20px;
+    box-shadow: 
+      0 20px 50px rgba(0, 0, 0, 0.7),
+      0 0 40px rgba(0, 180, 248, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(20px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Drawer Top Bar */
+  .dock-header {
+    height: 44px;
+    padding: 0 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .dock-header-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 800;
+    color: #f7f9f9;
+  }
+  .dock-count {
+    font-size: 12px;
+    color: #71767b;
+    font-weight: 500;
+  }
+  .dock-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #71767b;
+    font-size: 13px;
+  }
+
+  /* Drawer Body: Comments */
+  .dock-body {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .comment-card {
+    display: flex;
+    gap: 10px;
+    position: relative;
+  }
+  .avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    color: #fff;
+  }
+  .av-1 { background: linear-gradient(135deg, #1d9bf0, #00d2ff); }
+  .av-2 { background: linear-gradient(135deg, #7928ca, #ff0080); }
+
+  .thread-line {
+    position: absolute;
+    left: 17px;
+    top: 38px;
+    bottom: -10px;
+    width: 2px;
+    background: linear-gradient(to bottom, rgba(29, 155, 240, 0.45), rgba(255, 255, 255, 0.1));
+  }
+
+  .comment-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .comment-author-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+  }
+  .author-name {
+    font-weight: 700;
+    color: #f7f9f9;
+  }
+  .author-handle {
+    color: #71767b;
+    font-size: 12px;
+  }
+  .author-time {
+    color: #71767b;
+    font-size: 11px;
+  }
+  .comment-text {
+    font-size: 12.5px;
+    color: #e7e9ea;
+    line-height: 1.45;
+  }
+  .comment-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 4px;
+    font-size: 11.5px;
+    color: #71767b;
+  }
+  .action-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .action-item.active {
+    color: #1d9bf0;
+  }
+
+  /* Sub comment */
+  .sub-comment {
+    margin-left: 28px;
+    display: flex;
+    gap: 10px;
+    position: relative;
+  }
+
+  /* Bottom Reply Composer (SideX v1.0.3 / v1.0.4) */
+  .dock-composer {
+    margin-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(18, 25, 36, 0.9);
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .composer-target-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .composer-target-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(29, 155, 240, 0.16);
+    border: 1px solid rgba(29, 155, 240, 0.35);
+    color: #00b4f8;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+  .composer-cancel-btn {
+    font-size: 10px;
+    opacity: 0.75;
+    cursor: pointer;
+  }
+  .composer-input-box {
+    display: flex;
+    align-items: center;
+    font-size: 12.5px;
+    color: #71767b;
+    padding: 4px 2px;
+  }
+  .composer-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 4px;
+  }
+  .composer-icons {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #1d9bf0;
+    font-size: 14px;
+  }
+  .composer-post-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .ring-indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid #2f3336;
+    border-top-color: #1d9bf0;
+    border-right-color: #1d9bf0;
+  }
+  .post-btn {
+    background: #1d9bf0;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 5px 14px;
+    border-radius: 999px;
+    box-shadow: 0 2px 10px rgba(29, 155, 240, 0.4);
+  }
+</style>
+</head>
+<body>
+  <div class="bg-glow-left"></div>
+  <div class="bg-glow-right"></div>
+  <div class="bg-grid"></div>
+
+  <!-- Left: Brand & Features -->
+  <div class="brand-section">
+    <div class="brand-header">
+      <div class="brand-icon-wrapper">
+        <img src="file:///d:/VP/SideX/icons/icon-128.png" alt="SideX Logo" />
+      </div>
+      <div class="brand-titles">
+        <div class="brand-name-row">
+          <h1 class="brand-title">SideX</h1>
+          <span class="version-badge">v1.0.4</span>
+          <span class="platform-badge">Extension</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-taglines">
+      <div class="tagline-cn">
+        沉浸式侧边评论流 · <span class="tagline-highlight">零跳转刷推体验</span>
+      </div>
+      <div class="tagline-en">
+        Immersive In-Place Comment Stream & Fast Reader for X (Twitter)
+      </div>
+    </div>
+
+    <!-- 4 Key Pillars -->
+    <div class="feature-grid">
+      <div class="feature-chip">
+        <div class="feature-icon-box">⚡</div>
+        <div class="feature-text">
+          <span class="feature-title">零跳转原地停靠</span>
+          <span class="feature-desc">点击推文右侧就地出流</span>
+        </div>
+      </div>
+      <div class="feature-chip">
+        <div class="feature-icon-box">📖</div>
+        <div class="feature-text">
+          <span class="feature-title">原地展开长推文</span>
+          <span class="feature-desc">全篇长文自动秒展开</span>
+        </div>
+      </div>
+      <div class="feature-chip">
+        <div class="feature-icon-box">💬</div>
+        <div class="feature-text">
+          <span class="feature-title">底部常驻回复栏</span>
+          <span class="feature-desc">Ctrl+V 粘贴图片/表情包</span>
+        </div>
+      </div>
+      <div class="feature-chip">
+        <div class="feature-icon-box">🛡️</div>
+        <div class="feature-text">
+          <span class="feature-title">100% 账号安全</span>
+          <span class="feature-desc">复用官方 Session 零封号</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Floating High-fidelity SideX Drawer -->
+  <div class="preview-wrapper">
+    <div class="preview-dock">
+      <!-- Header -->
+      <div class="dock-header">
+        <div class="dock-header-title">
+          <img src="file:///d:/VP/SideX/icons/icon-128.png" width="18" height="18" style="vertical-align: middle;" />
+          SideX
+          <span class="dock-count">· 48 条回复</span>
+        </div>
+        <div class="dock-header-actions">
+          <span>📌</span>
+          <span>✕</span>
+        </div>
+      </div>
+
+      <!-- Comments Stream -->
+      <div class="dock-body">
+        <!-- Comment 1 -->
+        <div class="comment-card">
+          <div class="avatar av-1">S</div>
+          <div class="thread-line"></div>
+          <div class="comment-content">
+            <div class="comment-author-row">
+              <span class="author-name">Sarah Chen</span>
+              <span class="author-handle">@sarahc_dev</span>
+              <span class="author-time">· 2h</span>
+            </div>
+            <div class="comment-text">
+              SideX 彻底改变了我在 X 上的阅读体验！再也不用在信息流和推文详情页来回跳出失去进度了 🚀
+            </div>
+            <div class="comment-actions">
+              <div class="action-item active">💬 4</div>
+              <div class="action-item">🔄 12</div>
+              <div class="action-item">❤️ 89</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Nested Sub Comment 2 -->
+        <div class="sub-comment">
+          <div class="avatar av-2">A</div>
+          <div class="comment-content">
+            <div class="comment-author-row">
+              <span class="author-name">Alex Rivera</span>
+              <span class="author-handle">@alex_ui</span>
+              <span class="author-time">· 45m</span>
+            </div>
+            <div class="comment-text">
+              底部常驻回复栏太流畅了！支持直接 Ctrl+V 粘贴图片，发送后就地插入子对话 ✨
+            </div>
+            <div class="comment-actions">
+              <div class="action-item">💬 1</div>
+              <div class="action-item">❤️ 24</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Reply Bar (v1.0.3 / v1.0.4 Feature) -->
+      <div class="dock-composer">
+        <div class="composer-target-row">
+          <div class="composer-target-chip">
+            <span>回复 @alex_ui</span>
+            <span class="composer-cancel-btn">✕</span>
+          </div>
+        </div>
+        <div class="composer-input-box">
+          回复 @alex_ui...
+        </div>
+        <div class="composer-toolbar">
+          <div class="composer-icons">
+            <span>🖼️</span>
+            <span>GIF</span>
+            <span>😊</span>
+            <span>📊</span>
+            <span>⏰</span>
+          </div>
+          <div class="composer-post-group">
+            <div class="ring-indicator"></div>
+            <div class="post-btn">回复</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

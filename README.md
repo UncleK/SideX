@@ -1,8 +1,7 @@
 <div align="center">
-  <img src="icons/icon-128.png" alt="SideX Logo" width="90" height="90" />
-  <h1>SideX</h1>
-  <p><strong>Click any tweet to auto-load comments on the right and unroll long posts in-place.</strong></p>
-  <p><em>Immersive X reading with zero page hops.</em></p>
+  <a href="https://github.com/UncleK/SideX">
+    <img src="docs/banner.png" alt="SideX - Immersive In-Place Comment Stream for X" width="100%" />
+  </a>
 
   <p>
     <a href="README_CN.md">🇨🇳 简体中文</a> •
@@ -14,6 +13,7 @@
 
   <p>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
+    <img src="https://img.shields.io/badge/Version-1.0.4-00b4f8?style=flat-square" alt="Version 1.0.4" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -48,7 +48,7 @@
 Compatible with Chrome, Edge, Brave, Arc, and other Chromium browsers:
 
 ### Method 1: CRX Drag & Drop (Fastest)
-1. Download **`SideX-v1.0.0.crx`** from [Releases](https://github.com/UncleK/SideX/releases).
+1. Download **`SideX-v1.0.4.crx`** from [Releases](https://github.com/UncleK/SideX/releases).
 2. Open your browser extension manager:
    * Chrome / Brave: `chrome://extensions/`
    * Edge: `edge://extensions/`
@@ -57,7 +57,7 @@ Compatible with Chrome, Edge, Brave, Arc, and other Chromium browsers:
    *(Note: If Chrome displays a security prompt blocking third-party CRX drag-and-drop, please use Method 2 below).*
 
 ### Method 2: ZIP Package (100% Reliable, Recommended)
-1. Download **`SideX-v1.0.0.zip`** from [Releases](https://github.com/UncleK/SideX/releases) and extract it.
+1. Download **`SideX-v1.0.4.zip`** from [Releases](https://github.com/UncleK/SideX/releases) and extract it.
 2. In `chrome://extensions/` (with "Developer mode" on), click **"Load unpacked"** and select the extracted folder.
 
 ### Method 3: Clone via Git (For Developers)
