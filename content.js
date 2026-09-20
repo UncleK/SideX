@@ -1808,7 +1808,7 @@
   // ==========================================================================
   // Timeline Click Interceptor & Focal Tweet Show More
   // ==========================================================================
-  async function fetchThread(tweetId, isAutoOpened = false) {
+  async function fetchThread(tweetId) {
     state.loading = true;
     state.error = "";
     state.expandedThreadIds.clear();
@@ -1821,19 +1821,6 @@
       state.replies = replies;
       state.tree = Core.buildConversationTree(replies, tweetId);
       state.loading = false;
-
-      // 如果是通过路由自动检测触发（如进入通知回复或详情页），且该帖子没有下一级回复：
-      // 自动收起侧边栏，避免弹空侧栏遮挡界面，让用户直接在原生页面阅读对话
-      if (isAutoOpened && replies.length === 0) {
-        state.open = false;
-        if (state.focalArticle) {
-          state.focalArticle.classList.remove("sidepeek-focal-active");
-          state.focalArticle = null;
-        }
-        renderDrawer();
-        return;
-      }
-
       renderDrawer();
     } catch (err) {
       state.loading = false;
@@ -1855,7 +1842,28 @@
     return document.querySelector('article[data-testid="tweet"]');
   }
 
-  function checkDetailPageAutoOpen() {
+  function expandFocalShowMore(tweetId) {
+    let focalArticle = findDetailFocalArticle(tweetId);
+    if (focalArticle) {
+      const showMore = focalArticle.querySelector?.('[data-testid="tweet-text-show-more-link"]');
+      if (showMore) showMore.click();
+      return;
+    }
+    let retries = 0;
+    const retryTimer = setInterval(() => {
+      retries++;
+      const article = findDetailFocalArticle(tweetId);
+      if (article) {
+        clearInterval(retryTimer);
+        const showMore = article.querySelector?.('[data-testid="tweet-text-show-more-link"]');
+        if (showMore) showMore.click();
+      } else if (retries >= 15) {
+        clearInterval(retryTimer);
+      }
+    }, 200);
+  }
+
+  async function checkDetailPageAutoOpen() {
     if (!isSideXEnabled) return;
     if (state.isResizing) return;
     const currentUrl = location.href;
@@ -1873,31 +1881,46 @@
 
       lastHandledDetailTweetId = tweetId;
 
-      // Try to find focal article on detail page
-      let focalArticle = findDetailFocalArticle(tweetId);
-      openDrawerForTweet(tweetId, focalArticle, true);
+      // 无论右侧是否出流，主栏长文都原位秒展开
+      expandFocalShowMore(tweetId);
 
-      // If focalArticle wasn't mounted yet by React, retry finding it to expand long text
-      if (!focalArticle) {
-        let retries = 0;
-        const retryTimer = setInterval(() => {
-          retries++;
-          const article = findDetailFocalArticle(tweetId);
-          if (article) {
-            clearInterval(retryTimer);
-            if (state.focalTweetId === tweetId && state.open) {
-              if (state.focalArticle) {
-                state.focalArticle.classList.remove("sidepeek-focal-active");
-              }
-              state.focalArticle = article;
-              state.focalArticle.classList.add("sidepeek-focal-active");
-              const showMore = article.querySelector?.('[data-testid="tweet-text-show-more-link"]');
-              if (showMore) showMore.click();
-            }
-          } else if (retries >= 15) {
-            clearInterval(retryTimer);
+      // 静默拉取评论流：仅当确实存在下一级回复时才优雅滑出右侧栏，彻底杜绝零回复时的“弹出来又关闭”闪烁
+      try {
+        const json = await requestPage("READ_THREAD", { tweetId });
+        // 确保异步返回时用户没有跳转到其他帖子
+        if (Core.postIdFromUrl(location.href) !== tweetId) return;
+        if (userClosedTweetId === tweetId) return;
+
+        const { focal, replies } = Core.parseTweetDetail(json, tweetId);
+
+        // 如果完全没有下一级回复，绝对不弹出右侧抽屉，保持完全静默
+        if (!replies || replies.length === 0) {
+          if (state.open && state.focalTweetId === tweetId) {
+            closeDrawer();
           }
-        }, 200);
+          return;
+        }
+
+        // 存在下级回复：此时再从容滑出抽屉，内容秒出
+        let focalArticle = findDetailFocalArticle(tweetId);
+        if (state.focalArticle) {
+          state.focalArticle.classList.remove("sidepeek-focal-active");
+        }
+        state.focalArticle = focalArticle;
+        state.focalArticle?.classList.add("sidepeek-focal-active");
+
+        state.open = true;
+        state.focalTweetId = tweetId;
+        state.focalModel = focal;
+        state.replies = replies;
+        state.tree = Core.buildConversationTree(replies, tweetId);
+        state.activeView = "root";
+        state.activeComposerReplyId = null;
+        state.loading = false;
+        state.error = "";
+        renderDrawer();
+      } catch (err) {
+        // 静默处理，避免在详情页异常弹窗
       }
     } else {
       // Navigated away from a detail page (e.g. back to /home, /explore)
@@ -1911,7 +1934,7 @@
     }
   }
 
-  function openDrawerForTweet(tweetId, articleNode, isAutoOpened = false) {
+  function openDrawerForTweet(tweetId, articleNode) {
     userClosedTweetId = null;
     lastHandledDetailTweetId = tweetId;
 
@@ -1934,7 +1957,7 @@
     state.activeView = "root";
     state.activeComposerReplyId = null;
     renderDrawer();
-    fetchThread(tweetId, isAutoOpened);
+    fetchThread(tweetId);
   }
 
   function closeDrawer() {
