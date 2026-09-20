@@ -38,7 +38,8 @@
     activeView: "root", // "root" or { type: "drilldown", parentId: string }
     activeComposerReplyId: null,
     loading: false,
-    error: ""
+    error: "",
+    isResizing: false
   };
 
   const pendingRequests = new Map();
@@ -170,12 +171,15 @@
         handle.classList.add("dragging");
         document.body.style.userSelect = "none";
         document.body.style.cursor = "col-resize";
+        state.isResizing = true;
 
         const sidebar = document.querySelector('[data-testid="sidebarColumn"]');
         const minWidth = sidebar ? Math.round(sidebar.getBoundingClientRect().width) : 350;
         const initialRect = root.getBoundingClientRect();
+        let hasMoved = false;
 
         function onMouseMove(moveEvent) {
+          hasMoved = true;
           if (isLeft) {
             // 拖动左边缘：向左拉宽，向右缩窄（以右边缘为固定锚点）
             let newWidth = initialRect.right - moveEvent.clientX;
@@ -209,6 +213,23 @@
           document.body.style.cursor = "";
           window.removeEventListener("mousemove", onMouseMove);
           window.removeEventListener("mouseup", onMouseUp);
+
+          if (hasMoved) {
+            // 彻底拦截本次拖拽释放时触发的 click 事件，防止被 handleTimelineClick 识别为“点击外部空白”而意外关闭抽屉
+            const captureClick = (clickEvent) => {
+              clickEvent.preventDefault();
+              clickEvent.stopPropagation();
+              clickEvent.stopImmediatePropagation();
+              window.removeEventListener("click", captureClick, true);
+            };
+            window.addEventListener("click", captureClick, true);
+            setTimeout(() => {
+              window.removeEventListener("click", captureClick, true);
+              state.isResizing = false;
+            }, 120);
+          } else {
+            state.isResizing = false;
+          }
         }
 
         window.addEventListener("mousemove", onMouseMove);
@@ -974,6 +995,7 @@
   }
 
   function handleTimelineClick(event) {
+    if (state.isResizing) return;
     if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
 
     // If clicked inside our drawer or lightbox, don't handle as timeline click
