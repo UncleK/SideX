@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "SideX - 沉浸式侧边评论流 (for X)",
+  "short_name": "SideX",
+  "version": "1.0.0",
+  "description": "在 X (Twitter) 网页端右侧就地停靠极简评论流，原地展开主帖长文，支持子对话下钻与行内图片回复（第三方效率工具，非官方产品）。",
+  "permissions": ["storage"],
+  "host_permissions": ["https://x.com/*", "https://twitter.com/*"],
+  "action": {
+    "default_title": "SideX",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://x.com/*", "https://twitter.com/*"],
+      "js": ["page-bridge.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://x.com/*", "https://twitter.com/*"],
+      "css": ["sidebar.css"],
+      "js": ["core.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/icon-48.png", "icons/icon48.png"],
+      "matches": ["https://x.com/*", "https://twitter.com/*"]
+    }
+  ]
+}

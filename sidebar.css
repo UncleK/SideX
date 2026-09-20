@@ -1,0 +1,781 @@
+/* ==========================================================================
+   SidePeek for X (Twitter) - Modern Side Drawer Styles
+   ========================================================================== */
+
+:root {
+  --sp-bg: #ffffff;
+  --sp-fg: #0f1419;
+  --sp-muted: #536471;
+  --sp-border: #eff3f4;
+  --sp-soft: #f7f9f9;
+  --sp-accent: #1d9bf0;
+  --sp-like: #f91880;
+  --sp-repost: #00ba7c;
+  --sp-shadow: -4px 0 24px rgba(15, 20, 25, 0.08);
+}
+
+.sidepeek-theme-dark {
+  --sp-bg: #000000;
+  --sp-fg: #e7e9ea;
+  --sp-muted: #71767b;
+  --sp-border: #2f3336;
+  --sp-soft: #16181c;
+  --sp-shadow: -4px 0 32px rgba(0, 0, 0, 0.6);
+}
+
+.sidepeek-theme-dim {
+  --sp-bg: #15202b;
+  --sp-fg: #f7f9f9;
+  --sp-muted: #8b98a5;
+  --sp-border: #38444d;
+  --sp-soft: #1e2732;
+  --sp-shadow: -4px 0 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Middle Timeline Focal Tweet Highlight */
+article[data-testid="tweet"].sidepeek-focal-active {
+  box-shadow: inset 0 0 0 2px rgba(29, 155, 240, 0.45), 0 2px 12px rgba(29, 155, 240, 0.12) !important;
+  border-radius: 8px !important;
+  transition: box-shadow 0.25s ease !important;
+}
+
+/* ==========================================================================
+   Drawer Container
+   ========================================================================== */
+#sidepeek-drawer-root {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  z-index: 2147483640;
+  display: flex;
+  flex-direction: column;
+  background: var(--sp-bg);
+  color: var(--sp-fg);
+  border-left: 1px solid var(--sp-border);
+  border-right: 1px solid var(--sp-border);
+  box-shadow: var(--sp-shadow);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14.5px;
+  line-height: 1.4;
+  box-sizing: border-box;
+  transform: translateX(105%);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+#sidepeek-drawer-root.sidepeek-open {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#sidepeek-drawer-root *,
+#sidepeek-drawer-root *::before,
+#sidepeek-drawer-root *::after {
+  box-sizing: border-box;
+}
+
+/* Resize Handle on Right Edge */
+.sidepeek-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -6px;
+  width: 14px;
+  cursor: col-resize;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidepeek-resize-grip {
+  width: 4px;
+  height: 38px;
+  border-radius: 2px;
+  background: var(--sp-accent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.sidepeek-resize-handle:hover .sidepeek-resize-grip,
+.sidepeek-resize-handle.dragging .sidepeek-resize-grip {
+  opacity: 0.9;
+  transform: scaleY(1.25);
+}
+
+/* ==========================================================================
+   Header & Navigation
+   ========================================================================== */
+.sidepeek-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--sp-border);
+  background: var(--sp-bg);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.sidepeek-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sidepeek-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--sp-fg);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.sidepeek-back-btn:hover {
+  background: var(--sp-soft);
+}
+
+.sidepeek-back-btn svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  fill: currentColor;
+}
+
+.sidepeek-title {
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidepeek-count-badge {
+  font-size: 12px;
+  color: var(--sp-muted);
+  font-weight: 500;
+}
+
+.sidepeek-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sidepeek-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--sp-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidepeek-icon-btn:hover {
+  background: var(--sp-soft);
+  color: var(--sp-fg);
+}
+
+.sidepeek-icon-btn svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  fill: currentColor;
+}
+
+/* ==========================================================================
+   Comment Scrollable Stream
+   ========================================================================== */
+.sidepeek-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 0;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+}
+
+/* 彻底隐藏滚动条，避免 Windows Fluent 默认滚动条和箭头长期占用空间 */
+.sidepeek-body::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* ==========================================================================
+   Comment Item & Thread Line
+   ========================================================================== */
+.sidepeek-comment-item {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  padding: 10px 16px;
+  transition: background 0.15s ease;
+}
+
+.sidepeek-comment-item:hover {
+  background: rgba(128, 128, 128, 0.03);
+}
+
+.sidepeek-avatar-col {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.sidepeek-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--sp-soft);
+  z-index: 1;
+}
+
+/* Thread line connecting to subsequent reply */
+.sidepeek-thread-line {
+  position: absolute;
+  top: 40px;
+  bottom: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  background: var(--sp-border);
+  z-index: 0;
+}
+
+/* Thread Group: 原生 1px 极简分割线 */
+.sidepeek-thread-group {
+  position: relative;
+  border-bottom: 1px solid var(--sp-border);
+}
+
+/* Child Comment: 纯净扁平，完全继承原生背景，仅靠细连接线关联 */
+.sidepeek-comment-item.sidepeek-child-comment {
+  padding-top: 2px;
+  padding-bottom: 10px;
+}
+
+.sidepeek-content-col {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sidepeek-author-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
+  line-height: 1.25;
+}
+
+.sidepeek-name {
+  font-weight: 700;
+  color: var(--sp-fg);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidepeek-name:hover {
+  text-decoration: underline;
+}
+
+.sidepeek-verified-badge {
+  color: var(--sp-accent);
+  display: inline-flex;
+  font-size: 13px;
+}
+
+.sidepeek-handle {
+  color: var(--sp-muted);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.sidepeek-dot {
+  color: var(--sp-muted);
+  font-size: 12px;
+}
+
+.sidepeek-time {
+  color: var(--sp-muted);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.sidepeek-time:hover {
+  text-decoration: underline;
+}
+
+/* Reply-to tag: 极简纯文本，无底色，无符号 */
+.sidepeek-reply-to-tag {
+  font-size: 13px;
+  color: var(--sp-muted);
+  margin-bottom: 3px;
+}
+
+.sidepeek-reply-to-tag a {
+  color: var(--sp-accent);
+  text-decoration: none;
+}
+
+.sidepeek-reply-to-tag a:hover {
+  text-decoration: underline;
+}
+
+.sidepeek-text {
+  word-break: break-word;
+  white-space: pre-wrap;
+  color: var(--sp-fg);
+  line-height: 1.45;
+  margin-bottom: 8px;
+}
+
+/* Media preview & Multi-image Grid */
+.sidepeek-media-box {
+  margin-top: 6px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--sp-border);
+  max-height: 280px;
+}
+
+.sidepeek-media-box video {
+  width: 100%;
+  height: auto;
+  max-height: 280px;
+  object-fit: cover;
+  display: block;
+}
+
+.sidepeek-media-grid {
+  display: grid;
+  gap: 3px;
+  margin-top: 6px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--sp-border);
+  background: var(--sp-border);
+}
+
+.sidepeek-media-grid.grid-1 {
+  grid-template-columns: 1fr;
+  max-height: 380px;
+}
+
+.sidepeek-media-grid.grid-1 img {
+  width: 100%;
+  max-height: 380px;
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.02);
+  display: block;
+  cursor: zoom-in;
+}
+
+.sidepeek-media-grid.grid-2 {
+  grid-template-columns: 1fr 1fr;
+  height: 180px;
+}
+
+.sidepeek-media-grid.grid-2 img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  cursor: zoom-in;
+}
+
+.sidepeek-media-grid.grid-3 {
+  grid-template-columns: 1.2fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  height: 200px;
+}
+
+.sidepeek-media-grid.grid-3 .sidepeek-media-item:first-child {
+  grid-row: span 2;
+}
+
+.sidepeek-media-grid.grid-3 img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  cursor: zoom-in;
+}
+
+.sidepeek-media-grid.grid-4 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  height: 220px;
+}
+
+.sidepeek-media-grid.grid-4 img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  cursor: zoom-in;
+}
+
+.sidepeek-media-item {
+  position: relative;
+  overflow: hidden;
+  background: var(--sp-soft);
+}
+
+/* Lightbox overlay */
+#sidepeek-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+#sidepeek-lightbox.active {
+  display: flex;
+}
+
+.sidepeek-lightbox-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(4px);
+  cursor: pointer;
+}
+
+.sidepeek-lightbox-content {
+  position: relative;
+  z-index: 1;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidepeek-lightbox-img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  cursor: zoom-out;
+}
+
+.sidepeek-lightbox-close {
+  position: absolute;
+  top: -44px;
+  right: -8px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 0;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.sidepeek-lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* ==========================================================================
+   Drill-down Trigger (展开 N 条对话)
+   ========================================================================== */
+.sidepeek-drilldown-trigger {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 0;
+  margin: 2px 0 10px 64px;
+  border: 0;
+  background: transparent;
+  color: var(--sp-accent);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.sidepeek-drilldown-trigger:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   1:1 Action Bar (Reply, Repost, Like, Bookmark, Share)
+   ========================================================================== */
+.sidepeek-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 340px;
+  margin-top: 4px;
+  color: var(--sp-muted);
+}
+
+.sidepeek-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 9999px;
+  transition: color 0.15s;
+}
+
+.sidepeek-action-btn-surface {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 9999px;
+  transition: background 0.15s;
+}
+
+.sidepeek-action-btn svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+  fill: currentColor;
+}
+
+/* Action hover & active states */
+.sidepeek-act-reply:hover {
+  color: var(--sp-accent);
+}
+.sidepeek-act-reply:hover .sidepeek-action-btn-surface {
+  background: rgba(29, 155, 240, 0.1);
+}
+
+.sidepeek-act-repost:hover {
+  color: var(--sp-repost);
+}
+.sidepeek-act-repost:hover .sidepeek-action-btn-surface {
+  background: rgba(0, 186, 124, 0.1);
+}
+.sidepeek-act-repost.active {
+  color: var(--sp-repost);
+}
+
+.sidepeek-act-like:hover {
+  color: var(--sp-like);
+}
+.sidepeek-act-like:hover .sidepeek-action-btn-surface {
+  background: rgba(249, 24, 128, 0.1);
+}
+.sidepeek-act-like.active {
+  color: var(--sp-like);
+}
+.sidepeek-act-like.active svg {
+  fill: var(--sp-like);
+}
+
+.sidepeek-act-bookmark:hover,
+.sidepeek-act-share:hover {
+  color: var(--sp-accent);
+}
+.sidepeek-act-bookmark:hover .sidepeek-action-btn-surface,
+.sidepeek-act-share:hover .sidepeek-action-btn-surface {
+  background: rgba(29, 155, 240, 0.1);
+}
+.sidepeek-act-bookmark.active {
+  color: var(--sp-accent);
+}
+
+/* ==========================================================================
+   Inline Accordion Composer (行内就地展开回复框)
+   ========================================================================== */
+.sidepeek-inline-composer {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease, margin 0.2s ease;
+  margin-top: 0;
+}
+
+.sidepeek-inline-composer.expanded {
+  max-height: 320px;
+  opacity: 1;
+  margin-top: 10px;
+  margin-bottom: 8px;
+}
+
+.sidepeek-composer-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--sp-soft);
+  border: 1px solid var(--sp-border);
+  border-radius: 12px;
+}
+
+.sidepeek-composer-textarea {
+  width: 100%;
+  min-height: 58px;
+  max-height: 160px;
+  padding: 6px 8px;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--sp-fg);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  resize: none;
+}
+
+.sidepeek-composer-textarea::placeholder {
+  color: var(--sp-muted);
+}
+
+/* Image preview thumbnail */
+.sidepeek-pasted-preview {
+  position: relative;
+  display: inline-block;
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--sp-border);
+  margin-top: 4px;
+}
+
+.sidepeek-pasted-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sidepeek-remove-img-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  color: #ffffff;
+  border: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.sidepeek-composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--sp-border);
+  padding-top: 8px;
+}
+
+.sidepeek-composer-hint {
+  font-size: 11.5px;
+  color: var(--sp-muted);
+}
+
+.sidepeek-composer-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidepeek-btn-cancel {
+  background: transparent;
+  border: 0;
+  color: var(--sp-muted);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 9999px;
+}
+
+.sidepeek-btn-cancel:hover {
+  background: rgba(128, 128, 128, 0.1);
+}
+
+.sidepeek-btn-submit {
+  background: var(--sp-accent);
+  color: #ffffff;
+  border: 0;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 9999px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.sidepeek-btn-submit:hover {
+  opacity: 0.9;
+}
+
+.sidepeek-btn-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Loading & Empty States
+   ========================================================================== */
+.sidepeek-loading-box,
+.sidepeek-empty-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  color: var(--sp-muted);
+  text-align: center;
+  gap: 10px;
+}
+
+.sidepeek-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--sp-border);
+  border-top-color: var(--sp-accent);
+  border-radius: 50%;
+  animation: sidepeek-spin 0.7s linear infinite;
+}
+
+@keyframes sidepeek-spin {
+  to { transform: rotate(360deg); }
+}
