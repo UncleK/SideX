@@ -429,6 +429,22 @@
     return avatarImg?.src || "";
   }
 
+  // ==========================================================================
+  // Drawer DOM Setup & Layout Positioning
+  // ==========================================================================
+  function ensureDrawerRoot() {
+    let root = document.getElementById(ROOT_ID);
+    if (!root) {
+      root = document.createElement("aside");
+      root.id = ROOT_ID;
+      root.className = currentThemeClass();
+      document.body.appendChild(root);
+    } else {
+      root.className = currentThemeClass();
+    }
+    return root;
+  }
+
   function updateDrawerPosition() {
     const root = document.getElementById(ROOT_ID);
     if (!root || !state.open) return;
