@@ -20,7 +20,7 @@
   </p>
 
   <br />
-  <img src="docs/hero-banner.png" alt="SideX Showcase" width="100%" />
+  <img src="docs/hero-showcase.svg" alt="SideX Showcase" width="100%" />
   <br />
 </div>
 
@@ -52,7 +52,7 @@
   * 告别官方平铺杂乱的评论展示，自动解析父子回复关系，以清晰的 `Thread Line` 组织树状结构；支持点击“展开子回复”下钻浏览独立分支。
 
 <div align="center">
-  <img src="docs/feature-thread.png" alt="对话树下钻演示" width="90%" />
+  <img src="docs/feature-thread.svg" alt="对话树下钻演示" width="90%" />
 </div>
 
 * 🖼️ **原生级多媒体与大图画廊（Media & Lightbox）**
@@ -61,7 +61,7 @@
   * 随时针对任意层级评论展开回复框，支持 `Ctrl+V` 直接粘贴剪贴板图片并自动上传，支持 `Ctrl+Enter` 快速发送。
 
 <div align="center">
-  <img src="docs/feature-composer.png" alt="行内回复与贴图演示" width="90%" />
+  <img src="docs/feature-composer.svg" alt="行内回复与贴图演示" width="90%" />
 </div>
 
 * 🔄 **完全无感的互动同步（Live Actions）**

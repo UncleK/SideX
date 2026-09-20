@@ -1,0 +1,246 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" width="100%" height="100%">
+  <defs>
+    <style>
+      .text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .bold { font-weight: 700; }
+      .medium { font-weight: 500; }
+      .regular { font-weight: 400; }
+    </style>
+    <linearGradient id="accent-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1d9bf0" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+    <filter id="focal-glow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="6" flood-color="#1d9bf0" flood-opacity="0.18" />
+    </filter>
+    <filter id="drawer-shadow" x="-5%" y="0%" width="110%" height="100%">
+      <feDropShadow dx="-4" dy="0" stdDeviation="12" flood-color="#000000" flood-opacity="0.6" />
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="760" fill="#000000" />
+
+  <!-- =========================================================================
+       COLUMN 1: Left Navigation (~240px)
+       ========================================================================= -->
+  <g transform="translate(40, 20)">
+    <!-- X Logo -->
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" fill="#ffffff" transform="scale(1.2)" />
+
+    <!-- Nav Items -->
+    <!-- Home -->
+    <g transform="translate(0, 60)">
+      <path d="M12 1.696L.622 8.807l1.06 1.696L3 9.679V20a2 2 0 002 2h5v-6h4v6h5a2 2 0 002-2V9.679l1.318.824 1.06-1.696L12 1.696zM17 18h-1v-4a2 2 0 00-2-2h-4a2 2 0 00-2 2v4H7V8.428l5-3.125 5 3.125V18z" fill="#ffffff" />
+      <text x="36" y="17" fill="#ffffff" font-size="18" class="text bold">主页 / Home</text>
+    </g>
+    <!-- Explore -->
+    <g transform="translate(0, 115)">
+      <path d="M10.25 3.75c-3.59 0-6.5 2.91-6.5 6.5s2.91 6.5 6.5 6.5c1.47 0 2.82-.49 3.91-1.31l4.97 4.97 1.41-1.41-4.97-4.97c.82-1.09 1.31-2.44 1.31-3.91 0-3.59-2.91-6.5-6.5-6.5zm-4.5 6.5c0-2.48 2.02-4.5 4.5-4.5s4.5 2.02 4.5 4.5-2.02 4.5-4.5 4.5-4.5-2.02-4.5-4.5z" fill="#e7e9ea" />
+      <text x="36" y="17" fill="#e7e9ea" font-size="18" class="text regular">探索 / Explore</text>
+    </g>
+    <!-- Notifications -->
+    <g transform="translate(0, 170)">
+      <path d="M19.993 9.042C19.48 5.017 16.054 2 11.996 2s-7.49 3.021-7.999 7.051L2.866 18H7.1c.463 2.282 2.481 4 4.9 4s4.437-1.718 4.9-4h4.236l-1.143-8.958z" fill="#e7e9ea" />
+      <text x="36" y="17" fill="#e7e9ea" font-size="18" class="text regular">通知 / Notifications</text>
+    </g>
+    <!-- Messages -->
+    <g transform="translate(0, 225)">
+      <path d="M1.998 5.5c0-1.381 1.119-2.5 2.5-2.5h15c1.381 0 2.5 1.119 2.5 2.5v13c0 1.381-1.119 2.5-2.5 2.5h-15c-1.381 0-2.5-1.119-2.5-2.5v-13zm2.5-.5c-.276 0-.5.224-.5.5v2.764l8 5.333 8-5.333V5.5c0-.276-.224-.5-.5-.5h-15z" fill="#e7e9ea" />
+      <text x="36" y="17" fill="#e7e9ea" font-size="18" class="text regular">私信 / Messages</text>
+    </g>
+    <!-- Bookmarks -->
+    <g transform="translate(0, 280)">
+      <path d="M4 4.5C4 3.12 5.119 2 6.5 2h11C18.881 2 20 3.12 20 4.5v16.74c0 .65-.74 1.04-1.28.67L12 17.07l-6.72 4.84c-.54.37-1.28-.02-1.28-.67V4.5z" fill="#e7e9ea" />
+      <text x="36" y="17" fill="#e7e9ea" font-size="18" class="text regular">书签 / Bookmarks</text>
+    </g>
+
+    <!-- Post Button -->
+    <rect y="350" width="190" height="46" rx="23" fill="#1d9bf0" />
+    <text x="95" y="379" fill="#ffffff" font-size="16" class="text bold" text-anchor="middle">发帖 / Post</text>
+  </g>
+
+  <!-- Divider Left-Mid -->
+  <line x1="260" y1="0" x2="260" y2="760" stroke="#2f3336" stroke-width="1" />
+
+  <!-- =========================================================================
+       COLUMN 2: Middle Timeline (~530px)
+       ========================================================================= -->
+  <g transform="translate(260, 0)">
+    <!-- Header -->
+    <rect width="530" height="52" fill="#000000" fill-opacity="0.85" />
+    <line x1="0" y1="52" x2="530" y2="52" stroke="#2f3336" stroke-width="1" />
+    <text x="20" y="33" fill="#e7e9ea" font-size="18" class="text bold">主推文动态 / Timeline</text>
+
+    <!-- Post 1: Normal Tweet -->
+    <g transform="translate(16, 68)">
+      <circle cx="20" cy="20" r="20" fill="#334155" />
+      <text x="20" y="25" fill="#94a3b8" font-size="12" class="text bold" text-anchor="middle">X</text>
+      <text x="52" y="16" fill="#e7e9ea" font-size="15" class="text bold">Tech Explorer</text>
+      <text x="156" y="16" fill="#71767b" font-size="14" class="text regular">@tech_lead · 4h</text>
+      <text x="52" y="38" fill="#e7e9ea" font-size="14" class="text regular">正在重构前端时间线交互体验，追求极致的浏览丝滑度...</text>
+    </g>
+    <line x1="0" y1="140" x2="530" y2="140" stroke="#2f3336" stroke-width="1" />
+
+    <!-- Post 2: Active Focal Tweet (Clicked by SideX!) -->
+    <g transform="translate(12, 150)" filter="url(#focal-glow)">
+      <!-- Focal Box Highlight (sidepeek-focal-active) -->
+      <rect width="506" height="280" rx="8" fill="#0c1622" stroke="#1d9bf0" stroke-width="2" stroke-opacity="0.75" />
+      
+      <!-- Content inside Focal Tweet -->
+      <g transform="translate(16, 16)">
+        <!-- Avatar -->
+        <circle cx="20" cy="20" r="20" fill="#0284c7" />
+        <text x="20" y="26" fill="#ffffff" font-size="14" class="text bold" text-anchor="middle">SX</text>
+
+        <!-- Author info -->
+        <text x="52" y="16" fill="#e7e9ea" font-size="15" class="text bold">SideX Official</text>
+        <circle cx="160" cy="11" r="7" fill="#1d9bf0" />
+        <text x="160" y="14" fill="#ffffff" font-size="9" class="text bold" text-anchor="middle">✓</text>
+        <text x="175" y="16" fill="#71767b" font-size="14" class="text regular">@SideX_App · 2h</text>
+
+        <!-- Tweet Text (Auto-Expanded!) -->
+        <text x="52" y="44" fill="#e7e9ea" font-size="14.5" class="text regular">
+          <tspan x="52" dy="0">🎉 经过多轮打磨，SideX 沉浸式评论流正式就绪！</tspan>
+          <tspan x="52" dy="24">点击任意帖子直接在右侧第三列停靠，主帖长文原地展开，</tspan>
+          <tspan x="52" dy="24">支持树状对话流、二级回复下钻与剪贴板贴图，再也不用跳页！</tspan>
+        </text>
+
+        <!-- Focal Media Card -->
+        <rect x="52" y="125" width="420" height="90" rx="10" fill="#16181c" stroke="#2f3336" stroke-width="1" />
+        <rect x="62" y="135" width="70" height="70" rx="6" fill="#1e293b" />
+        <text x="97" y="175" fill="#38bdf8" font-size="20" class="text bold" text-anchor="middle">🗂️</text>
+        <text x="146" y="160" fill="#e7e9ea" font-size="14" class="text bold">SideX - 沉浸式侧边评论流</text>
+        <text x="146" y="184" fill="#71767b" font-size="12" class="text regular">github.com/UncleK/SideX · Chrome &amp; Edge</text>
+
+        <!-- Action bar -->
+        <g transform="translate(52, 230)" fill="#71767b" font-size="13" class="text regular">
+          <text x="0" y="0">💬 86</text>
+          <text x="90" y="0">🔁 124</text>
+          <text x="180" y="0" fill="#f91880">❤️ 1.4k</text>
+          <text x="270" y="0">🔖 352</text>
+          <text x="360" y="0">↗️</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- Post 3 -->
+    <g transform="translate(16, 450)">
+      <circle cx="20" cy="20" r="20" fill="#1e293b" />
+      <text x="20" y="25" fill="#64748b" font-size="12" class="text bold" text-anchor="middle">U</text>
+      <text x="52" y="16" fill="#e7e9ea" font-size="15" class="text bold">Designer Pro</text>
+      <text x="156" y="16" fill="#71767b" font-size="14" class="text regular">@ui_daily · 5h</text>
+      <text x="52" y="38" fill="#e7e9ea" font-size="14" class="text regular">这个侧边停靠的设计非常克制且高效，充分利用了宽屏浏览器的空间。</text>
+    </g>
+  </g>
+
+  <!-- Divider Mid-Right -->
+  <line x1="790" y1="0" x2="790" y2="760" stroke="#2f3336" stroke-width="1" />
+
+  <!-- =========================================================================
+       COLUMN 3: Real SideX Drawer Component (~410px)
+       ========================================================================= -->
+  <g transform="translate(790, 0)" filter="url(#drawer-shadow)">
+    <!-- Drawer Background -->
+    <rect width="410" height="760" fill="#000000" />
+    <line x1="0" y1="0" x2="0" y2="760" stroke="#2f3336" stroke-width="1" />
+
+    <!-- Resize Handle -->
+    <rect x="-3" y="340" width="4" height="40" rx="2" fill="#1d9bf0" />
+
+    <!-- Drawer Header -->
+    <rect width="410" height="52" fill="#000000" />
+    <line x1="0" y1="52" x2="410" y2="52" stroke="#2f3336" stroke-width="1" />
+    <text x="20" y="33" fill="#e7e9ea" font-size="16" class="text bold">SideX</text>
+    <text x="70" y="33" fill="#71767b" font-size="13" class="text medium">(86)</text>
+    <!-- Header Icons (External & Close) -->
+    <g transform="translate(330, 16)" fill="#71767b">
+      <path d="M14 3h7v7M10 14L21 3M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6" stroke="#71767b" stroke-width="2" fill="none" transform="scale(0.8)" />
+      <path d="M18 6L6 18M6 6l12 12" stroke="#71767b" stroke-width="2" transform="translate(32, 0) scale(0.8)" />
+    </g>
+
+    <!-- Thread 1: Parent Comment -->
+    <g transform="translate(16, 68)">
+      <!-- Avatar & Thread Line -->
+      <circle cx="18" cy="18" r="18" fill="#e11d48" />
+      <text x="18" y="23" fill="#ffffff" font-size="12" class="text bold" text-anchor="middle">E</text>
+      <!-- Thread Line connecting to child reply -->
+      <line x1="18" y1="42" x2="18" y2="285" stroke="#2f3336" stroke-width="2" />
+
+      <!-- Comment Content -->
+      <text x="46" y="14" fill="#e7e9ea" font-size="14" class="text bold">Elena Rostova</text>
+      <circle cx="142" cy="10" r="5" fill="#1d9bf0" />
+      <text x="152" y="14" fill="#71767b" font-size="12" class="text regular">@elena_ux · 1h</text>
+      <text x="46" y="36" fill="#e7e9ea" font-size="13.5" class="text regular">
+        <tspan x="46" dy="0">原地看长推文+评论终于不需要开一堆标签页了！</tspan>
+        <tspan x="46" dy="20">请问支持二级回复与子对话下钻吗？</tspan>
+      </text>
+
+      <!-- Action bar -->
+      <g transform="translate(46, 82)" fill="#71767b" font-size="12" class="text regular">
+        <text x="0" y="0">💬 3</text>
+        <text x="60" y="0">🔁 1</text>
+        <text x="120" y="0" fill="#f91880">❤️ 42</text>
+        <text x="180" y="0">🔖</text>
+        <text x="230" y="0">↗️</text>
+      </g>
+
+      <!-- Inline Accordion Composer (Expanded!) -->
+      <g transform="translate(46, 98)">
+        <rect width="332" height="150" rx="10" fill="#16181c" stroke="#2f3336" stroke-width="1" />
+        <text x="12" y="24" fill="#e7e9ea" font-size="13" class="text regular">完全支持！原生还原了树状层级 👇</text>
+        
+        <!-- Pasted Image Preview Thumbnail -->
+        <g transform="translate(12, 42)">
+          <rect width="52" height="52" rx="6" fill="#3b82f6" fill-opacity="0.3" stroke="#2f3336" stroke-width="1" />
+          <text x="26" y="32" fill="#38bdf8" font-size="16" text-anchor="middle">🖼️</text>
+          <!-- Close dot -->
+          <circle cx="46" cy="6" r="7" fill="#000000" fill-opacity="0.75" />
+          <text x="46" y="9" fill="#ffffff" font-size="8" text-anchor="middle">✕</text>
+        </g>
+
+        <!-- Footer -->
+        <line x1="0" y1="108" x2="332" y2="108" stroke="#2f3336" stroke-width="1" />
+        <text x="12" y="132" fill="#71767b" font-size="11" class="text regular">按 Ctrl+Enter 发送</text>
+        <text x="230" y="132" fill="#71767b" font-size="12" class="text regular">取消</text>
+        <rect x="268" y="116" width="54" height="26" rx="13" fill="#1d9bf0" />
+        <text x="295" y="133" fill="#ffffff" font-size="12" class="text bold" text-anchor="middle">发送</text>
+      </g>
+    </g>
+
+    <!-- Child Reply (Indented) -->
+    <g transform="translate(16, 365)">
+      <circle cx="18" cy="18" r="16" fill="#0284c7" />
+      <text x="18" y="23" fill="#ffffff" font-size="11" class="text bold" text-anchor="middle">A</text>
+      <text x="46" y="14" fill="#e7e9ea" font-size="14" class="text bold">Alex Rivera</text>
+      <circle cx="128" cy="10" r="5" fill="#1d9bf0" />
+      <text x="138" y="14" fill="#71767b" font-size="12" class="text regular">@arivera · 45m</text>
+      <text x="46" y="30" fill="#1d9bf0" font-size="12" class="text regular">回复 @elena_ux</text>
+      <text x="46" y="50" fill="#e7e9ea" font-size="13.5" class="text regular">
+        <tspan x="46" dy="0">不仅能就地展开，还可以点击下方</tspan>
+        <tspan x="46" dy="18">“展开回复”直接进入下钻对话分支！</tspan>
+      </text>
+
+      <!-- Drill-down Trigger Link -->
+      <g transform="translate(46, 85)">
+        <text x="0" y="0" fill="#1d9bf0" font-size="12.5" class="text medium" cursor="pointer">↳ 展开另外 2 条回复</text>
+      </g>
+    </g>
+
+    <!-- Divider between Thread Groups -->
+    <line x1="0" y1="485" x2="410" y2="485" stroke="#2f3336" stroke-width="1" />
+
+    <!-- Thread 2: Standalone Comment -->
+    <g transform="translate(16, 505)">
+      <circle cx="18" cy="18" r="18" fill="#10b981" />
+      <text x="18" y="23" fill="#ffffff" font-size="12" class="text bold" text-anchor="middle">M</text>
+      <text x="46" y="14" fill="#e7e9ea" font-size="14" class="text bold">Marcus Vance</text>
+      <text x="146" y="14" fill="#71767b" font-size="12" class="text regular">@marcus_v · 30m</text>
+      <text x="46" y="36" fill="#e7e9ea" font-size="13.5" class="text regular">粘贴剪贴板图片直接回复这个功能太赞了！</text>
+      <g transform="translate(46, 60)" fill="#71767b" font-size="12" class="text regular">
+        <text x="0" y="0">💬 1</text>
+        <text x="60" y="0" fill="#f91880">❤️ 9</text>
+      </g>
+    </g>
+  </g>
+</svg>
