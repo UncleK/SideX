@@ -77,18 +77,25 @@ article[data-testid="tweet"].sidepeek-focal-active {
   box-sizing: border-box;
 }
 
-/* Resize Handle on Right Edge */
+/* Resize Handles on Left & Right Edges */
 .sidepeek-resize-handle {
   position: absolute;
   top: 0;
   bottom: 0;
-  right: -6px;
   width: 14px;
   cursor: col-resize;
-  z-index: 1000;
+  z-index: 1001;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.sidepeek-resize-handle-left {
+  left: 0;
+}
+
+.sidepeek-resize-handle-right {
+  right: 0;
 }
 
 .sidepeek-resize-grip {
@@ -779,3 +786,160 @@ article[data-testid="tweet"].sidepeek-focal-active {
 @keyframes sidepeek-spin {
   to { transform: rotate(360deg); }
 }
+
+/* ==========================================================================
+   Bottom Footer Composer (Reply to Focal / Main Post)
+   ========================================================================== */
+.sidepeek-footer-composer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--sp-border);
+  background: var(--sp-bg);
+  padding: 10px 14px;
+  position: relative;
+  z-index: 10;
+}
+
+.sidepeek-footer-inner {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.sidepeek-footer-avatar-wrap {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  margin-top: 2px;
+}
+
+.sidepeek-footer-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.sidepeek-footer-avatar-default {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--sp-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sp-muted);
+}
+
+.sidepeek-footer-avatar-default svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.sidepeek-footer-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sidepeek-footer-textarea {
+  width: 100%;
+  min-height: 36px;
+  max-height: 120px;
+  padding: 8px 12px;
+  border: 1px solid var(--sp-border);
+  border-radius: 18px;
+  background: var(--sp-soft);
+  color: var(--sp-fg);
+  font-family: inherit;
+  font-size: 13.5px;
+  line-height: 1.4;
+  resize: none;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s, border-radius 0.15s;
+}
+
+.sidepeek-footer-textarea:focus {
+  border-color: var(--sp-accent);
+  background: var(--sp-bg);
+  border-radius: 12px;
+}
+
+.sidepeek-footer-preview-area {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sidepeek-footer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 2px;
+}
+
+.sidepeek-footer-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sidepeek-tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--sp-accent);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.sidepeek-tool-btn:hover {
+  background: rgba(29, 155, 240, 0.1);
+}
+
+.sidepeek-tool-btn svg {
+  width: 17px;
+  height: 17px;
+  fill: currentColor;
+}
+
+.sidepeek-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidepeek-footer-hint {
+  font-size: 11px;
+  color: var(--sp-muted);
+  user-select: none;
+}
+
+.sidepeek-footer-submit-btn {
+  padding: 5px 14px;
+  border: none;
+  border-radius: 16px;
+  background: var(--sp-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.sidepeek-footer-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sidepeek-footer-submit-btn:not(:disabled):hover {
+  opacity: 0.9;
+}
+

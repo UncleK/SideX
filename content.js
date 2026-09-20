@@ -21,7 +21,10 @@
     close: `<svg viewBox="0 0 256 256"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></svg>`,
     back: `<svg viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"/></svg>`,
     external: `<svg viewBox="0 0 256 256"><path d="M224,104a8,8,0,0,1-16,0V59.32l-66.33,66.34a8,8,0,0,1-11.32-11.32L196.68,48H152a8,8,0,0,1,0-16h64a8,8,0,0,1,8,8Zm-40,24a8,8,0,0,0-8,8v72H48V80h72a8,8,0,0,0,0-16H48A16,16,0,0,0,32,80V208a16,16,0,0,0,16,16H176a16,16,0,0,0,16-16V136A8,8,0,0,0,184,128Z"/></svg>`,
-    image: `<svg viewBox="0 0 256 256"><path d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40Zm0,16V158.75l-26.07-26.06a16,16,0,0,0-22.63,0l-20,20-44-44a16,16,0,0,0-22.62,0L40,149.37V56ZM40,172l52-52,80,80H40Zm176,28H194.63l-36-36,20-20L216,181.38V200ZM144,100a12,12,0,1,1,12,12A12,12,0,0,1,144,100Z"/></svg>`
+    image: `<svg viewBox="0 0 256 256"><path d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40Zm0,16V158.75l-26.07-26.06a16,16,0,0,0-22.63,0l-20,20-44-44a16,16,0,0,0-22.62,0L40,149.37V56ZM40,172l52-52,80,80H40Zm176,28H194.63l-36-36,20-20L216,181.38V200ZM144,100a12,12,0,1,1,12,12A12,12,0,0,1,144,100Z"/></svg>`,
+    resetWidth: `<svg viewBox="0 0 256 256"><path d="M224,128a96,96,0,1,1-21.84-60.61L224,48v48H176l18.53-18.53A80,80,0,1,0,207.82,136H224A95.54,95.54,0,0,1,224,128Z"/></svg>`,
+    officialReply: `<svg viewBox="0 0 256 256"><path d="M200,32H56A16,16,0,0,0,40,48V216a8,8,0,0,0,13.15,6.18L88.76,192H200a16,16,0,0,0,16-16V48A16,16,0,0,0,200,32Zm0,144H86.11a8,8,0,0,0-5.15,1.86L56,198.85V48H200ZM144,96a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h40A8,8,0,0,1,144,96Zm32,32a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h72A8,8,0,0,1,176,128Z"/></svg>`,
+    user: `<svg viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24ZM74.08,197.5a64,64,0,0,1,107.84,0,87.83,87.83,0,0,1-107.84,0ZM128,120a40,40,0,1,1,40-40A40,40,0,0,1,128,120Zm65.2,66.19a79.89,79.89,0,0,0-36.06-28.74,56,56,0,1,0-58.28,0,79.89,79.89,0,0,0-36.06,28.74,88,88,0,1,1,130.4,0Z"/></svg>`
   };
 
   const state = {
@@ -104,6 +107,13 @@
     return root;
   }
 
+  function getCurrentUserAvatar() {
+    const avatarImg = document.querySelector(
+      '[data-testid="SideNav_AccountSwitcher_Button"] img, header [data-testid="UserAvatar-Container-unknown"] img, [data-testid="tweetTextarea_0"] img'
+    );
+    return avatarImg?.src || "";
+  }
+
   function updateDrawerPosition() {
     const root = document.getElementById(ROOT_ID);
     if (!root || !state.open) return;
@@ -115,7 +125,8 @@
     if (sidebar) {
       const rect = sidebar.getBoundingClientRect();
       const minWidth = Math.round(rect.width) || 350;
-      const maxWidth = Math.max(minWidth, Math.round(window.innerWidth - rect.left));
+      // 保证最大宽度永远留出至少 12px 边距，确保拖拽到最右侧时不会被浏览器边缘截断或丢失光标
+      const maxWidth = Math.max(minWidth, Math.round(window.innerWidth - rect.left) - 12);
 
       // 默认宽度严格与原生第三列一致（约 350px）
       let targetWidth = minWidth;
@@ -135,55 +146,84 @@
   }
 
   function initResizeHandle(root) {
-    const handle = root.querySelector(".sidepeek-resize-handle");
-    if (!handle) return;
+    const handleRight = root.querySelector(".sidepeek-resize-handle-right");
+    const handleLeft = root.querySelector(".sidepeek-resize-handle-left");
+    const resetBtn = root.querySelector(".sidepeek-btn-reset-width");
 
-    let isDragging = false;
-
-    handle.addEventListener("mousedown", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      isDragging = true;
-      handle.classList.add("dragging");
-      document.body.style.userSelect = "none";
-      document.body.style.cursor = "col-resize";
-
-      function onMouseMove(moveEvent) {
-        if (!isDragging) return;
-        const sidebar = document.querySelector('[data-testid="sidebarColumn"]');
-        const leftEdge = sidebar ? sidebar.getBoundingClientRect().left : root.getBoundingClientRect().left;
-        const minWidth = sidebar ? Math.round(sidebar.getBoundingClientRect().width) : 350;
-        const maxWidth = Math.max(minWidth, Math.round(window.innerWidth - leftEdge));
-
-        // 鼠标向右拖拽增加宽度：
-        let newWidth = moveEvent.clientX - leftEdge;
-        newWidth = Math.min(maxWidth, Math.max(minWidth, newWidth));
-
-        root.style.width = `${newWidth}px`;
-        localStorage.setItem("sidepeek_custom_width_v2", String(Math.round(newWidth)));
-      }
-
-      function onMouseUp() {
-        if (!isDragging) return;
-        isDragging = false;
-        handle.classList.remove("dragging");
-        document.body.style.userSelect = "";
-        document.body.style.cursor = "";
-        window.removeEventListener("mousemove", onMouseMove);
-        window.removeEventListener("mouseup", onMouseUp);
-      }
-
-      window.addEventListener("mousemove", onMouseMove);
-      window.addEventListener("mouseup", onMouseUp);
-    });
-
-    // 双击抓手可随时恢复默认原生宽度
-    handle.addEventListener("dblclick", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+    function resetWidth() {
       localStorage.removeItem("sidepeek_custom_width_v2");
       updateDrawerPosition();
+      showToast("已恢复默认宽度");
+    }
+
+    resetBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      resetWidth();
     });
+
+    function bindDrag(handle, isLeft) {
+      if (!handle) return;
+
+      handle.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handle.classList.add("dragging");
+        document.body.style.userSelect = "none";
+        document.body.style.cursor = "col-resize";
+
+        const sidebar = document.querySelector('[data-testid="sidebarColumn"]');
+        const minWidth = sidebar ? Math.round(sidebar.getBoundingClientRect().width) : 350;
+        const initialRect = root.getBoundingClientRect();
+
+        function onMouseMove(moveEvent) {
+          if (isLeft) {
+            // 拖动左边缘：向左拉宽，向右缩窄（以右边缘为固定锚点）
+            let newWidth = initialRect.right - moveEvent.clientX;
+            const maxLeftWidth = Math.min(
+              window.innerWidth - 80,
+              Math.round(initialRect.right - 100)
+            );
+            newWidth = Math.min(maxLeftWidth, Math.max(minWidth, newWidth));
+            const newLeft = initialRect.right - newWidth;
+
+            root.style.left = `${newLeft}px`;
+            root.style.width = `${newWidth}px`;
+            root.style.right = "auto";
+            localStorage.setItem("sidepeek_custom_width_v2", String(Math.round(newWidth)));
+          } else {
+            // 拖动右边缘：向右拉宽，向左缩窄（以左边缘为固定锚点）
+            const leftEdge = root.getBoundingClientRect().left;
+            const maxWidth = Math.max(minWidth, Math.round(window.innerWidth - leftEdge) - 12);
+
+            let newWidth = moveEvent.clientX - leftEdge;
+            newWidth = Math.min(maxWidth, Math.max(minWidth, newWidth));
+
+            root.style.width = `${newWidth}px`;
+            localStorage.setItem("sidepeek_custom_width_v2", String(Math.round(newWidth)));
+          }
+        }
+
+        function onMouseUp() {
+          handle.classList.remove("dragging");
+          document.body.style.userSelect = "";
+          document.body.style.cursor = "";
+          window.removeEventListener("mousemove", onMouseMove);
+          window.removeEventListener("mouseup", onMouseUp);
+        }
+
+        window.addEventListener("mousemove", onMouseMove);
+        window.addEventListener("mouseup", onMouseUp);
+      });
+
+      handle.addEventListener("dblclick", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        resetWidth();
+      });
+    }
+
+    bindDrag(handleRight, false);
+    bindDrag(handleLeft, true);
   }
 
   window.addEventListener("resize", updateDrawerPosition);
@@ -203,9 +243,16 @@
 
     const isDrillDown = state.activeView && typeof state.activeView === "object" && state.activeView.type === "drilldown";
     const drillDownParent = isDrillDown ? state.tree?.byId.get(state.activeView.parentId) : null;
+    const userAvatar = getCurrentUserAvatar();
+    const replyPlaceholder = isDrillDown
+      ? `回复 @${drillDownParent?.author?.handle || "此人"}...`
+      : `回复 @${state.focalModel?.author?.handle || "楼主"}... (按 Ctrl+Enter 发送)`;
 
     root.innerHTML = `
-      <div class="sidepeek-resize-handle" title="拖动右边缘调整宽度，双击恢复默认">
+      <div class="sidepeek-resize-handle sidepeek-resize-handle-left" title="拖动左边缘调整宽度，双击恢复默认">
+        <div class="sidepeek-resize-grip"></div>
+      </div>
+      <div class="sidepeek-resize-handle sidepeek-resize-handle-right" title="拖动右边缘调整宽度，双击恢复默认">
         <div class="sidepeek-resize-grip"></div>
       </div>
       <header class="sidepeek-header">
@@ -215,14 +262,42 @@
           <span class="sidepeek-count-badge">(${isDrillDown ? (state.tree?.childrenMap.get(drillDownParent?.id)?.length || 0) : (state.tree?.rootReplies.length || 0)})</span>
         </div>
         <div class="sidepeek-header-actions">
+          <button type="button" class="sidepeek-icon-btn sidepeek-btn-reset-width" title="恢复默认宽度">${ICONS.resetWidth}</button>
           ${state.focalModel?.url ? `<a href="${state.focalModel.url}" target="_blank" class="sidepeek-icon-btn" title="在 X 详情页打开">${ICONS.external}</a>` : ""}
           <button type="button" class="sidepeek-icon-btn sidepeek-btn-close" aria-label="关闭侧栏">${ICONS.close}</button>
         </div>
       </header>
       <div class="sidepeek-body"></div>
+      <footer class="sidepeek-footer-composer">
+        <div class="sidepeek-footer-inner">
+          <div class="sidepeek-footer-avatar-wrap">
+            ${userAvatar ? `<img src="${userAvatar}" class="sidepeek-footer-avatar" alt="" />` : `<div class="sidepeek-footer-avatar-default">${ICONS.user}</div>`}
+          </div>
+          <div class="sidepeek-footer-main">
+            <textarea class="sidepeek-footer-textarea" rows="1" placeholder="${replyPlaceholder}"></textarea>
+            <div class="sidepeek-footer-preview-area"></div>
+            <div class="sidepeek-footer-toolbar">
+              <div class="sidepeek-footer-tools">
+                <label class="sidepeek-tool-btn sidepeek-tool-media" title="添加图片 (支持 Ctrl+V 粘贴)">
+                  <input type="file" accept="image/*" class="sidepeek-media-file-input" style="display:none;" />
+                  ${ICONS.image}
+                </label>
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-official" title="使用官方回复弹窗 (支持表情/投票/GIF)">
+                  ${ICONS.officialReply}
+                </button>
+              </div>
+              <div class="sidepeek-footer-actions">
+                <span class="sidepeek-footer-hint">Ctrl+Enter</span>
+                <button type="button" class="sidepeek-footer-submit-btn" disabled>回复</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
     `;
 
     initResizeHandle(root);
+    initFooterComposer(root, isDrillDown, drillDownParent);
 
     // Event listeners on header
     root.querySelector(".sidepeek-btn-close")?.addEventListener("click", closeDrawer);
@@ -603,6 +678,150 @@
 
     submitBtn.addEventListener("click", doSubmit);
     textarea.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        doSubmit();
+      }
+    });
+  }
+
+  function initFooterComposer(root, isDrillDown, drillDownParent) {
+    const footer = root.querySelector(".sidepeek-footer-composer");
+    if (!footer) return;
+
+    const textarea = footer.querySelector(".sidepeek-footer-textarea");
+    const previewArea = footer.querySelector(".sidepeek-footer-preview-area");
+    const submitBtn = footer.querySelector(".sidepeek-footer-submit-btn");
+    const fileInput = footer.querySelector(".sidepeek-media-file-input");
+    const officialBtn = footer.querySelector(".sidepeek-tool-official");
+
+    let pastedMediaId = null;
+    let pastedBlob = null;
+
+    const targetTweetId = isDrillDown && drillDownParent ? drillDownParent.id : state.focalTweetId;
+
+    // 尽量复用官方回复功能：点击触发官方原生回复弹窗
+    officialBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!isDrillDown && state.focalArticle) {
+        const nativeBtn = state.focalArticle.querySelector('[data-testid="reply"]');
+        if (nativeBtn) {
+          nativeBtn.click();
+          return;
+        }
+      }
+      const tweetArticle = document.querySelector(`article[data-testid="tweet"] a[href*="${targetTweetId}"]`)?.closest('article[data-testid="tweet"]');
+      const nativeBtn = tweetArticle?.querySelector('[data-testid="reply"]');
+      if (nativeBtn) {
+        nativeBtn.click();
+      } else {
+        textarea?.focus();
+        showToast("已聚焦输入框，可直接输入回复");
+      }
+    });
+
+    // 自动高度与提交按钮状态
+    textarea?.addEventListener("input", () => {
+      textarea.style.height = "auto";
+      textarea.style.height = Math.min(textarea.scrollHeight, 120) + "px";
+      const hasContent = textarea.value.trim().length > 0 || pastedMediaId !== null;
+      submitBtn.disabled = !hasContent;
+    });
+
+    function handleImageFile(file) {
+      if (!file || !file.type.startsWith("image/")) return;
+      pastedBlob = file;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result;
+        const base64 = dataUrl.split(",")[1];
+
+        previewArea.innerHTML = `
+          <div class="sidepeek-pasted-preview">
+            <img src="${dataUrl}" alt="" />
+            <button type="button" class="sidepeek-remove-img-btn" title="删除图片">✕</button>
+          </div>
+        `;
+        previewArea.querySelector(".sidepeek-remove-img-btn")?.addEventListener("click", () => {
+          previewArea.innerHTML = "";
+          pastedMediaId = null;
+          pastedBlob = null;
+          submitBtn.disabled = !textarea.value.trim();
+        });
+
+        try {
+          submitBtn.disabled = true;
+          submitBtn.textContent = "上传中...";
+          const res = await requestPage("UPLOAD_MEDIA", { base64, mimeType: file.type, size: file.size });
+          pastedMediaId = res.mediaId;
+          submitBtn.disabled = false;
+        } catch (err) {
+          alert(err.message || "图片上传失败");
+          previewArea.innerHTML = "";
+          pastedMediaId = null;
+        } finally {
+          submitBtn.textContent = "回复";
+          submitBtn.disabled = !(textarea.value.trim() || pastedMediaId);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    fileInput?.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (file) handleImageFile(file);
+      fileInput.value = "";
+    });
+
+    textarea?.addEventListener("paste", (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) handleImageFile(file);
+          break;
+        }
+      }
+    });
+
+    async function doSubmit() {
+      const text = textarea.value.trim();
+      if (!text && !pastedMediaId) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "发送中...";
+
+      try {
+        const mediaIds = pastedMediaId ? [pastedMediaId] : [];
+        await requestPage("CREATE_REPLY", {
+          tweetId: targetTweetId,
+          text,
+          mediaIds
+        });
+
+        // 重置编辑框状态
+        textarea.value = "";
+        textarea.style.height = "auto";
+        previewArea.innerHTML = "";
+        pastedMediaId = null;
+        pastedBlob = null;
+        submitBtn.textContent = "回复";
+        submitBtn.disabled = true;
+
+        showToast("回复已发布");
+        // 自动重新加载评论流，新回复立即呈现于列表顶部
+        fetchThread(state.focalTweetId);
+      } catch (err) {
+        alert(err.message || "回复发送失败，请重试");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "回复";
+      }
+    }
+
+    submitBtn?.addEventListener("click", doSubmit);
+    textarea?.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         doSubmit();
