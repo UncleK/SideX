@@ -309,9 +309,20 @@ article[data-testid="tweet"].sidepeek-focal-active {
 }
 
 .sidepeek-verified-badge {
-  color: var(--sp-accent);
+  width: 18px;
+  height: 18px;
   display: inline-flex;
-  font-size: 13px;
+  align-items: center;
+  justify-content: center;
+  margin-left: 3px;
+  vertical-align: text-bottom;
+  flex-shrink: 0;
+}
+
+.sidepeek-verified-badge svg {
+  width: 18px;
+  height: 18px;
+  display: block;
 }
 
 .sidepeek-handle {
@@ -567,15 +578,15 @@ article[data-testid="tweet"].sidepeek-focal-active {
 .sidepeek-action-btn-surface {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 6px;
+  gap: 6px;
+  padding: 4px 8px;
   border-radius: 9999px;
   transition: background 0.15s;
 }
 
 .sidepeek-action-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   display: block;
   fill: currentColor;
 }

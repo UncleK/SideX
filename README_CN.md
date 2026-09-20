@@ -13,7 +13,7 @@
 
   <p>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.0.4-00b4f8?style=flat-square" alt="Version 1.0.4" />
+    <img src="https://img.shields.io/badge/Version-1.0.5-00b4f8?style=flat-square" alt="Version 1.0.5" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -33,13 +33,13 @@
 
 ## ✨ 特性功能
 
-* 🚀 **就地停靠评论流**：点击推文，右侧第三列无缝展开评论抽屉，不跳页、不重新加载、不丢失滚动位置。
-* 📖 **主帖长文原地展开**：自动展开“显示更多”（Show more），告别手动点击。
-* 🧵 **对话树与层级下钻**：自动解析父子回复，以清晰的 `Thread Line` 连接；支持点击展开二级回复与独立分支下钻。
-* 💬 **行内回复与剪贴板贴图**：任意层级就地呼出回复框，支持 `Ctrl+V` 直接粘贴剪贴板图片并上传，`Ctrl+Enter` 快捷发送。
-* 🔄 **实时互动双向同步**：侧栏内点赞、转推、收藏、复制链接，状态与 X 原生页面实时双向同步。
-* 🎨 **自适应主题与自由拉伸**：自动跟随 X 的主题切换（浅色 / 暗蓝 / 纯黑）；右边缘支持自由拖拽调节宽度（双击复原）。
-* 🛡️ **原生级安全零封号风险**：完全运行于浏览器本地，直接复用当前登录态与官方签名生成器，与爬虫存在本质区别。
+* 🚀 **右侧就地停靠**：在推文流中直接点击任意推文，评论流秒级停靠在页面第三列，零跳转、不重新加载页面。
+* 📖 **长文原位展开**：自动展开主帖“显示更多（Show more）”，原地阅读完整长文。
+* 🧵 **树状对话流 & 子评论下钻**：智能重构评论层级与清晰连接线，支持点击任意评论下钻进入独立子对话。
+* 💬 **行内回复 & 粘贴图片**：支持原地就地回复，可直接 `Ctrl+V` 粘贴剪贴板图片上传并用 `Ctrl+Enter` 快速发送。
+* 🔄 **操作实时双向同步**：在侧栏中进行点赞、转推、收藏，与主时间线及 X 官方状态毫秒级实时同步。
+* 🎨 **主题自适应 & 自由拉伸**：完美自适应浅色（Light）、暗色（Dim）与黑色（Dark）主题；可随意拖拽右边缘调节抽屉宽度。
+* 🛡️ **安全零封号风险**：纯前端 DOM 与会话复用，完全模拟官方 Web 行为，无任何额外第三方服务器中转。
 
 ---
 
@@ -48,7 +48,7 @@
 适用于 Chrome、Edge、Brave、Arc 等所有 Chromium 浏览器：
 
 ### 方式一：CRX 文件直接拖拽安装（最快）
-1. 前往 [Releases 页面](https://github.com/UncleK/SideX/releases) 下载 **`SideX-v1.0.4.crx`**。
+1. 前往 [Releases 页面](https://github.com/UncleK/SideX/releases) 下载 **`SideX-v1.0.5.crx`**。
 2. 打开浏览器扩展管理页面：
    * Chrome / Brave: `chrome://extensions/`
    * Edge: `edge://extensions/`
@@ -57,7 +57,7 @@
    *(注：较新版本的 Chrome 可能会弹出安全拦截提示禁止安装非商店 CRX，遇到此类情况请使用下方的「方式二」)*。
 
 ### 方式二：下载 ZIP 压缩包（100% 成功，推荐）
-1. 前往 [Releases 页面](https://github.com/UncleK/SideX/releases) 下载 **`SideX-v1.0.4.zip`** 并解压。
+1. 前往 [Releases 页面](https://github.com/UncleK/SideX/releases) 下载 **`SideX-v1.0.5.zip`** 并解压。
 2. 在扩展管理页面开启「开发者模式」后，点击左上角**「加载未打包的扩展程序」**（部分浏览器为「加载已解压的扩展程序」/ Load unpacked），选择解压后的文件夹即可。
 
 ### 方式三：通过 Git 源码安装（开发者）

@@ -143,7 +143,8 @@
         name: userLegacy.name || userCore.name || handle || "X 用户",
         handle,
         avatar: String(userLegacy.profile_image_url_https || user?.avatar?.image_url || "").replace("_normal.", "_200x200."),
-        verified: Boolean(user?.is_blue_verified || userLegacy.verified || user?.verification?.verified)
+        verified: Boolean(user?.is_blue_verified || userLegacy.verified || user?.verification?.verified),
+        verifiedType: user?.verification?.verified_type || user?.verified_type || (user?.is_blue_verified ? "Blue" : userLegacy.verified ? "Blue" : "")
       },
       createdAt: legacy.created_at || "",
       conversationId: String(legacy.conversation_id_str || ""),
