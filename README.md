@@ -1,7 +1,8 @@
 <div align="center">
   <img src="icons/icon-128.png" alt="SideX Logo" width="90" height="90" />
   <h1>SideX</h1>
-  <p><strong>Immersive In-Place Comment Stream &amp; Thread Drawer for X (Twitter)</strong></p>
+  <p><strong>Click any tweet to auto-load comments on the right and unroll long posts in-place.</strong></p>
+  <p><em>Immersive X reading with zero page hops.</em></p>
 
   <p>
     <a href="README_CN.md">🇨🇳 简体中文</a> •
@@ -28,7 +29,7 @@
 
 ## 📖 Overview
 
-**SideX** transforms how you read X (Twitter) on the web. Instead of forcing a full-page navigation when clicking a post, SideX docks a minimalist comment stream directly into the right-hand column and expands the post in-place. Read threads, drill into sub-replies, and reply with images without ever losing your timeline scroll position.
+**SideX** transforms how you read X (Twitter) on the web. **Click any tweet to auto-load comments on the right and unroll long posts in-place**—experience seamless, uninterrupted reading with zero page hops. Never lose your timeline scroll position again.
 
 ---
 
