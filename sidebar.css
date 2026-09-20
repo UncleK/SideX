@@ -1377,3 +1377,22 @@ article[data-testid="tweet"].sidepeek-focal-active {
   opacity: 1;
 }
 
+/* Optimistic Inserted Comment Animation */
+.sidepeek-just-posted {
+  animation: sidepeek-fade-in-down 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  background: rgba(29, 155, 240, 0.06);
+  border-radius: 12px;
+  transition: background 1.5s ease;
+}
+
+@keyframes sidepeek-fade-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+

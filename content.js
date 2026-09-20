@@ -112,11 +112,225 @@
     return "sidepeek-theme-light";
   }
 
+  // ==========================================================================
+  // Internationalization (i18n)
+  // ==========================================================================
+  function getLocale() {
+    const htmlLang = (document.documentElement.lang || navigator.language || "en").toLowerCase();
+    return htmlLang.startsWith("zh") ? "zh" : "en";
+  }
+
+  const TRANSLATIONS = {
+    zh: {
+      threadBranch: "对话分支",
+      backToAll: "返回全部评论",
+      resetWidth: "恢复默认宽度",
+      widthResetToast: "已恢复默认宽度",
+      openOnX: "在 X 详情页打开",
+      closeSidebar: "关闭侧栏",
+      replyToAuthor: "回复 @{handle}... (按 Ctrl+Enter 发送)",
+      replyToUser: "回复 @{handle}...",
+      replyToWithPaste: "回复 @{handle}... (支持 Ctrl+V 粘贴图片)",
+      ctrlEnterHint: "按 Ctrl+Enter 发送",
+      replyBtn: "回复",
+      sendBtn: "发送",
+      cancelBtn: "取消",
+      sending: "发送中...",
+      uploading: "上传中...",
+      processingGif: "处理 GIF...",
+      uploadFailed: "图片上传失败",
+      gifUploadFailed: "GIF 上传失败",
+      replyFailed: "回复发送失败，请重试",
+      replySent: "回复已发布",
+      overCharLimit: "字数超出限制",
+      emptyReplies: "暂无评论，快来抢沙发吧~",
+      noMoreReplies: "暂无更多子回复",
+      loadingReplies: "正在加载评论...",
+      retryBtn: "重试",
+      showMoreReplies: "展开另外 {count} 条回复",
+      collapseReplies: "收起回复",
+      replyToTag: "回复",
+      replyAction: "回复",
+      repostAction: "转发",
+      likeAction: "喜欢",
+      bookmarkAction: "书签",
+      shareAction: "复制链接",
+      linkCopied: "链接已复制到剪贴板",
+      justNow: "刚刚",
+      minutesAgo: "{m}分",
+      hoursAgo: "{h}小时",
+      mediaToolTitle: "添加媒体 (图片/视频，支持 Ctrl+V)",
+      gifToolTitle: "添加 GIF",
+      pollToolTitle: "创建投票",
+      emojiToolTitle: "添加表情",
+      scheduleToolTitle: "定时发布",
+      locationToolTitle: "添加位置",
+      charCountTitle: "字数统计",
+      // Popover
+      searchGifPlaceholder: "搜索反应表情 GIF...",
+      noGifFound: "未找到相关 GIF",
+      allCategory: "全部",
+      pollTitle: "创建投票",
+      pollOpt1Placeholder: "选项 1 (必填)",
+      pollOpt2Placeholder: "选项 2 (必填)",
+      pollOpt3Placeholder: "选项 3 (选填)",
+      pollOpt4Placeholder: "选项 4 (选填)",
+      pollDurationLabel: "时长：",
+      pollDay1: "1 天",
+      pollDay3: "3 天",
+      pollDay7: "7 天",
+      pollClear: "清除",
+      pollApply: "应用",
+      pollValidation: "请至少填写选项 1 和选项 2",
+      pollAddedToast: "已添加投票选项",
+      pollBadge: "📊 投票 ({count}选项 · {days}天)",
+      deletePoll: "删除投票",
+      scheduleTitle: "定时发送",
+      scheduleLabel: "选择发送时间：",
+      scheduleClear: "清除",
+      scheduleApply: "设定",
+      scheduleSetToast: "已设定定时：{time}",
+      scheduleBadge: "🕒 定时：{time}",
+      cancelSchedule: "取消定时",
+      locationAttachedToast: "已附带位置",
+      locationClearedToast: "已清除位置标签",
+      locationBadge: "📍 位置已附带",
+      deleteLocation: "删除位置",
+      emojiCats: {
+        frequent: "常用",
+        gestures: "手势",
+        reactions: "反应"
+      },
+      gifTags: {
+        all: "全部",
+        laugh: "哈哈",
+        agree: "点赞",
+        clap: "鼓掌",
+        popcorn: "吃瓜",
+        love: "比心",
+        shock: "震惊",
+        facepalm: "无语",
+        cry: "哭泣"
+      }
+    },
+    en: {
+      threadBranch: "Thread",
+      backToAll: "Back to all replies",
+      resetWidth: "Reset width",
+      widthResetToast: "Default width restored",
+      openOnX: "Open on X",
+      closeSidebar: "Close sidebar",
+      replyToAuthor: "Reply to @{handle}... (Ctrl+Enter to send)",
+      replyToUser: "Reply to @{handle}...",
+      replyToWithPaste: "Reply to @{handle}... (Ctrl+V to paste images)",
+      ctrlEnterHint: "Ctrl+Enter to send",
+      replyBtn: "Reply",
+      sendBtn: "Send",
+      cancelBtn: "Cancel",
+      sending: "Replying...",
+      uploading: "Uploading...",
+      processingGif: "Processing GIF...",
+      uploadFailed: "Failed to upload image",
+      gifUploadFailed: "Failed to upload GIF",
+      replyFailed: "Failed to send reply. Please try again.",
+      replySent: "Reply sent",
+      overCharLimit: "Character limit exceeded",
+      emptyReplies: "No replies yet. Be the first to reply!",
+      noMoreReplies: "No more replies",
+      loadingReplies: "Loading replies...",
+      retryBtn: "Retry",
+      showMoreReplies: "Show {count} more replies",
+      collapseReplies: "Collapse replies",
+      replyToTag: "Replying to",
+      replyAction: "Reply",
+      repostAction: "Repost",
+      likeAction: "Like",
+      bookmarkAction: "Bookmark",
+      shareAction: "Copy link",
+      linkCopied: "Link copied to clipboard",
+      justNow: "just now",
+      minutesAgo: "{m}m",
+      hoursAgo: "{h}h",
+      mediaToolTitle: "Add media (Images/video, Ctrl+V)",
+      gifToolTitle: "Add GIF",
+      pollToolTitle: "Create poll",
+      emojiToolTitle: "Add emoji",
+      scheduleToolTitle: "Schedule post",
+      locationToolTitle: "Add location",
+      charCountTitle: "Character count",
+      // Popover
+      searchGifPlaceholder: "Search GIFs...",
+      noGifFound: "No GIFs found",
+      allCategory: "All",
+      pollTitle: "Create a poll",
+      pollOpt1Placeholder: "Option 1 (required)",
+      pollOpt2Placeholder: "Option 2 (required)",
+      pollOpt3Placeholder: "Option 3 (optional)",
+      pollOpt4Placeholder: "Option 4 (optional)",
+      pollDurationLabel: "Duration:",
+      pollDay1: "1 day",
+      pollDay3: "3 days",
+      pollDay7: "7 days",
+      pollClear: "Clear",
+      pollApply: "Apply",
+      pollValidation: "Please fill in at least Option 1 and Option 2",
+      pollAddedToast: "Poll added",
+      pollBadge: "📊 Poll ({count} options · {days}d)",
+      deletePoll: "Delete poll",
+      scheduleTitle: "Schedule post",
+      scheduleLabel: "Select date and time:",
+      scheduleClear: "Clear",
+      scheduleApply: "Confirm",
+      scheduleSetToast: "Scheduled for: {time}",
+      scheduleBadge: "🕒 Scheduled: {time}",
+      cancelSchedule: "Cancel schedule",
+      locationAttachedToast: "Location attached",
+      locationClearedToast: "Location removed",
+      locationBadge: "📍 Location attached",
+      deleteLocation: "Delete location",
+      emojiCats: {
+        frequent: "Frequent",
+        gestures: "Gestures",
+        reactions: "Reactions"
+      },
+      gifTags: {
+        all: "All",
+        laugh: "Laugh",
+        agree: "Agree",
+        clap: "Clap",
+        popcorn: "Popcorn",
+        love: "Love",
+        shock: "Shock",
+        facepalm: "Facepalm",
+        cry: "Cry"
+      }
+    }
+  };
+
+  function t(key, params = {}) {
+    const locale = getLocale();
+    const dict = TRANSLATIONS[locale] || TRANSLATIONS.en;
+    let val = dict[key] || TRANSLATIONS.zh[key] || key;
+    if (typeof val === "string") {
+      for (const [k, v] of Object.entries(params)) {
+        val = val.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
+      }
+    }
+    return val;
+  }
+
   function formatCount(number) {
     if (!number || number <= 0) return "";
-    if (number >= 10000) return `${(number / 10000).toFixed(1)}万`;
-    if (number >= 1000) return `${(number / 1000).toFixed(1)}k`;
-    return String(number);
+    const locale = getLocale();
+    if (locale === "zh") {
+      if (number >= 10000) return `${(number / 10000).toFixed(1)}万`;
+      if (number >= 1000) return `${(number / 1000).toFixed(1)}k`;
+      return String(number);
+    } else {
+      if (number >= 1000000) return `${(number / 1000000).toFixed(1)}M`;
+      if (number >= 1000) return `${(number / 1000).toFixed(1)}K`;
+      return String(number);
+    }
   }
 
   function formatTime(dateString) {
@@ -124,26 +338,49 @@
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return "";
     const diff = Math.floor((Date.now() - date.getTime()) / 1000);
-    if (diff < 60) return "刚刚";
-    if (diff < 3600) return `${Math.floor(diff / 60)}分`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}小时`;
-    return `${date.getMonth() + 1}月${date.getDate()}日`;
+    const locale = getLocale();
+    if (diff < 60) return t("justNow");
+    if (diff < 3600) return t("minutesAgo", { m: Math.floor(diff / 60) });
+    if (diff < 86400) return t("hoursAgo", { h: Math.floor(diff / 3600) });
+    if (locale === "zh") {
+      return `${date.getMonth() + 1}月${date.getDate()}日`;
+    } else {
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return `${months[date.getMonth()]} ${date.getDate()}`;
+    }
   }
 
-  // ==========================================================================
-  // Drawer DOM Setup & Layout Positioning
-  // ==========================================================================
-  function ensureDrawerRoot() {
-    let root = document.getElementById(ROOT_ID);
-    if (!root) {
-      root = document.createElement("aside");
-      root.id = ROOT_ID;
-      root.className = currentThemeClass();
-      document.body.appendChild(root);
-    } else {
-      root.className = currentThemeClass();
+  function getCurrentUserInfo() {
+    let avatar = "";
+    let name = "";
+    let handle = "";
+
+    const switcher = document.querySelector('[data-testid="SideNav_AccountSwitcher_Button"]');
+    if (switcher) {
+      const img = switcher.querySelector("img");
+      if (img) avatar = img.src;
+      const spans = switcher.querySelectorAll("span");
+      for (const s of spans) {
+        const txt = s.textContent?.trim() || "";
+        if (txt.startsWith("@") && !handle) {
+          handle = txt.slice(1);
+        } else if (txt && !name && !txt.startsWith("@") && !txt.includes("…")) {
+          name = txt;
+        }
+      }
     }
-    return root;
+
+    if (!avatar) {
+      avatar = getCurrentUserAvatar();
+    }
+    if (!name) {
+      name = handle || (getLocale() === "zh" ? "我" : "You");
+    }
+    if (!handle) {
+      handle = "you";
+    }
+
+    return { avatar, name, handle };
   }
 
   function getCurrentUserAvatar() {
@@ -304,26 +541,26 @@
     const drillDownParent = isDrillDown ? state.tree?.byId.get(state.activeView.parentId) : null;
     const userAvatar = getCurrentUserAvatar();
     const replyPlaceholder = isDrillDown
-      ? `回复 @${drillDownParent?.author?.handle || "此人"}...`
-      : `回复 @${state.focalModel?.author?.handle || "楼主"}... (按 Ctrl+Enter 发送)`;
+      ? t("replyToUser", { handle: drillDownParent?.author?.handle || (getLocale() === "zh" ? "此人" : "user") })
+      : t("replyToAuthor", { handle: state.focalModel?.author?.handle || (getLocale() === "zh" ? "楼主" : "author") });
 
     root.innerHTML = `
-      <div class="sidepeek-resize-handle sidepeek-resize-handle-left" title="拖动左边缘调整宽度，双击恢复默认">
+      <div class="sidepeek-resize-handle sidepeek-resize-handle-left" title="${getLocale() === "zh" ? "拖动左边缘调整宽度，双击恢复默认" : "Drag left edge to resize, double-click to reset"}">
         <div class="sidepeek-resize-grip"></div>
       </div>
-      <div class="sidepeek-resize-handle sidepeek-resize-handle-right" title="拖动右边缘调整宽度，双击恢复默认">
+      <div class="sidepeek-resize-handle sidepeek-resize-handle-right" title="${getLocale() === "zh" ? "拖动右边缘调整宽度，双击恢复默认" : "Drag right edge to resize, double-click to reset"}">
         <div class="sidepeek-resize-grip"></div>
       </div>
       <header class="sidepeek-header">
         <div class="sidepeek-title-wrap">
-          ${isDrillDown ? `<button type="button" class="sidepeek-back-btn" aria-label="返回全部评论">${ICONS.back}</button>` : ""}
-          <span class="sidepeek-title">${isDrillDown ? "对话分支" : "SideX"}</span>
+          ${isDrillDown ? `<button type="button" class="sidepeek-back-btn" aria-label="${t("backToAll")}">${ICONS.back}</button>` : ""}
+          <span class="sidepeek-title">${isDrillDown ? t("threadBranch") : "SideX"}</span>
           <span class="sidepeek-count-badge">(${isDrillDown ? (state.tree?.childrenMap.get(drillDownParent?.id)?.length || 0) : (state.tree?.rootReplies.length || 0)})</span>
         </div>
         <div class="sidepeek-header-actions">
-          <button type="button" class="sidepeek-icon-btn sidepeek-btn-reset-width" title="恢复默认宽度">${ICONS.resetWidth}</button>
-          ${state.focalModel?.url ? `<a href="${state.focalModel.url}" target="_blank" class="sidepeek-icon-btn" title="在 X 详情页打开">${ICONS.external}</a>` : ""}
-          <button type="button" class="sidepeek-icon-btn sidepeek-btn-close" aria-label="关闭侧栏">${ICONS.close}</button>
+          <button type="button" class="sidepeek-icon-btn sidepeek-btn-reset-width" title="${t("resetWidth")}">${ICONS.resetWidth}</button>
+          ${state.focalModel?.url ? `<a href="${state.focalModel.url}" target="_blank" class="sidepeek-icon-btn" title="${t("openOnX")}">${ICONS.external}</a>` : ""}
+          <button type="button" class="sidepeek-icon-btn sidepeek-btn-close" aria-label="${t("closeSidebar")}">${ICONS.close}</button>
         </div>
       </header>
       <div class="sidepeek-body"></div>
@@ -343,28 +580,28 @@
             <div class="sidepeek-footer-preview-area"></div>
             <div class="sidepeek-footer-toolbar">
               <div class="sidepeek-footer-tools">
-                <label class="sidepeek-tool-btn sidepeek-tool-media" title="添加媒体 (图片/视频，支持 Ctrl+V)">
+                <label class="sidepeek-tool-btn sidepeek-tool-media" title="${t("mediaToolTitle")}">
                   <input type="file" accept="image/*,video/*" class="sidepeek-media-file-input" style="display:none;" />
                   ${ICONS.media}
                 </label>
-                <button type="button" class="sidepeek-tool-btn sidepeek-tool-gif" title="添加 GIF">
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-gif" title="${t("gifToolTitle")}">
                   ${ICONS.gif}
                 </button>
-                <button type="button" class="sidepeek-tool-btn sidepeek-tool-poll" title="创建投票">
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-poll" title="${t("pollToolTitle")}">
                   ${ICONS.poll}
                 </button>
-                <button type="button" class="sidepeek-tool-btn sidepeek-tool-emoji" title="添加表情">
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-emoji" title="${t("emojiToolTitle")}">
                   ${ICONS.emoji}
                 </button>
-                <button type="button" class="sidepeek-tool-btn sidepeek-tool-schedule" title="定时发布">
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-schedule" title="${t("scheduleToolTitle")}">
                   ${ICONS.schedule}
                 </button>
-                <button type="button" class="sidepeek-tool-btn sidepeek-tool-location" title="添加位置">
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-location" title="${t("locationToolTitle")}">
                   ${ICONS.location}
                 </button>
               </div>
               <div class="sidepeek-footer-actions">
-                <div class="sidepeek-char-counter" title="字数统计">
+                <div class="sidepeek-char-counter" title="${t("charCountTitle")}">
                   <svg class="sidepeek-char-ring" viewBox="0 0 24 24" width="20" height="20">
                     <circle class="sidepeek-char-ring-bg" cx="12" cy="12" r="9" />
                     <circle class="sidepeek-char-ring-progress" cx="12" cy="12" r="9" />
@@ -372,7 +609,7 @@
                   <span class="sidepeek-char-warn-num"></span>
                 </div>
                 <div class="sidepeek-action-divider"></div>
-                <button type="button" class="sidepeek-footer-submit-btn" disabled>回复</button>
+                <button type="button" class="sidepeek-footer-submit-btn" disabled>${t("replyBtn")}</button>
               </div>
             </div>
           </div>
@@ -398,7 +635,7 @@
       body.innerHTML = `
         <div class="sidepeek-loading-box">
           <div class="sidepeek-spinner"></div>
-          <span>正在加载评论...</span>
+          <span>${t("loadingReplies")}</span>
         </div>`;
       return;
     }
@@ -407,7 +644,7 @@
       body.innerHTML = `
         <div class="sidepeek-empty-box">
           <span>${state.error}</span>
-          <button type="button" class="sidepeek-btn-submit sidepeek-retry-btn">重试</button>
+          <button type="button" class="sidepeek-btn-submit sidepeek-retry-btn">${t("retryBtn")}</button>
         </div>`;
       body.querySelector(".sidepeek-retry-btn")?.addEventListener("click", () => fetchThread(state.focalTweetId));
       return;
@@ -423,7 +660,7 @@
       if (children.length === 0) {
         const empty = document.createElement("div");
         empty.className = "sidepeek-empty-box";
-        empty.textContent = "暂无更多子回复";
+        empty.textContent = t("noMoreReplies");
         body.appendChild(empty);
       } else {
         for (let i = 0; i < children.length; i++) {
@@ -435,7 +672,7 @@
       // Root view: 默认直接展开二级回复
       const roots = state.tree?.rootReplies || [];
       if (roots.length === 0) {
-        body.innerHTML = `<div class="sidepeek-empty-box"><span>暂无评论，快来抢沙发吧~</span></div>`;
+        body.innerHTML = `<div class="sidepeek-empty-box"><span>${t("emptyReplies")}</span></div>`;
         return;
       }
 
@@ -470,7 +707,7 @@
             const moreBtn = document.createElement("button");
             moreBtn.type = "button";
             moreBtn.className = "sidepeek-drilldown-trigger";
-            moreBtn.textContent = `展开另外 ${remaining} 条回复`;
+            moreBtn.textContent = t("showMoreReplies", { count: remaining });
             moreBtn.addEventListener("click", () => {
               state.expandedThreadIds.add(rootReply.id);
               renderDrawer();
@@ -480,7 +717,7 @@
             const collapseBtn = document.createElement("button");
             collapseBtn.type = "button";
             collapseBtn.className = "sidepeek-drilldown-trigger";
-            collapseBtn.textContent = `收起回复`;
+            collapseBtn.textContent = t("collapseReplies");
             collapseBtn.addEventListener("click", () => {
               state.expandedThreadIds.delete(rootReply.id);
               renderDrawer();
@@ -512,23 +749,23 @@
           <span class="sidepeek-dot">·</span>
           <a class="sidepeek-time" href="${model.url}" target="_blank">${formatTime(model.createdAt)}</a>
         </div>
-        ${model.inReplyToHandle ? `<div class="sidepeek-reply-to-tag">回复 <a href="https://x.com/${model.inReplyToHandle}" target="_blank">@${model.inReplyToHandle}</a></div>` : ""}
+        ${model.inReplyToHandle ? `<div class="sidepeek-reply-to-tag">${t("replyToTag")} <a href="https://x.com/${model.inReplyToHandle}" target="_blank">@${model.inReplyToHandle}</a></div>` : ""}
         <div class="sidepeek-text">${escapeHtml(model.text)}</div>
         ${renderMediaBox(model.media)}
         <div class="sidepeek-action-bar">
-          <button type="button" class="sidepeek-action-btn sidepeek-act-reply" title="回复">
+          <button type="button" class="sidepeek-action-btn sidepeek-act-reply" title="${t("replyAction")}">
             <span class="sidepeek-action-btn-surface">${ICONS.reply} <span>${formatCount(model.counts.replies)}</span></span>
           </button>
-          <button type="button" class="sidepeek-action-btn sidepeek-act-repost ${model.flags.reposted ? "active" : ""}" title="转发">
+          <button type="button" class="sidepeek-action-btn sidepeek-act-repost ${model.flags.reposted ? "active" : ""}" title="${t("repostAction")}">
             <span class="sidepeek-action-btn-surface">${ICONS.repost} <span>${formatCount(model.counts.reposts)}</span></span>
           </button>
-          <button type="button" class="sidepeek-action-btn sidepeek-act-like ${model.flags.liked ? "active" : ""}" title="喜欢">
+          <button type="button" class="sidepeek-action-btn sidepeek-act-like ${model.flags.liked ? "active" : ""}" title="${t("likeAction")}">
             <span class="sidepeek-action-btn-surface">${model.flags.liked ? ICONS.likeSolid : ICONS.like} <span>${formatCount(model.counts.likes)}</span></span>
           </button>
-          <button type="button" class="sidepeek-action-btn sidepeek-act-bookmark ${model.flags.bookmarked ? "active" : ""}" title="书签">
+          <button type="button" class="sidepeek-action-btn sidepeek-act-bookmark ${model.flags.bookmarked ? "active" : ""}" title="${t("bookmarkAction")}">
             <span class="sidepeek-action-btn-surface">${model.flags.bookmarked ? ICONS.bookmarkSolid : ICONS.bookmark}</span>
           </button>
-          <button type="button" class="sidepeek-action-btn sidepeek-act-share" title="复制链接">
+          <button type="button" class="sidepeek-action-btn sidepeek-act-share" title="${t("shareAction")}">
             <span class="sidepeek-action-btn-surface">${ICONS.share}</span>
           </button>
         </div>
@@ -660,13 +897,13 @@
 
     container.innerHTML = `
       <div class="sidepeek-composer-inner">
-        <textarea class="sidepeek-composer-textarea" placeholder="回复 @${targetModel.author.handle}... (支持 Ctrl+V 粘贴图片)"></textarea>
+        <textarea class="sidepeek-composer-textarea" placeholder="${t("replyToWithPaste", { handle: targetModel.author.handle })}"></textarea>
         <div class="sidepeek-composer-preview-area"></div>
         <div class="sidepeek-composer-footer">
-          <span class="sidepeek-composer-hint">按 Ctrl+Enter 发送</span>
+          <span class="sidepeek-composer-hint">${t("ctrlEnterHint")}</span>
           <div class="sidepeek-composer-btns">
-            <button type="button" class="sidepeek-btn-cancel">取消</button>
-            <button type="button" class="sidepeek-btn-submit">发送</button>
+            <button type="button" class="sidepeek-btn-cancel">${t("cancelBtn")}</button>
+            <button type="button" class="sidepeek-btn-submit">${t("sendBtn")}</button>
           </div>
         </div>
       </div>
@@ -704,7 +941,7 @@
             previewArea.innerHTML = `
               <div class="sidepeek-pasted-preview">
                 <img src="${dataUrl}" alt="" />
-                <button type="button" class="sidepeek-remove-img-btn" title="删除图片">✕</button>
+                <button type="button" class="sidepeek-remove-img-btn" title="✕">✕</button>
               </div>
             `;
             previewArea.querySelector(".sidepeek-remove-img-btn")?.addEventListener("click", () => {
@@ -716,16 +953,16 @@
             // Upload via page-bridge in background
             try {
               submitBtn.disabled = true;
-              submitBtn.textContent = "上传中...";
+              submitBtn.textContent = t("uploading");
               const res = await requestPage("UPLOAD_MEDIA", { base64, mimeType: file.type, size: file.size });
               pastedMediaId = res.mediaId;
             } catch (err) {
-              alert(err.message || "图片上传失败");
+              showToast(err.message || t("uploadFailed"));
               previewArea.innerHTML = "";
               pastedMediaId = null;
             } finally {
               submitBtn.disabled = false;
-              submitBtn.textContent = "发送";
+              submitBtn.textContent = t("sendBtn");
             }
           };
           reader.readAsDataURL(file);
@@ -734,13 +971,13 @@
       }
     });
 
-    // Submit handler
+    // Submit handler: Optimistic In-Place Append (无刷新直接添加到回复)
     async function doSubmit() {
       const text = textarea.value.trim();
       if (!text && !pastedMediaId) return;
 
       submitBtn.disabled = true;
-      submitBtn.textContent = "发送中...";
+      submitBtn.textContent = t("sending");
 
       try {
         const mediaIds = pastedMediaId ? [pastedMediaId] : [];
@@ -750,13 +987,66 @@
           mediaIds
         });
 
-        // Close composer and reload/update thread
+        const currentUser = getCurrentUserInfo();
+        const mediaSnapshot = pastedBlob ? [{ type: "photo", url: previewArea.querySelector("img")?.src || "" }] : [];
+
+        // Close inline composer immediately
+        container.classList.remove("expanded");
         state.activeComposerReplyId = null;
-        fetchThread(state.focalTweetId);
+        container.innerHTML = "";
+
+        // Create Optimistic Comment Model
+        const optimisticId = `local-${Date.now()}`;
+        const newReplyModel = {
+          id: optimisticId,
+          text,
+          createdAt: new Date().toISOString(),
+          author: {
+            name: currentUser.name,
+            handle: currentUser.handle,
+            avatar: currentUser.avatar,
+            verified: false
+          },
+          inReplyToHandle: targetModel.author.handle,
+          counts: { replies: 0, reposts: 0, likes: 0, bookmarks: 0 },
+          flags: { liked: false, reposted: false, bookmarked: false },
+          media: mediaSnapshot,
+          url: ""
+        };
+
+        // Add to state tree
+        if (!state.tree.childrenMap.has(targetModel.id)) {
+          state.tree.childrenMap.set(targetModel.id, []);
+        }
+        state.tree.childrenMap.get(targetModel.id).push(newReplyModel);
+        state.tree.byId.set(newReplyModel.id, newReplyModel);
+
+        // Update targetModel reply count
+        targetModel.counts.replies = (targetModel.counts.replies || 0) + 1;
+        const parentArticle = container.closest(".sidepeek-comment-item");
+        if (parentArticle) {
+          const replyCountSpan = parentArticle.querySelector(".sidepeek-act-reply span span");
+          if (replyCountSpan) replyCountSpan.textContent = formatCount(targetModel.counts.replies);
+        }
+
+        // Render child comment node
+        const childNode = renderCommentNode(newReplyModel, false, true);
+        childNode.classList.add("sidepeek-just-posted");
+
+        // Insert into DOM
+        const threadGroup = parentArticle?.closest(".sidepeek-thread-group");
+        if (threadGroup) {
+          threadGroup.appendChild(childNode);
+        } else if (parentArticle && parentArticle.parentNode) {
+          parentArticle.parentNode.insertBefore(childNode, parentArticle.nextSibling);
+        }
+
+        childNode.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        showToast(t("replySent"));
       } catch (err) {
-        alert(err.message || "回复发送失败，请重试");
+        showToast(err.message || t("replyFailed"));
         submitBtn.disabled = false;
-        submitBtn.textContent = "发送";
+        submitBtn.textContent = t("sendBtn");
       }
     }
 
@@ -912,14 +1202,15 @@
     if (emojiPopover) {
       let activeCategory = 0;
       function renderEmojiPopover() {
+        const catKeys = ["frequent", "gestures", "reactions"];
         emojiPopover.innerHTML = `
           <div class="sidepeek-popover-header">
             <div class="sidepeek-popover-tabs">
               ${EMOJI_CATEGORIES.map((cat, idx) => `
-                <button type="button" class="sidepeek-popover-tab ${idx === activeCategory ? "active" : ""}" data-idx="${idx}">${cat.name}</button>
+                <button type="button" class="sidepeek-popover-tab ${idx === activeCategory ? "active" : ""}" data-idx="${idx}">${t("emojiCats." + catKeys[idx]) || cat.name}</button>
               `).join("")}
             </div>
-            <button type="button" class="sidepeek-popover-close" title="关闭">✕</button>
+            <button type="button" class="sidepeek-popover-close" title="✕">✕</button>
           </div>
           <div class="sidepeek-emoji-grid">
             ${EMOJI_CATEGORIES[activeCategory].emojis.map((emoji) => `
@@ -977,17 +1268,27 @@
           return selectedTag === "全部" || item.tag === selectedTag;
         });
 
-        const uniqueTags = ["全部", ...new Set(REACTION_GIFS.map((g) => g.tag))];
+        const rawTags = ["全部", ...new Set(REACTION_GIFS.map((g) => g.tag))];
 
         gifPopover.innerHTML = `
           <div class="sidepeek-popover-header">
-            <input type="text" class="sidepeek-gif-search-input" placeholder="搜索反应表情 GIF..." value="${query}" />
-            <button type="button" class="sidepeek-popover-close" title="关闭">✕</button>
+            <input type="text" class="sidepeek-gif-search-input" placeholder="${t("searchGifPlaceholder")}" value="${query}" />
+            <button type="button" class="sidepeek-popover-close" title="✕">✕</button>
           </div>
           <div class="sidepeek-gif-tags">
-            ${uniqueTags.map((tag) => `
-              <button type="button" class="sidepeek-gif-tag ${tag === selectedTag ? "active" : ""}" data-tag="${tag}">${tag}</button>
-            `).join("")}
+            ${rawTags.map((tag) => {
+              const tagLabel = tag === "全部" ? t("allCategory") : (t("gifTags." + {
+                "哈哈": "laugh",
+                "点赞": "agree",
+                "鼓掌": "clap",
+                "吃瓜": "popcorn",
+                "比心": "love",
+                "震惊": "shock",
+                "无语": "facepalm",
+                "哭泣": "cry"
+              }[tag]) || tag);
+              return `<button type="button" class="sidepeek-gif-tag ${tag === selectedTag ? "active" : ""}" data-tag="${tag}">${tagLabel}</button>`;
+            }).join("")}
           </div>
           <div class="sidepeek-gif-grid">
             ${filteredGifs.length > 0 ? filteredGifs.map((gif) => `
@@ -995,7 +1296,7 @@
                 <img src="${gif.url}" alt="${gif.title}" loading="lazy" />
                 <span class="sidepeek-gif-label">${gif.title}</span>
               </div>
-            `).join("") : `<div class="sidepeek-popover-empty">未找到相关 GIF</div>`}
+            `).join("") : `<div class="sidepeek-popover-empty">${t("noGifFound")}</div>`}
           </div>
         `;
 
@@ -1010,10 +1311,10 @@
           closeAllPopovers();
         });
 
-        gifPopover.querySelectorAll(".sidepeek-gif-tag").forEach((t) => {
-          t.addEventListener("click", (e) => {
+        gifPopover.querySelectorAll(".sidepeek-gif-tag").forEach((tBtn) => {
+          tBtn.addEventListener("click", (e) => {
             e.stopPropagation();
-            selectedTag = t.dataset.tag;
+            selectedTag = tBtn.dataset.tag;
             renderGifPopover();
           });
         });
@@ -1029,7 +1330,7 @@
               <div class="sidepeek-pasted-preview">
                 <img src="${gifUrl}" alt="${gifTitle}" />
                 <div class="sidepeek-gif-badge">GIF</div>
-                <button type="button" class="sidepeek-remove-img-btn" title="删除 GIF">✕</button>
+                <button type="button" class="sidepeek-remove-img-btn" title="✕">✕</button>
               </div>
             `;
             previewArea.querySelector(".sidepeek-remove-img-btn")?.addEventListener("click", () => {
@@ -1041,7 +1342,7 @@
 
             try {
               submitBtn.disabled = true;
-              submitBtn.textContent = "处理 GIF...";
+              submitBtn.textContent = t("processingGif");
               const resp = await fetch(gifUrl);
               const blob = await resp.blob();
               pastedBlob = blob;
@@ -1050,22 +1351,22 @@
                 const dataUrl = reader.result;
                 const base64 = dataUrl.split(",")[1];
                 try {
-                  submitBtn.textContent = "上传中...";
+                  submitBtn.textContent = t("uploading");
                   const res = await requestPage("UPLOAD_MEDIA", { base64, mimeType: "image/gif", size: blob.size });
                   pastedMediaId = res.mediaId;
                 } catch (err) {
-                  showToast(err.message || "GIF 上传失败");
+                  showToast(err.message || t("gifUploadFailed"));
                   previewArea.innerHTML = "";
                   pastedMediaId = null;
                 } finally {
-                  submitBtn.textContent = "回复";
+                  submitBtn.textContent = t("replyBtn");
                   updateComposerState();
                 }
               };
               reader.readAsDataURL(blob);
             } catch {
-              showToast("已载入 GIF 预览");
-              submitBtn.textContent = "回复";
+              showToast(t("gifUploadFailed"));
+              submitBtn.textContent = t("replyBtn");
               updateComposerState();
             }
           });
@@ -1086,25 +1387,25 @@
       function renderPollPopover() {
         pollPopover.innerHTML = `
           <div class="sidepeek-popover-header">
-            <span class="sidepeek-popover-title">创建投票</span>
-            <button type="button" class="sidepeek-popover-close" title="关闭">✕</button>
+            <span class="sidepeek-popover-title">${t("pollTitle")}</span>
+            <button type="button" class="sidepeek-popover-close" title="✕">✕</button>
           </div>
           <div class="sidepeek-poll-body">
-            <input type="text" class="sidepeek-poll-input" id="sp-poll-opt1" placeholder="选项 1 (必填)" maxlength="25" />
-            <input type="text" class="sidepeek-poll-input" id="sp-poll-opt2" placeholder="选项 2 (必填)" maxlength="25" />
-            <input type="text" class="sidepeek-poll-input" id="sp-poll-opt3" placeholder="选项 3 (选填)" maxlength="25" />
-            <input type="text" class="sidepeek-poll-input" id="sp-poll-opt4" placeholder="选项 4 (选填)" maxlength="25" />
+            <input type="text" class="sidepeek-poll-input" id="sp-poll-opt1" placeholder="${t("pollOpt1Placeholder")}" maxlength="25" />
+            <input type="text" class="sidepeek-poll-input" id="sp-poll-opt2" placeholder="${t("pollOpt2Placeholder")}" maxlength="25" />
+            <input type="text" class="sidepeek-poll-input" id="sp-poll-opt3" placeholder="${t("pollOpt3Placeholder")}" maxlength="25" />
+            <input type="text" class="sidepeek-poll-input" id="sp-poll-opt4" placeholder="${t("pollOpt4Placeholder")}" maxlength="25" />
             <div class="sidepeek-poll-footer">
-              <label>时长：
+              <label>${t("pollDurationLabel")}
                 <select class="sidepeek-poll-duration">
-                  <option value="1">1 天</option>
-                  <option value="3">3 天</option>
-                  <option value="7">7 天</option>
+                  <option value="1">${t("pollDay1")}</option>
+                  <option value="3">${t("pollDay3")}</option>
+                  <option value="7">${t("pollDay7")}</option>
                 </select>
               </label>
               <div class="sidepeek-poll-btns">
-                <button type="button" class="sidepeek-poll-btn-clear">清除</button>
-                <button type="button" class="sidepeek-poll-btn-apply">应用</button>
+                <button type="button" class="sidepeek-poll-btn-clear">${t("pollClear")}</button>
+                <button type="button" class="sidepeek-poll-btn-apply">${t("pollApply")}</button>
               </div>
             </div>
           </div>
@@ -1131,7 +1432,7 @@
           const duration = pollPopover.querySelector(".sidepeek-poll-duration")?.value;
 
           if (!opt1 || !opt2) {
-            showToast("请至少填写选项 1 和选项 2");
+            showToast(t("pollValidation"));
             return;
           }
           const options = [opt1, opt2];
@@ -1141,7 +1442,7 @@
           activePoll = { options, duration };
           updatePollBadge();
           closeAllPopovers();
-          showToast("已添加投票选项");
+          showToast(t("pollAddedToast"));
           updateComposerState();
         });
       }
@@ -1153,8 +1454,8 @@
           const badge = document.createElement("div");
           badge.className = "sidepeek-composer-tag sidepeek-poll-badge";
           badge.innerHTML = `
-            <span>📊 投票 (${activePoll.options.length}选项 · ${activePoll.duration}天)</span>
-            <button type="button" class="sidepeek-tag-remove" title="删除投票">✕</button>
+            <span>${t("pollBadge", { count: activePoll.options.length, days: activePoll.duration })}</span>
+            <button type="button" class="sidepeek-tag-remove" title="${t("deletePoll")}">✕</button>
           `;
           badge.querySelector(".sidepeek-tag-remove")?.addEventListener("click", () => {
             activePoll = null;
@@ -1184,15 +1485,15 @@
 
         schedulePopover.innerHTML = `
           <div class="sidepeek-popover-header">
-            <span class="sidepeek-popover-title">定时发送</span>
-            <button type="button" class="sidepeek-popover-close" title="关闭">✕</button>
+            <span class="sidepeek-popover-title">${t("scheduleTitle")}</span>
+            <button type="button" class="sidepeek-popover-close" title="✕">✕</button>
           </div>
           <div class="sidepeek-schedule-body">
-            <label class="sidepeek-schedule-label">选择发送时间：</label>
+            <label class="sidepeek-schedule-label">${t("scheduleLabel")}</label>
             <input type="datetime-local" class="sidepeek-schedule-input" value="${defaultTime}" />
             <div class="sidepeek-schedule-footer">
-              <button type="button" class="sidepeek-schedule-btn-clear">清除</button>
-              <button type="button" class="sidepeek-schedule-btn-apply">设定</button>
+              <button type="button" class="sidepeek-schedule-btn-clear">${t("scheduleClear")}</button>
+              <button type="button" class="sidepeek-schedule-btn-apply">${t("scheduleApply")}</button>
             </div>
           </div>
         `;
@@ -1216,7 +1517,7 @@
           activeSchedule = val;
           updateScheduleBadge();
           closeAllPopovers();
-          showToast(`已设定定时：${val.replace("T", " ")}`);
+          showToast(t("scheduleSetToast", { time: val.replace("T", " ") }));
           updateComposerState();
         });
       }
@@ -1228,8 +1529,8 @@
           const badge = document.createElement("div");
           badge.className = "sidepeek-composer-tag sidepeek-schedule-badge";
           badge.innerHTML = `
-            <span>🕒 定时：${activeSchedule.replace("T", " ")}</span>
-            <button type="button" class="sidepeek-tag-remove" title="取消定时">✕</button>
+            <span>${t("scheduleBadge", { time: activeSchedule.replace("T", " ") })}</span>
+            <button type="button" class="sidepeek-tag-remove" title="${t("cancelSchedule")}">✕</button>
           `;
           badge.querySelector(".sidepeek-tag-remove")?.addEventListener("click", () => {
             activeSchedule = null;
@@ -1257,14 +1558,14 @@
       if (activeLocation) {
         activeLocation = null;
         previewArea.querySelector(".sidepeek-location-badge")?.remove();
-        showToast("已清除位置标签");
+        showToast(t("locationClearedToast"));
       } else {
-        activeLocation = "当前位置";
+        activeLocation = "current";
         const badge = document.createElement("div");
         badge.className = "sidepeek-composer-tag sidepeek-location-badge";
         badge.innerHTML = `
-          <span>📍 位置已附带</span>
-          <button type="button" class="sidepeek-tag-remove" title="删除位置">✕</button>
+          <span>${t("locationBadge")}</span>
+          <button type="button" class="sidepeek-tag-remove" title="${t("deleteLocation")}">✕</button>
         `;
         badge.querySelector(".sidepeek-tag-remove")?.addEventListener("click", () => {
           activeLocation = null;
@@ -1272,7 +1573,7 @@
           updateComposerState();
         });
         previewArea.appendChild(badge);
-        showToast("已附带位置");
+        showToast(t("locationAttachedToast"));
       }
       updateComposerState();
     });
@@ -1291,7 +1592,7 @@
         previewArea.innerHTML = `
           <div class="sidepeek-pasted-preview">
             <img src="${dataUrl}" alt="" />
-            <button type="button" class="sidepeek-remove-img-btn" title="删除图片">✕</button>
+            <button type="button" class="sidepeek-remove-img-btn" title="✕">✕</button>
           </div>
         `;
         previewArea.querySelector(".sidepeek-remove-img-btn")?.addEventListener("click", () => {
@@ -1303,15 +1604,15 @@
 
         try {
           submitBtn.disabled = true;
-          submitBtn.textContent = "上传中...";
+          submitBtn.textContent = t("uploading");
           const res = await requestPage("UPLOAD_MEDIA", { base64, mimeType: file.type, size: file.size });
           pastedMediaId = res.mediaId;
         } catch (err) {
-          showToast(err.message || "图片上传失败");
+          showToast(err.message || t("uploadFailed"));
           previewArea.innerHTML = "";
           pastedMediaId = null;
         } finally {
-          submitBtn.textContent = "回复";
+          submitBtn.textContent = t("replyBtn");
           updateComposerState();
         }
       };
@@ -1338,24 +1639,24 @@
     });
 
     // =========================================================================
-    // 7. Submit Reply (In-Place, Zero Modal)
+    // 7. Submit Reply: Optimistic In-Place Append (无刷新直接添加到回复)
     // =========================================================================
     async function doSubmit() {
       const text = textarea.value.trim();
       const len = calculateTweetLength(text);
       if (len > 280) {
-        showToast("字数超出限制");
+        showToast(t("overCharLimit"));
         return;
       }
       if (!text && !pastedMediaId && !activePoll) return;
 
       submitBtn.disabled = true;
-      submitBtn.textContent = "发送中...";
+      submitBtn.textContent = t("sending");
 
       try {
         let finalText = text;
         if (activePoll) {
-          finalText += `\n[投票: ${activePoll.options.join(" / ")}]`;
+          finalText += `\n[${t("pollTitle")}: ${activePoll.options.join(" / ")}]`;
         }
 
         const mediaIds = pastedMediaId ? [pastedMediaId] : [];
@@ -1365,7 +1666,11 @@
           mediaIds
         });
 
-        // Reset composer state
+        // 1. Snapshot user info & media preview before clearing
+        const currentUser = getCurrentUserInfo();
+        const mediaSnapshot = pastedBlob ? [{ type: "photo", url: previewArea.querySelector("img")?.src || "" }] : [];
+
+        // 2. Reset composer inputs immediately
         textarea.value = "";
         previewArea.innerHTML = "";
         pastedMediaId = null;
@@ -1373,17 +1678,79 @@
         activePoll = null;
         activeSchedule = null;
         activeLocation = null;
-        submitBtn.textContent = "回复";
+        submitBtn.textContent = t("replyBtn");
         updateComposerState();
         closeAllPopovers();
 
-        showToast("回复已发布");
-        // Reload thread so new reply immediately appears at top of drawer
-        fetchThread(state.focalTweetId);
+        // 3. Create Optimistic Comment Model
+        const optimisticId = `local-${Date.now()}`;
+        const newReplyModel = {
+          id: optimisticId,
+          text: finalText,
+          createdAt: new Date().toISOString(),
+          author: {
+            name: currentUser.name,
+            handle: currentUser.handle,
+            avatar: currentUser.avatar,
+            verified: false
+          },
+          inReplyToHandle: isDrillDown && drillDownParent ? drillDownParent.author.handle : state.focalModel?.author?.handle || "",
+          counts: { replies: 0, reposts: 0, likes: 0, bookmarks: 0 },
+          flags: { liked: false, reposted: false, bookmarked: false },
+          media: mediaSnapshot,
+          url: ""
+        };
+
+        // 4. In-place DOM Insertion without any full-drawer loading/clearing!
+        const body = root.querySelector(".sidepeek-body");
+        if (body) {
+          // If body currently displays "No replies yet", clear it!
+          const emptyBox = body.querySelector(".sidepeek-empty-box");
+          if (emptyBox) emptyBox.remove();
+
+          if (isDrillDown && drillDownParent) {
+            // Append to drilldown list
+            if (!state.tree.childrenMap.has(drillDownParent.id)) {
+              state.tree.childrenMap.set(drillDownParent.id, []);
+            }
+            state.tree.childrenMap.get(drillDownParent.id).push(newReplyModel);
+            state.tree.byId.set(newReplyModel.id, newReplyModel);
+
+            const node = renderCommentNode(newReplyModel, false, true);
+            node.classList.add("sidepeek-just-posted");
+            body.appendChild(node);
+            node.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+            const badge = root.querySelector(".sidepeek-count-badge");
+            if (badge) {
+              const count = state.tree.childrenMap.get(drillDownParent.id).length;
+              badge.textContent = `(${count})`;
+            }
+          } else {
+            // Prepend to root replies
+            if (!state.tree) {
+              state.tree = { rootReplies: [], childrenMap: new Map(), byId: new Map() };
+            }
+            state.tree.rootReplies.unshift(newReplyModel);
+            state.tree.byId.set(newReplyModel.id, newReplyModel);
+
+            const node = renderCommentNode(newReplyModel, false);
+            node.classList.add("sidepeek-just-posted");
+            body.prepend(node);
+            body.scrollTo({ top: 0, behavior: "smooth" });
+
+            const badge = root.querySelector(".sidepeek-count-badge");
+            if (badge) {
+              badge.textContent = `(${state.tree.rootReplies.length})`;
+            }
+          }
+        }
+
+        showToast(t("replySent"));
       } catch (err) {
-        showToast(err.message || "回复发送失败，请重试");
+        showToast(err.message || t("replyFailed"));
         submitBtn.disabled = false;
-        submitBtn.textContent = "回复";
+        submitBtn.textContent = t("replyBtn");
       }
     }
 
@@ -1437,9 +1804,9 @@
   function handleShare(model) {
     if (!model.url) return;
     navigator.clipboard.writeText(model.url).then(() => {
-      showToast("已复制推文链接到剪贴板");
+      showToast(t("linkCopied"));
     }).catch(() => {
-      showToast("复制链接失败");
+      showToast(getLocale() === "zh" ? "复制链接失败" : "Failed to copy link");
     });
   }
 
