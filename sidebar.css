@@ -256,6 +256,22 @@ article[data-testid="tweet"].sidepeek-focal-active {
   object-fit: cover;
   background: var(--sp-soft);
   z-index: 1;
+  display: block;
+}
+
+.sidepeek-avatar-link {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  z-index: 1;
+  text-decoration: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.sidepeek-avatar-link:hover .sidepeek-avatar {
+  opacity: 0.85;
 }
 
 /* Thread line connecting to subsequent reply */
@@ -368,6 +384,24 @@ article[data-testid="tweet"].sidepeek-focal-active {
   color: var(--sp-fg);
   line-height: 1.45;
   margin-bottom: 8px;
+}
+
+.sidepeek-text a,
+.sidepeek-text-link {
+  color: var(--sp-accent);
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.sidepeek-text a:hover,
+.sidepeek-text-link:hover {
+  text-decoration: underline;
+}
+
+.sidepeek-text-mention,
+.sidepeek-text-hashtag,
+.sidepeek-text-cashtag {
+  color: var(--sp-accent);
 }
 
 /* Media preview & Multi-image Grid */

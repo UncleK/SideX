@@ -445,6 +445,17 @@
       root = document.createElement("aside");
       root.id = ROOT_ID;
       root.className = currentThemeClass();
+
+      // 阻止抽屉内所有 <a> 标签的点击冒泡到外部，防止 Twitter 原生 SPA router 拦截或导致主页异常重定向
+      const handleLinkClick = (e) => {
+        const link = e.target.closest("a");
+        if (link && link.href) {
+          e.stopPropagation();
+        }
+      };
+      root.addEventListener("click", handleLinkClick);
+      root.addEventListener("auxclick", handleLinkClick);
+
       document.body.appendChild(root);
     } else {
       root.className = currentThemeClass();
@@ -817,9 +828,87 @@
   function cleanCommentBody(text, inReplyToHandle) {
     if (!text) return "";
     if (inReplyToHandle) {
-      return text.replace(/^(?:@[A-Za-z0-9_]+\s*)+/, "").trim();
+      const stripped = text.replace(/^(?:@[A-Za-z0-9_]+\s*)+/, "").trim();
+      return stripped || text;
     }
     return text;
+  }
+
+  function formatCommentText(model) {
+    if (!model?.text) return "";
+    let text = cleanCommentBody(model.text, model.inReplyToHandle);
+    if (!text) return "";
+
+    const tokens = [];
+    const tokenPrefix = `__SP_LINK_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}_`;
+
+    function createToken(html) {
+      const id = `${tokenPrefix}${tokens.length}__`;
+      tokens.push({ id, html });
+      return id;
+    }
+
+    // 1. 优先替换已知 entity URLs（如 t.co 短链 -> 真实目标链接及友好展示域名）
+    const entityUrls = model.entities?.urls || [];
+    for (const u of entityUrls) {
+      if (!u?.url) continue;
+      const targetUrl = u.expandedUrl || u.url;
+      const display = u.displayUrl || u.expandedUrl || u.url;
+      if (!/^https?:\/\//i.test(targetUrl)) continue;
+
+      const safeHref = escapeHtml(targetUrl);
+      const safeTitle = escapeHtml(targetUrl);
+      const safeDisplay = escapeHtml(display);
+      const linkHtml = `<a href="${safeHref}" target="_blank" rel="noopener noreferrer" class="sidepeek-text-link" title="${safeTitle}">${safeDisplay}</a>`;
+
+      if (text.includes(u.url)) {
+        text = text.split(u.url).join(createToken(linkHtml));
+      }
+    }
+
+    // 2. 匹配并转换文本中其他未被 entities 捕获的原生 URL (http:// 或 https://)
+    const URL_REGEX = /https?:\/\/[^\s<>"'`]+[^\s<>"'`.,;:?!(){}\[\]]/gi;
+    text = text.replace(URL_REGEX, (rawUrl) => {
+      if (rawUrl.startsWith(tokenPrefix)) return rawUrl;
+      const safeUrl = escapeHtml(rawUrl);
+      const linkHtml = `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="sidepeek-text-link" title="${safeUrl}">${safeUrl}</a>`;
+      return createToken(linkHtml);
+    });
+
+    // 3. 匹配并转换 @用户 提及
+    const MENTION_REGEX = /(^|[^\w@])@([A-Za-z0-9_]{1,30})\b/g;
+    text = text.replace(MENTION_REGEX, (match, prefix, handle) => {
+      const safeHandle = escapeHtml(handle);
+      const linkHtml = `<a href="https://x.com/${safeHandle}" target="_blank" rel="noopener noreferrer" class="sidepeek-text-link sidepeek-text-mention">@${safeHandle}</a>`;
+      return `${prefix}${createToken(linkHtml)}`;
+    });
+
+    // 4. 匹配并转换 #话题 标签（支持中文等各类 Unicode 字符）
+    const HASHTAG_REGEX = /(^|[^\w#])#([A-Za-z0-9_\u0080-\uffff]+)/g;
+    text = text.replace(HASHTAG_REGEX, (match, prefix, tag) => {
+      const safeTag = escapeHtml(tag);
+      const encodedTag = encodeURIComponent(tag);
+      const linkHtml = `<a href="https://x.com/hashtag/${encodedTag}" target="_blank" rel="noopener noreferrer" class="sidepeek-text-link sidepeek-text-hashtag">#${safeTag}</a>`;
+      return `${prefix}${createToken(linkHtml)}`;
+    });
+
+    // 5. 匹配并转换 $股票/代币 标识
+    const CASHTAG_REGEX = /(^|[^\w$])\$([A-Za-z]{1,6})\b/g;
+    text = text.replace(CASHTAG_REGEX, (match, prefix, symbol) => {
+      const safeSymbol = escapeHtml(symbol);
+      const linkHtml = `<a href="https://x.com/search?q=%24${safeSymbol}" target="_blank" rel="noopener noreferrer" class="sidepeek-text-link sidepeek-text-cashtag">$${safeSymbol}</a>`;
+      return `${prefix}${createToken(linkHtml)}`;
+    });
+
+    // 6. 对普通文本进行 HTML 转义，彻底防范 XSS
+    let escaped = escapeHtml(text);
+
+    // 7. 还原安全的链接 HTML
+    for (const { id, html } of tokens) {
+      escaped = escaped.split(id).join(html);
+    }
+
+    return escaped;
   }
 
   function renderCommentNode(model, hasThreadLine = false, isChild = false) {
@@ -827,21 +916,39 @@
     item.className = `sidepeek-comment-item${isChild ? " sidepeek-child-comment" : ""}`;
     item.dataset.id = model.id;
 
+    const authorName = escapeHtml(model.author.name);
+    const authorHandle = escapeHtml(model.author.handle);
+    const avatarHtml = model.author.handle
+      ? `<a class="sidepeek-avatar-link" href="https://x.com/${authorHandle}" target="_blank" title="${authorName} (@${authorHandle})"><img class="sidepeek-avatar" src="${model.author.avatar}" alt="${authorName}" /></a>`
+      : `<img class="sidepeek-avatar" src="${model.author.avatar}" alt="${authorName}" />`;
+
+    const nameHtml = model.author.handle
+      ? `<a class="sidepeek-name" href="https://x.com/${authorHandle}" target="_blank">${authorName}</a>`
+      : `<span class="sidepeek-name">${authorName}</span>`;
+
+    const timeHtml = model.url
+      ? `<a class="sidepeek-time" href="${model.url}" target="_blank">${formatTime(model.createdAt)}</a>`
+      : `<span class="sidepeek-time">${formatTime(model.createdAt)}</span>`;
+
+    const replyToHtml = model.inReplyToHandle
+      ? `<div class="sidepeek-reply-to-tag">${t("replyToTag")} <a href="https://x.com/${escapeHtml(model.inReplyToHandle)}" target="_blank">@${escapeHtml(model.inReplyToHandle)}</a></div>`
+      : "";
+
     item.innerHTML = `
       <div class="sidepeek-avatar-col">
-        <img class="sidepeek-avatar" src="${model.author.avatar}" alt="${model.author.name}" />
+        ${avatarHtml}
         ${hasThreadLine ? '<div class="sidepeek-thread-line"></div>' : ""}
       </div>
       <div class="sidepeek-content-col">
         <div class="sidepeek-author-row">
-          <a class="sidepeek-name" href="https://x.com/${model.author.handle}" target="_blank">${model.author.name}</a>
+          ${nameHtml}
           ${renderVerifiedBadge(model.author)}
-          <span class="sidepeek-handle">@${model.author.handle}</span>
+          <span class="sidepeek-handle">@${authorHandle}</span>
           <span class="sidepeek-dot">·</span>
-          <a class="sidepeek-time" href="${model.url}" target="_blank">${formatTime(model.createdAt)}</a>
+          ${timeHtml}
         </div>
-        ${model.inReplyToHandle ? `<div class="sidepeek-reply-to-tag">${t("replyToTag")} <a href="https://x.com/${model.inReplyToHandle}" target="_blank">@${model.inReplyToHandle}</a></div>` : ""}
-        <div class="sidepeek-text">${escapeHtml(cleanCommentBody(model.text, model.inReplyToHandle))}</div>
+        ${replyToHtml}
+        <div class="sidepeek-text">${formatCommentText(model)}</div>
         ${renderMediaBox(model.media)}
         <div class="sidepeek-action-bar">
           <button type="button" class="sidepeek-action-btn sidepeek-act-reply" title="${t("replyAction")}">
@@ -1978,17 +2085,46 @@
     renderDrawer();
   }
 
-  function shouldSkipClick(target) {
-    return Boolean(
+  function isArticleTweet(article) {
+    if (!article) return false;
+
+    // 1. 包含前往长文页面的超链接 (/article/ 或 /i/article/)
+    if (article.querySelector('a[href*="/article/"], a[href*="/i/article/"]')) {
+      return true;
+    }
+
+    // 2. 包含 𝕏 Article 特定的 data-testid 或 aria-label
+    if (
+      article.querySelector(
+        '[data-testid*="article" i], [data-testid*="Article"], ' +
+        '[data-testid*="twitterArticle"], [aria-label*="article" i]'
+      )
+    ) {
+      return true;
+    }
+
+    // 3. 包含 "𝕏 Article"、"Article" 徽章或文本标签
+    // X 官方长文卡片左下角带有显式的 "𝕏 Article" 徽章
+    const textNodes = article.querySelectorAll("span, div");
+    for (const el of textNodes) {
+      const txt = el.textContent?.trim();
+      if (txt === "𝕏 Article" || txt === "Article" || txt === "X Article") {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function shouldSkipClick(target, article) {
+    if (!target) return false;
+
+    // 1. 基础交互控件：点赞、转推、回复、书签、菜单、链接、按钮、输入框、媒体等
+    if (
       target.closest("a[href]") ||
       target.closest("button") ||
       target.closest('[role="button"]') ||
       target.closest('[role="link"]') ||
-      target.closest('[data-testid="card.wrapper"]') ||
-      target.closest('[data-testid="quoteTweet"]') ||
-      target.closest('[data-testid*="card."]') ||
-      target.closest('[data-testid*="Card"]') ||
-      target.closest('[data-testid="article-card"]') ||
       target.closest("video") ||
       target.closest("audio") ||
       target.closest("input") ||
@@ -2003,7 +2139,40 @@
       target.closest('[data-testid="caret"]') ||
       target.closest('[aria-haspopup="menu"]') ||
       target.closest('[data-testid="tweet-text-show-more-link"]')
-    );
+    ) {
+      return true;
+    }
+
+    // 2. 外部网页预览卡片、引用推文 (Quote Tweet)
+    if (
+      target.closest('[data-testid="card.wrapper"]') ||
+      target.closest('[data-testid="quoteTweet"]') ||
+      target.closest('[data-testid*="card."]') ||
+      target.closest('[data-testid*="Card"]')
+    ) {
+      return true;
+    }
+
+    // 3. 点击目标本身或祖先直接属于文章链接或文章测试标识
+    if (
+      target.closest('a[href*="/article/"], a[href*="/i/article/"]') ||
+      target.closest('[data-testid*="article" i], [data-testid*="Article"]') ||
+      target.closest('[aria-label*="article" i], [aria-label*="Article"]')
+    ) {
+      return true;
+    }
+
+    // 4. 当前推文是 𝕏 Article 长文推文
+    if (article && isArticleTweet(article)) {
+      // 长文推文中的卡片封面、文章大标题、正文摘要等区域，点击目的是直接阅读长文。
+      // 只要排除顶部作者姓名/头像栏，其余点击均放行原生跳转
+      const isHeader = target.closest('[data-testid="User-Name"]');
+      if (!isHeader) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   function getArticleReplyCount(article) {
@@ -2058,7 +2227,7 @@
       }
     }
 
-    if (shouldSkipClick(event.target)) return;
+    if (shouldSkipClick(event.target, article)) return;
 
     // Find tweet URL & ID
     const hrefs = [...article.querySelectorAll('a[href*="/status/"]')].map(a => a.getAttribute("href"));

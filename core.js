@@ -1,7 +1,7 @@
 (function attachSidePeekCore(root) {
   "use strict";
 
-  const STATUS_PATTERN = /^\/(?:i\/web\/status\/(\d+)|i\/article\/(\d+)|([^/?#]+)\/status\/(\d+))/i;
+  const STATUS_PATTERN = /^\/(?:i\/web\/status\/(\d+)|(?:i|([^/?#]+))\/article\/(\d+)|([^/?#]+)\/status\/(\d+))/i;
   const PROFILE_PATTERN = /^\/([A-Za-z0-9_]+)\/?$/;
 
   function normalizePostUrl(href, baseUrl = "https://x.com/") {
@@ -15,8 +15,8 @@
     if (!/^(?:x|twitter)\.com$/i.test(url.hostname.replace(/^www\./, ""))) return null;
     const match = url.pathname.match(STATUS_PATTERN);
     if (!match) return null;
-    const id = match[1] || match[2] || match[4];
-    const handle = match[3] || "i";
+    const id = match[1] || match[3] || match[5];
+    const handle = match[2] || match[4] || "i";
     return `https://x.com/${handle}/status/${id}`;
   }
 
@@ -148,10 +148,63 @@
       }
     }
 
+    const mediaUrls = new Set(mediaEntities.map((m) => m.url).filter(Boolean));
+    const rawUrls = [
+      ...(legacy.entities?.urls || []),
+      ...(note?.entity_set?.urls || [])
+    ];
+    const seenUrls = new Set();
+    const urls = [];
+    for (const u of rawUrls) {
+      if (!u || !u.url || seenUrls.has(u.url) || mediaUrls.has(u.url)) continue;
+      seenUrls.add(u.url);
+      urls.push({
+        url: u.url,
+        expandedUrl: u.expanded_url || u.url,
+        displayUrl: u.display_url || u.expanded_url || u.url
+      });
+    }
+
+    const rawMentions = [
+      ...(legacy.entities?.user_mentions || []),
+      ...(note?.entity_set?.user_mentions || [])
+    ];
+    const userMentions = [];
+    const seenMentions = new Set();
+    for (const m of rawMentions) {
+      const sn = String(m.screen_name || "").toLowerCase();
+      if (!sn || seenMentions.has(sn)) continue;
+      seenMentions.add(sn);
+      userMentions.push({
+        screenName: m.screen_name,
+        name: m.name || m.screen_name
+      });
+    }
+
+    const rawHashtags = [
+      ...(legacy.entities?.hashtags || []),
+      ...(note?.entity_set?.hashtags || [])
+    ];
+    const hashtags = [];
+    const seenHashtags = new Set();
+    for (const h of rawHashtags) {
+      const tag = String(h.text || "").toLowerCase();
+      if (!tag || seenHashtags.has(tag)) continue;
+      seenHashtags.add(tag);
+      hashtags.push({
+        text: h.text
+      });
+    }
+
     return {
       id,
       url: handle && id ? `https://x.com/${handle}/status/${id}` : id ? `https://x.com/i/status/${id}` : "",
       text,
+      entities: {
+        urls,
+        userMentions,
+        hashtags
+      },
       author: {
         id: String(user?.rest_id || userLegacy.id_str || ""),
         name: userLegacy.name || userCore.name || handle || "X 用户",

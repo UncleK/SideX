@@ -9,8 +9,10 @@ desktop.ini
 *.swp
 *.swo
 
-# Node / Scratch / Logs / Dist
+# Node / Scratch / Logs / Dist / Packages
 node_modules/
 *.log
 scratch/
 dist/
+*.zip
+*.crx
