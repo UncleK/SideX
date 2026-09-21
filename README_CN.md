@@ -12,6 +12,9 @@
   </p>
 
   <p>
+    <a href="https://chromewebstore.google.com/detail/ccbkagemmobenjoioicemekhjbggmpde">
+      <img src="https://img.shields.io/badge/Chrome_Web_Store-官方商店上架-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
+    </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
     <img src="https://img.shields.io/badge/Version-1.1.2-00b4f8?style=flat-square" alt="Version 1.1.2" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
@@ -19,7 +22,10 @@
   </p>
 
   <br />
-  <img src="demo/demo.gif" alt="SideX 演示动图" width="100%" />
+  <a href="demo/demo.mp4">
+    <img src="demo/demo.gif" alt="SideX 演示动图" width="100%" />
+  </a>
+  <p><em>🎬 点击动图可查看高清视频演示 (<a href="demo/demo.mp4">demo.mp4 · 947KB</a>)</em></p>
   <br />
 </div>
 
@@ -47,18 +53,13 @@
 
 适用于 Chrome、Edge、Brave、Arc 等所有 Chromium 浏览器：
 
-### 方式一：CRX 文件直接拖拽安装（最快）
-1. 前往 [Releases 页面](https://github.com/UncleK/SideX/releases) 下载 **`SideX-v1.1.1.crx`**。
-2. 打开浏览器扩展管理页面：
-   * Chrome / Brave: `chrome://extensions/`
-   * Edge: `edge://extensions/`
-3. 开启右上角的**「开发者模式」**。
-4. 将下载的 `.crx` 文件直接**拖拽**到该扩展管理页面中完成安装。
-   *(注：较新版本的 Chrome 可能会弹出安全拦截提示禁止安装非商店 CRX，遇到此类情况请使用下方的「方式二」)*。
+### 方式一：Chrome 官方应用商店一键安装（强烈推荐）
+👉 **[点击直达 Chrome Web Store 官方商店](https://chromewebstore.google.com/detail/ccbkagemmobenjoioicemekhjbggmpde)**，一键添加至浏览器并享受自动更新！
 
-### 方式二：下载 ZIP 压缩包（100% 成功，推荐）
-1. 前往 [Releases 页面](https://github.com/UncleK/SideX/releases) 下载 **`SideX-v1.1.1.zip`** 并解压。
-2. 在扩展管理页面开启「开发者模式」后，点击左上角**「加载未打包的扩展程序」**（部分浏览器为「加载已解压的扩展程序」/ Load unpacked），选择解压后的文件夹即可。
+### 方式二：下载 ZIP 压缩包（离线直装，100% 成功）
+1. 前往 [Releases 页面](https://github.com/UncleK/SideX/releases) 下载 **`SideX-v1.1.2.zip`** 并解压。
+2. 打开 `chrome://extensions/`（或 `edge://extensions/`），开启右上角**「开发者模式」**。
+3. 点击左上角**「加载已解压的扩展程序」**（Load unpacked），选择解压后的文件夹即可。
 
 ### 方式三：通过 Git 源码安装（开发者）
 ```bash

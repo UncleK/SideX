@@ -12,6 +12,9 @@
   </p>
 
   <p>
+    <a href="https://chromewebstore.google.com/detail/ccbkagemmobenjoioicemekhjbggmpde">
+      <img src="https://img.shields.io/badge/Chrome_Web_Store-Available-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
+    </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
     <img src="https://img.shields.io/badge/Version-1.1.2-00b4f8?style=flat-square" alt="Version 1.1.2" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
@@ -19,7 +22,10 @@
   </p>
 
   <br />
-  <img src="demo/demo.gif" alt="SideX Demo" width="100%" />
+  <a href="demo/demo.mp4">
+    <img src="demo/demo.gif" alt="SideX Demo" width="100%" />
+  </a>
+  <p><em>🎬 Click preview to open the HD demo video (<a href="demo/demo.mp4">demo.mp4 · 947KB</a>)</em></p>
   <br />
 </div>
 
@@ -47,18 +53,13 @@
 
 Compatible with Chrome, Edge, Brave, Arc, and other Chromium browsers:
 
-### Method 1: CRX Drag & Drop (Fastest)
-1. Download **`SideX-v1.1.1.crx`** from [Releases](https://github.com/UncleK/SideX/releases).
-2. Open your browser extension manager:
-   * Chrome / Brave: `chrome://extensions/`
-   * Edge: `edge://extensions/`
-3. Turn on **"Developer mode"** in the top-right corner.
-4. Drag and drop the downloaded `.crx` file into the extensions page to install.
-   *(Note: If Chrome displays a security prompt blocking third-party CRX drag-and-drop, please use Method 2 below).*
+### Method 1: Chrome Web Store (Recommended, One-Click)
+👉 **[Install from Chrome Web Store](https://chromewebstore.google.com/detail/ccbkagemmobenjoioicemekhjbggmpde)** with seamless automatic updates!
 
-### Method 2: ZIP Package (100% Reliable, Recommended)
-1. Download **`SideX-v1.1.1.zip`** from [Releases](https://github.com/UncleK/SideX/releases) and extract it.
-2. In `chrome://extensions/` (with "Developer mode" on), click **"Load unpacked"** and select the extracted folder.
+### Method 2: ZIP Package (100% Reliable & Offline)
+1. Download **`SideX-v1.1.2.zip`** from [Releases](https://github.com/UncleK/SideX/releases) and extract it.
+2. Open `chrome://extensions/` (or `edge://extensions/`), enable **"Developer mode"** in the top-right corner.
+3. Click **"Load unpacked"** and select the extracted folder.
 
 ### Method 3: Clone via Git (For Developers)
 ```bash
