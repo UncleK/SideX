@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-官方商店上架-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.2-00b4f8?style=flat-square" alt="Version 1.1.2" />
+    <img src="https://img.shields.io/badge/Version-1.1.3-00b4f8?style=flat-square" alt="Version 1.1.3" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -57,7 +57,7 @@
 👉 **[点击直达 Chrome Web Store 官方商店](https://chromewebstore.google.com/detail/ccbkagemmobenjoioicemekhjbggmpde)**，一键添加至浏览器并享受自动更新！
 
 ### 方式二：下载 ZIP 压缩包（离线直装，100% 成功）
-1. 前往 [Releases 页面](https://github.com/UncleK/SideX/releases) 下载 **`SideX-v1.1.2.zip`** 并解压。
+1. 前往 [Releases 页面](https://github.com/UncleK/SideX/releases) 下载 **`SideX-v1.1.3.zip`** 并解压。
 2. 打开 `chrome://extensions/`（或 `edge://extensions/`），开启右上角**「开发者模式」**。
 3. 点击左上角**「加载已解压的扩展程序」**（Load unpacked），选择解压后的文件夹即可。
 
