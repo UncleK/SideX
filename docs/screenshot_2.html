@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1280px;
+    height: 800px;
+    background: #080c14;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #f7f9f9;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 36px 40px 30px;
+  }
+
+  /* Ambient Glow */
+  .glow {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 900px;
+    height: 350px;
+    background: radial-gradient(ellipse, rgba(0, 210, 255, 0.22) 0%, rgba(29, 155, 240, 0.08) 50%, transparent 75%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .bg-grid {
+    position: absolute;
+    inset: 0;
+    background-image: 
+      radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+      linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    background-size: 32px 32px, 64px 64px, 64px 64px;
+    opacity: 0.65;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Header Pitch */
+  .showcase-header {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+    margin-bottom: 22px;
+  }
+  .tag-badge {
+    padding: 4px 14px;
+    background: rgba(0, 210, 255, 0.2);
+    border: 1px solid rgba(0, 210, 255, 0.55);
+    border-radius: 999px;
+    color: #00f0ff;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+  }
+  .title {
+    font-size: 34px;
+    font-weight: 900;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+  }
+  .highlight {
+    background: linear-gradient(90deg, #00f0ff 0%, #1d9bf0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle {
+    font-size: 15px;
+    color: #8b98a5;
+    font-weight: 500;
+  }
+
+  /* Browser Mockup Window */
+  .browser-window {
+    position: relative;
+    z-index: 1;
+    width: 1200px;
+    height: 600px;
+    background: #ffffff;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.12);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Browser Titlebar */
+  .titlebar {
+    height: 38px;
+    background: #f1f3f4;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .dots {
+    display: flex;
+    gap: 6px;
+  }
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+  .dot-r { background: #ff5f56; }
+  .dot-y { background: #ffbd2e; }
+  .dot-g { background: #27c93f; }
+
+  .omnibox {
+    flex: 1;
+    max-width: 520px;
+    height: 24px;
+    background: #ffffff;
+    border: 1px solid #dadce0;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    font-size: 11px;
+    color: #3c4043;
+    gap: 6px;
+    margin: 0 auto;
+  }
+  .lock-icon {
+    color: #1a73e8;
+    font-size: 10px;
+  }
+
+  .browser-ext-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #1d9bf0;
+    background: rgba(29, 155, 240, 0.1);
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  .browser-ext-badge img {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* Screen Content */
+  .screen-viewport {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #ffffff;
+  }
+  .screen-viewport img {
+    width: 1200px;
+    height: auto;
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="bg-grid"></div>
+
+  <div class="showcase-header">
+    <div class="tag-badge">📖 INSTANT EXPANSION</div>
+    <h1 class="title">Auto-Unroll Long Posts · <span class="highlight">Seamless Reading</span></h1>
+    <p class="subtitle">Instantly unfolds "Show more" long tweets in place without truncating or jumping pages</p>
+  </div>
+
+  <div class="browser-window">
+    <div class="titlebar">
+      <div class="dots">
+        <div class="dot dot-r"></div>
+        <div class="dot dot-y"></div>
+        <div class="dot dot-g"></div>
+      </div>
+      <div class="omnibox">
+        <span class="lock-icon">🔒</span>
+        <span>https://x.com/home</span>
+      </div>
+      <div class="browser-ext-badge">
+        <img src="../icons/icon-32.png" alt="SideX" />
+        <span>SideX Active</span>
+      </div>
+    </div>
+
+    <div class="screen-viewport">
+      <img src="../demo/frame_1.png" alt="SideX Unroll Preview" />
+    </div>
+  </div>
+</body>
+</html>
