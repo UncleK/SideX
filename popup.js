@@ -9,6 +9,15 @@
   const resetBtnText = document.getElementById("txt-reset-btn");
   const hintEsc = document.getElementById("txt-hint-esc");
   const langGroup = document.getElementById("sidex-lang-group");
+  const versionBadge = document.getElementById("sidex-version-badge");
+
+  // Dynamically sync version from manifest
+  try {
+    const manifestVer = chrome?.runtime?.getManifest?.()?.version;
+    if (manifestVer && versionBadge) {
+      versionBadge.textContent = `v${manifestVer}`;
+    }
+  } catch (e) {}
 
   const STRINGS = {
     zh: {
