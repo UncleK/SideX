@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 440px;
+    height: 280px;
+    background: #080d15;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: #f7f9f9;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    text-align: center;
+  }
+
+  /* Ambient Glow */
+  .glow-center {
+    position: absolute;
+    top: 45%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 360px;
+    height: 220px;
+    background: radial-gradient(ellipse at center, rgba(29, 155, 240, 0.3) 0%, rgba(0, 210, 255, 0.1) 50%, transparent 75%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .bg-grid {
+    position: absolute;
+    inset: 0;
+    background-image: 
+      radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+      linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 24px 24px, 48px 48px, 48px 48px;
+    opacity: 0.7;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Content */
+  .promo-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+  }
+
+  /* Brand Header */
+  .brand-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .logo-box {
+    width: 58px;
+    height: 58px;
+    filter: drop-shadow(0 0 20px rgba(0, 210, 255, 0.65));
+  }
+  .logo-box img {
+    width: 58px;
+    height: 58px;
+    display: block;
+  }
+  .brand-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .brand-title {
+    font-size: 40px;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #ffffff 0%, #e2f1ff 40%, #1d9bf0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .brand-badge {
+    margin-top: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #00d2ff;
+    letter-spacing: 0.5px;
+  }
+
+  /* Pitch */
+  .pitch-heading {
+    font-size: 21px;
+    font-weight: 800;
+    line-height: 1.3;
+    color: #ffffff;
+    letter-spacing: -0.3px;
+  }
+  .pitch-highlight {
+    background: linear-gradient(90deg, #00f0ff 0%, #1d9bf0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .pitch-sub {
+    font-size: 13px;
+    color: #8b98a5;
+    font-weight: 500;
+    max-width: 380px;
+    line-height: 1.4;
+  }
+
+  /* Pills */
+  .pill-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .pill {
+    padding: 5px 10px;
+    background: rgba(14, 21, 32, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #cfd9de;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  .pill-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #00d2ff;
+    box-shadow: 0 0 6px #00d2ff;
+  }
+</style>
+</head>
+<body>
+  <div class="glow-center"></div>
+  <div class="bg-grid"></div>
+
+  <div class="promo-content">
+    <div class="brand-row">
+      <div class="logo-box">
+        <img src="../icons/icon-128.png" alt="SideX" />
+      </div>
+      <div class="brand-text">
+        <h1 class="brand-title">SideX</h1>
+        <span class="brand-badge">𝕏 (Twitter) 效率神器</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="pitch-heading">
+        沉浸式侧边流 · <span class="pitch-highlight">零跳转刷推</span>
+      </div>
+      <div class="pitch-sub">
+        就地看评论、顺畅展长文、原位快捷回复
+      </div>
+    </div>
+
+    <div class="pill-row">
+      <div class="pill"><span class="pill-dot"></span> 就地停靠</div>
+      <div class="pill"><span class="pill-dot"></span> 秒展长文</div>
+      <div class="pill"><span class="pill-dot"></span> 100% 安全</div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1280px;
+    height: 640px;
+    background: #070a0f;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    color: #f7f9f9;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 60px;
+  }
+
+  /* Cyber Glow Background */
+  .bg-glow-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 1000px;
+    height: 550px;
+    background: radial-gradient(ellipse at center, rgba(29, 155, 240, 0.22) 0%, rgba(0, 210, 255, 0.08) 45%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .bg-glow-top {
+    position: absolute;
+    top: -120px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 850px;
+    height: 320px;
+    background: radial-gradient(ellipse, rgba(0, 180, 248, 0.2) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .bg-grid {
+    position: absolute;
+    inset: 0;
+    background-image: 
+      radial-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px),
+      linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 32px 32px, 64px 64px, 64px 64px;
+    opacity: 0.6;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Main Container */
+  .banner-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 22px;
+    width: 100%;
+    max-width: 1180px;
+  }
+
+  /* Brand Header */
+  .brand-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+  }
+  .brand-logo-wrap {
+    width: 84px;
+    height: 84px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 0 32px rgba(0, 210, 255, 0.7));
+  }
+  .brand-logo-wrap img {
+    width: 84px;
+    height: 84px;
+    display: block;
+  }
+
+  .brand-text-col {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .brand-title-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .brand-title {
+    font-size: 64px;
+    font-weight: 900;
+    letter-spacing: -1.5px;
+    background: linear-gradient(135deg, #ffffff 0%, #e2f1ff 45%, #1d9bf0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 4px 24px rgba(29, 155, 240, 0.4);
+    line-height: 1;
+  }
+  .badge-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .version-badge {
+    padding: 4px 14px;
+    background: rgba(29, 155, 240, 0.2);
+    border: 1px solid rgba(29, 155, 240, 0.55);
+    border-radius: 999px;
+    color: #00d2ff;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+  }
+  .pill-badge {
+    padding: 4px 14px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 999px;
+    color: #9ba7b4;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  /* Taglines */
+  .tagline-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .tagline-cn {
+    font-size: 38px;
+    font-weight: 900;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+    line-height: 1.25;
+  }
+  .tagline-glow {
+    background: linear-gradient(90deg, #00f0ff 0%, #1d9bf0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .tagline-en {
+    font-size: 18px;
+    color: #8b98a5;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+  }
+
+  /* 2 x 2 Feature Grid (Large, Crystal Clear) */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+    width: 100%;
+    margin-top: 4px;
+  }
+  .feature-card {
+    background: rgba(14, 21, 32, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 18px;
+    padding: 20px 24px;
+    backdrop-filter: blur(16px);
+    display: flex;
+    align-items: flex-start;
+    text-align: left;
+    gap: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    position: relative;
+    overflow: hidden;
+  }
+  .feature-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(29, 155, 240, 0.7), transparent);
+  }
+  .feature-icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: rgba(29, 155, 240, 0.18);
+    border: 1px solid rgba(29, 155, 240, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(29, 155, 240, 0.2);
+  }
+  .feature-text-col {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .feature-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: #f7f9f9;
+    letter-spacing: -0.2px;
+  }
+  .feature-desc {
+    font-size: 15px;
+    color: #8b98a5;
+    line-height: 1.55;
+  }
+</style>
+</head>
+<body>
+  <div class="bg-glow-center"></div>
+  <div class="bg-glow-top"></div>
+  <div class="bg-grid"></div>
+
+  <div class="banner-content">
+    <!-- Brand Header -->
+    <div class="brand-row">
+      <div class="brand-logo-wrap">
+        <img src="../icons/icon-128.png" alt="SideX Logo" />
+      </div>
+      <div class="brand-text-col">
+        <div class="brand-title-row">
+          <h1 class="brand-title">SideX</h1>
+          <span class="version-badge">v1.1.1</span>
+        </div>
+        <div class="badge-row">
+          <span class="pill-badge">Chrome Extension</span>
+          <span class="pill-badge">100% Account Safe</span>
+          <span class="pill-badge">Open Source</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Taglines -->
+    <div class="tagline-group">
+      <div class="tagline-cn">
+        沉浸式侧边评论流 · <span class="tagline-glow">零跳转刷推体验</span>
+      </div>
+      <div class="tagline-en">
+        Immersive In-Place Comment Stream & Fast Reader for X (Twitter)
+      </div>
+    </div>
+
+    <!-- 2x2 Feature Grid (Large Text) -->
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon-box">⚡</div>
+        <div class="feature-text-col">
+          <div class="feature-title">零跳转就地停靠</div>
+          <div class="feature-desc">点击推文右侧就地出流，告别在信息流与详情页间反复跳转与刷新</div>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-box">📖</div>
+        <div class="feature-text-col">
+          <div class="feature-title">长文与转帖秒展开</div>
+          <div class="feature-desc">原位秒级展开“显示更多”长推文，𝕏 Article 官方专栏顺畅原生跳转</div>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-box">💬</div>
+        <div class="feature-text-col">
+          <div class="feature-title">常驻行内快捷回复</div>
+          <div class="feature-desc">底部常驻快捷回复栏，支持 Ctrl+V 粘贴剪贴板图片、GIF 动图与表情包</div>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-box">🛡️</div>
+        <div class="feature-text-col">
+          <div class="feature-title">原生会话 100% 安全</div>
+          <div class="feature-desc">直接复用浏览器官方登录态与 Session，零额外权限申请，零封号风险</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

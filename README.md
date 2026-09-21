@@ -1,6 +1,6 @@
 <div align="center">
   <a href="https://github.com/UncleK/SideX">
-    <img src="docs/banner.png" alt="SideX - Immersive In-Place Comment Stream for X" width="100%" />
+    <img src="docs/banner_en.png" alt="SideX - Immersive In-Place Comment Stream for X" width="100%" />
   </a>
 
   <p>

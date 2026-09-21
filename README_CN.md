@@ -1,6 +1,6 @@
 <div align="center">
   <a href="https://github.com/UncleK/SideX">
-    <img src="docs/banner.png" alt="SideX - 沉浸式侧边评论流" width="100%" />
+    <img src="docs/banner_zh.png" alt="SideX - 沉浸式侧边评论流" width="100%" />
   </a>
 
   <p>

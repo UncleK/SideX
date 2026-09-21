@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1400px;
+    height: 560px;
+    background: #070a10;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #f7f9f9;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 90px;
+  }
+
+  /* Ambient Cyber Glow */
+  .glow-left {
+    position: absolute;
+    top: 50%;
+    left: 20%;
+    transform: translate(-50%, -50%);
+    width: 750px;
+    height: 480px;
+    background: radial-gradient(ellipse at center, rgba(29, 155, 240, 0.28) 0%, rgba(0, 210, 255, 0.08) 50%, transparent 75%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .glow-right {
+    position: absolute;
+    top: 50%;
+    right: 10%;
+    transform: translate(0, -50%);
+    width: 600px;
+    height: 450px;
+    background: radial-gradient(ellipse at center, rgba(0, 210, 255, 0.18) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .bg-grid {
+    position: absolute;
+    inset: 0;
+    background-image: 
+      radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+      linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    background-size: 32px 32px, 64px 64px, 64px 64px;
+    opacity: 0.8;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Left Hero Content */
+  .left-col {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+    max-width: 680px;
+  }
+  .brand-row {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .brand-logo {
+    width: 72px;
+    height: 72px;
+    filter: drop-shadow(0 0 24px rgba(0, 210, 255, 0.7));
+  }
+  .brand-title {
+    font-size: 58px;
+    font-weight: 900;
+    letter-spacing: -1.5px;
+    background: linear-gradient(135deg, #ffffff 0%, #e2f1ff 40%, #1d9bf0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1;
+  }
+  .brand-tag {
+    padding: 4px 12px;
+    background: rgba(29, 155, 240, 0.2);
+    border: 1px solid rgba(29, 155, 240, 0.5);
+    border-radius: 999px;
+    color: #00d2ff;
+    font-size: 13px;
+    font-weight: 700;
+    margin-left: 8px;
+  }
+
+  .headline {
+    font-size: 42px;
+    font-weight: 900;
+    line-height: 1.22;
+    letter-spacing: -0.8px;
+    color: #ffffff;
+  }
+  .headline-gradient {
+    background: linear-gradient(90deg, #00f0ff 0%, #1d9bf0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subheadline {
+    font-size: 18px;
+    line-height: 1.6;
+    color: #8b98a5;
+  }
+
+  .feature-tags {
+    display: flex;
+    gap: 12px;
+    margin-top: 4px;
+  }
+  .feat-tag {
+    padding: 8px 16px;
+    background: rgba(14, 21, 32, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #dbe4ec;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .feat-tag span {
+    font-size: 16px;
+  }
+
+  /* Right Cards Preview */
+  .right-col {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 480px;
+  }
+  .card {
+    background: rgba(15, 23, 36, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    padding: 18px 22px;
+    backdrop-filter: blur(16px);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+    position: relative;
+  }
+  .card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(29, 155, 240, 0.7), transparent);
+  }
+  .card-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(29, 155, 240, 0.18);
+    border: 1px solid rgba(29, 155, 240, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+  .card-text h3 {
+    font-size: 17px;
+    font-weight: 800;
+    color: #f7f9f9;
+    margin-bottom: 3px;
+  }
+  .card-text p {
+    font-size: 13px;
+    color: #8b98a5;
+    line-height: 1.4;
+  }
+</style>
+</head>
+<body>
+  <div class="glow-left"></div>
+  <div class="glow-right"></div>
+  <div class="bg-grid"></div>
+
+  <div class="left-col">
+    <div class="brand-row">
+      <img src="../icons/icon-128.png" alt="SideX Logo" class="brand-logo" />
+      <h1 class="brand-title">SideX</h1>
+      <span class="brand-tag">v1.1.1</span>
+    </div>
+
+    <h2 class="headline">
+      Immersive Comment Stream<br/>
+      <span class="headline-gradient">Zero-Hop Reading for X</span>
+    </h2>
+
+    <p class="subheadline">
+      Dock tweet discussions into your timeline's 3rd column.<br/>
+      Expand long posts instantly and reply inline without leaving your feed.
+    </p>
+
+    <div class="feature-tags">
+      <div class="feat-tag"><span>⚡</span> Zero Navigation Hop</div>
+      <div class="feat-tag"><span>📖</span> Instant Long Posts</div>
+      <div class="feat-tag"><span>🛡️</span> 100% Native Safe</div>
+    </div>
+  </div>
+
+  <div class="right-col">
+    <div class="card">
+      <div class="card-icon">⚡</div>
+      <div class="card-text">
+        <h3>In-Place Docking</h3>
+        <p>Reads directly in the right sidebar—keep your timeline scroll position forever.</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-icon">📖</div>
+      <div class="card-text">
+        <h3>Smart Post Expansion</h3>
+        <p>Unrolls full long tweets right in the thread with zero truncated previews.</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-icon">💬</div>
+      <div class="card-text">
+        <h3>Permanent Quick Composer</h3>
+        <p>Reply immediately with Ctrl+V clipboard image paste, GIFs, and emoji support.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
