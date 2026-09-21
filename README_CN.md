@@ -13,7 +13,7 @@
 
   <p>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.1-00b4f8?style=flat-square" alt="Version 1.1.1" />
+    <img src="https://img.shields.io/badge/Version-1.1.2-00b4f8?style=flat-square" alt="Version 1.1.2" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
