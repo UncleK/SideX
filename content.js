@@ -610,6 +610,15 @@
     updateDrawerPosition();
     root.classList.add("sidepeek-open");
 
+    // Guard: ensure replyTarget belongs to current focal tweet or tree
+    if (state.replyTarget) {
+      const isTargetInCurrentTree = Boolean(state.tree && state.tree.byId && state.tree.byId.has(state.replyTarget.id));
+      const isTargetFocal = state.replyTarget.id === state.focalTweetId;
+      if (state.tree && !isTargetInCurrentTree && !isTargetFocal) {
+        state.replyTarget = null;
+      }
+    }
+
     const isDrillDown = state.activeView && typeof state.activeView === "object" && state.activeView.type === "drilldown";
     const drillDownParent = isDrillDown ? state.tree?.byId.get(state.activeView.parentId) : null;
     const userAvatar = getCurrentUserAvatar();
@@ -704,6 +713,7 @@
     if (isDrillDown) {
       root.querySelector(".sidepeek-back-btn")?.addEventListener("click", () => {
         state.activeView = "root";
+        state.replyTarget = null;
         renderDrawer();
       });
     }
@@ -976,6 +986,7 @@
     // Drilldown click
     item.querySelector(".sidepeek-drilldown-trigger")?.addEventListener("click", () => {
       state.activeView = { type: "drilldown", parentId: model.id };
+      state.replyTarget = null;
       renderDrawer();
     });
 
@@ -1077,6 +1088,7 @@
   // Bottom Reply Target Management
   // ==========================================================================
   function setReplyTarget(model) {
+    if (!model) return;
     state.replyTarget = model;
     const footer = document.querySelector(".sidepeek-footer-composer");
     if (!footer) return;
@@ -1701,7 +1713,12 @@
       submitBtn.disabled = true;
       submitBtn.textContent = t("sending");
 
-      const repliedModel = state.replyTarget;
+      // Safety check: ensure repliedModel belongs to current conversation tree or focal tweet
+      let repliedModel = state.replyTarget;
+      if (repliedModel && state.tree && !state.tree.byId.has(repliedModel.id) && repliedModel.id !== state.focalTweetId) {
+        repliedModel = null;
+        state.replyTarget = null;
+      }
       const effectiveTargetId = repliedModel ? repliedModel.id : (isDrillDown && drillDownParent ? drillDownParent.id : state.focalTweetId);
 
       try {
@@ -1927,6 +1944,7 @@
     state.loading = true;
     state.error = "";
     state.expandedThreadIds.clear();
+    state.replyTarget = null;
     renderDrawer();
 
     try {
@@ -2030,7 +2048,7 @@
         state.replies = replies;
         state.tree = Core.buildConversationTree(replies, tweetId);
         state.activeView = "root";
-        state.activeComposerReplyId = null;
+        state.replyTarget = null;
         state.loading = false;
         state.error = "";
         renderDrawer();
@@ -2040,6 +2058,7 @@
     } else {
       // Navigated away from a detail page (e.g. back to /home, /explore)
       userClosedTweetId = null;
+      state.replyTarget = null;
       if (lastHandledDetailTweetId) {
         lastHandledDetailTweetId = null;
         if (state.open) {
@@ -2070,13 +2089,14 @@
     state.open = true;
     state.focalTweetId = tweetId;
     state.activeView = "root";
-    state.activeComposerReplyId = null;
+    state.replyTarget = null;
     renderDrawer();
     fetchThread(tweetId);
   }
 
   function closeDrawer() {
     state.open = false;
+    state.replyTarget = null;
     userClosedTweetId = state.focalTweetId;
     if (state.focalArticle) {
       state.focalArticle.classList.remove("sidepeek-focal-active");
@@ -2085,32 +2105,56 @@
     renderDrawer();
   }
 
-  function isArticleTweet(article) {
-    if (!article) return false;
+  /**
+   * 判断点击位置是否直接位于 𝕏 Article 长文卡片、引用推文卡片或外部网页卡片内部
+   * 关键原则：
+   * - 点击在内嵌卡片区域（长文封面、标题、引用块） -> 放行原生跳转阅读长文/引用贴
+   * - 点击在主推文正文文本（tweetText）或空白处 -> 拦截并原地呼出 SideX 评论流，绝不跳转帖子详情页
+   */
+  function isClickInsideEmbeddedCard(target, article) {
+    if (!target || !article) return false;
 
-    // 1. 包含前往长文页面的超链接 (/article/ 或 /i/article/)
-    if (article.querySelector('a[href*="/article/"], a[href*="/i/article/"]')) {
-      return true;
+    // 1. 如果点击的是主推文自身的正文内容或作者栏，绝对不是点击内嵌卡片！
+    if (
+      target.closest('[data-testid="tweetText"]') ||
+      target.closest('[data-testid="User-Name"]')
+    ) {
+      return false;
     }
 
-    // 2. 包含 𝕏 Article 特定的 data-testid 或 aria-label
+    // 2. 点击目标直接属于长文链接或测试标识
     if (
-      article.querySelector(
-        '[data-testid*="article" i], [data-testid*="Article"], ' +
-        '[data-testid*="twitterArticle"], [aria-label*="article" i]'
-      )
+      target.closest('a[href*="/article/"], a[href*="/i/article/"]') ||
+      target.closest('[data-testid*="article" i], [data-testid*="Article"], [data-testid*="twitterArticle"]') ||
+      target.closest('[aria-label*="article" i], [aria-label*="Article"]')
     ) {
       return true;
     }
 
-    // 3. 包含 "𝕏 Article"、"Article" 徽章或文本标签
-    // X 官方长文卡片左下角带有显式的 "𝕏 Article" 徽章
-    const textNodes = article.querySelectorAll("span, div");
-    for (const el of textNodes) {
-      const txt = el.textContent?.trim();
-      if (txt === "𝕏 Article" || txt === "Article" || txt === "X Article") {
+    // 3. 点击目标位于引用推文 (Quote Tweet) 或外部卡片容器内部
+    if (
+      target.closest('[data-testid="quoteTweet"]') ||
+      target.closest('[data-testid="card.wrapper"]') ||
+      target.closest('[data-testid*="card."]') ||
+      target.closest('[data-testid*="Card"]')
+    ) {
+      return true;
+    }
+
+    // 4. 向上检查是否位于包含 "𝕏 Article" / "Article" 徽章的独立卡片组件内部
+    let parent = target.parentElement;
+    while (parent && parent !== article) {
+      if (parent.tagName === "ARTICLE" || parent.getAttribute("data-testid") === "tweet") {
+        break;
+      }
+      if (
+        parent.querySelector?.('a[href*="/article/"], a[href*="/i/article/"]') ||
+        parent.textContent?.includes("𝕏 Article") ||
+        parent.textContent?.includes("X Article")
+      ) {
         return true;
       }
+      parent = parent.parentElement;
     }
 
     return false;
@@ -2119,12 +2163,10 @@
   function shouldSkipClick(target, article) {
     if (!target) return false;
 
-    // 1. 基础交互控件：点赞、转推、回复、书签、菜单、链接、按钮、输入框、媒体等
+    // 1. 基础交互控件：点赞、转推、回复、书签、菜单、按钮、输入框、媒体等
     if (
-      target.closest("a[href]") ||
       target.closest("button") ||
       target.closest('[role="button"]') ||
-      target.closest('[role="link"]') ||
       target.closest("video") ||
       target.closest("audio") ||
       target.closest("input") ||
@@ -2143,31 +2185,25 @@
       return true;
     }
 
-    // 2. 外部网页预览卡片、引用推文 (Quote Tweet)
-    if (
-      target.closest('[data-testid="card.wrapper"]') ||
-      target.closest('[data-testid="quoteTweet"]') ||
-      target.closest('[data-testid*="card."]') ||
-      target.closest('[data-testid*="Card"]')
-    ) {
+    // 2. 如果点击的是引用推文、长文卡片或外部网页卡片本身，放行原生跳转
+    if (isClickInsideEmbeddedCard(target, article)) {
       return true;
     }
 
-    // 3. 点击目标本身或祖先直接属于文章链接或文章测试标识
-    if (
-      target.closest('a[href*="/article/"], a[href*="/i/article/"]') ||
-      target.closest('[data-testid*="article" i], [data-testid*="Article"]') ||
-      target.closest('[aria-label*="article" i], [aria-label*="Article"]')
-    ) {
-      return true;
-    }
-
-    // 4. 当前推文是 𝕏 Article 长文推文
-    if (article && isArticleTweet(article)) {
-      // 长文推文中的卡片封面、文章大标题、正文摘要等区域，点击目的是直接阅读长文。
-      // 只要排除顶部作者姓名/头像栏，其余点击均放行原生跳转
-      const isHeader = target.closest('[data-testid="User-Name"]');
-      if (!isHeader) {
+    // 3. 超链接点击检测
+    const anchor = target.closest("a[href]");
+    if (anchor) {
+      // 点击作者头像或用户名链接 -> 放行跳转到个人主页
+      if (target.closest('[data-testid="User-Name"]') || anchor.querySelector('img[src*="profile_images"]')) {
+        return true;
+      }
+      // 点击正文内的超链接（如 #话题、@提及、外部网址） -> 放行跳转
+      if (target.closest('[data-testid="tweetText"]')) {
+        return true;
+      }
+      // 点击直接前往 /article/ 的链接 -> 放行
+      const href = anchor.getAttribute("href") || "";
+      if (href.includes("/article/")) {
         return true;
       }
     }
@@ -2230,8 +2266,11 @@
     if (shouldSkipClick(event.target, article)) return;
 
     // Find tweet URL & ID
+    // 优先从推文顶部的第一条时间链接提取自身 ID，避免受内嵌引用推文的 status 链接干扰
+    const firstTimeAnchor = article.querySelector('time')?.closest('a[href*="/status/"]');
+    const firstStatusUrl = firstTimeAnchor ? firstTimeAnchor.getAttribute("href") : null;
     const hrefs = [...article.querySelectorAll('a[href*="/status/"]')].map(a => a.getAttribute("href"));
-    const ownUrl = Core.selectOwnPostUrl(hrefs, null, location.href);
+    const ownUrl = firstStatusUrl || Core.selectOwnPostUrl(hrefs, null, location.href);
     const tweetId = ownUrl ? Core.postIdFromUrl(ownUrl) : null;
 
     if (!tweetId) return;
