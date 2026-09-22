@@ -2106,64 +2106,18 @@
   }
 
   /**
-   * 判断点击位置是否直接位于 𝕏 Article 长文卡片、引用推文卡片或外部网页卡片内部
-   * 关键原则：
-   * - 点击在内嵌卡片区域（长文封面、标题、引用块） -> 放行原生跳转阅读长文/引用贴
-   * - 点击在主推文正文文本（tweetText）或空白处 -> 拦截并原地呼出 SideX 评论流，绝不跳转帖子详情页
+   * 精确判断点击位置是否应放行原生交互行为（原生跳转、按钮点击、卡片导航等）
+   * 判定规则：
+   * 1. 基础交互控件（点赞、转推、回复、书签、菜单、视频、输入框等） -> 放行
+   * 2. 任何链接与可点击角色（a[href]、role="link"、作者头像、用户名、@提及、#话题、时间戳等） -> 放行
+   * 3. 引用推文 (Quote Tweet) 容器内任何位置 -> 放行跳转到被引用推文
+   * 4. 𝕏 Article 长文卡片、网页预览卡片容器内部 -> 放行原生跳转阅读长文/外部网页
+   * 5. 主推文自身的正文内容（tweetText）或空白处 -> 拦截并原地呼出 SideX 抽屉
    */
-  function isClickInsideEmbeddedCard(target, article) {
-    if (!target || !article) return false;
-
-    // 1. 如果点击的是主推文自身的正文内容或作者栏，绝对不是点击内嵌卡片！
-    if (
-      target.closest('[data-testid="tweetText"]') ||
-      target.closest('[data-testid="User-Name"]')
-    ) {
-      return false;
-    }
-
-    // 2. 点击目标直接属于长文链接或测试标识
-    if (
-      target.closest('a[href*="/article/"], a[href*="/i/article/"]') ||
-      target.closest('[data-testid*="article" i], [data-testid*="Article"], [data-testid*="twitterArticle"]') ||
-      target.closest('[aria-label*="article" i], [aria-label*="Article"]')
-    ) {
-      return true;
-    }
-
-    // 3. 点击目标位于引用推文 (Quote Tweet) 或外部卡片容器内部
-    if (
-      target.closest('[data-testid="quoteTweet"]') ||
-      target.closest('[data-testid="card.wrapper"]') ||
-      target.closest('[data-testid*="card."]') ||
-      target.closest('[data-testid*="Card"]')
-    ) {
-      return true;
-    }
-
-    // 4. 向上检查是否位于包含 "𝕏 Article" / "Article" 徽章的独立卡片组件内部
-    let parent = target.parentElement;
-    while (parent && parent !== article) {
-      if (parent.tagName === "ARTICLE" || parent.getAttribute("data-testid") === "tweet") {
-        break;
-      }
-      if (
-        parent.querySelector?.('a[href*="/article/"], a[href*="/i/article/"]') ||
-        parent.textContent?.includes("𝕏 Article") ||
-        parent.textContent?.includes("X Article")
-      ) {
-        return true;
-      }
-      parent = parent.parentElement;
-    }
-
-    return false;
-  }
-
   function shouldSkipClick(target, article) {
     if (!target) return false;
 
-    // 1. 基础交互控件：点赞、转推、回复、书签、菜单、按钮、输入框、媒体等
+    // 1. 基础交互控件：按钮、表单输入、音视频、操作栏（点赞/转推/回复/书签/菜单/全文展开等）
     if (
       target.closest("button") ||
       target.closest('[role="button"]') ||
@@ -2185,27 +2139,50 @@
       return true;
     }
 
-    // 2. 如果点击的是引用推文、长文卡片或外部网页卡片本身，放行原生跳转
-    if (isClickInsideEmbeddedCard(target, article)) {
+    // 2. 超链接与链接角色容器（头像、用户名、@提及、#话题、时间戳、卡片等）
+    if (target.closest("a[href]") || target.closest('[role="link"]')) {
       return true;
     }
 
-    // 3. 超链接点击检测
-    const anchor = target.closest("a[href]");
-    if (anchor) {
-      // 点击作者头像或用户名链接 -> 放行跳转到个人主页
-      if (target.closest('[data-testid="User-Name"]') || anchor.querySelector('img[src*="profile_images"]')) {
+    // 3. 引用推文 (Quote Tweet) 内部任何区域（包括其内部文本与作者）
+    if (
+      target.closest('[data-testid="quoteTweet"]') ||
+      target.closest('[data-testid="tweet-quote"]') ||
+      target.closest('[aria-label*="Quote Tweet" i]') ||
+      target.closest('[aria-label*="引用推文" i]')
+    ) {
+      return true;
+    }
+
+    // 4. 𝕏 Article 长文卡片与外部网页卡片容器
+    if (
+      target.closest('[data-testid="card.wrapper"]') ||
+      target.closest('[data-testid*="card."]') ||
+      target.closest('[data-testid*="Card"]') ||
+      target.closest('[data-testid="article-card"]') ||
+      target.closest('[data-testid*="article" i]') ||
+      target.closest('[data-testid*="Article"]') ||
+      target.closest('[aria-label*="article" i]') ||
+      target.closest('[aria-label*="Article"]') ||
+      target.closest('a[href*="/article/"]') ||
+      target.closest('a[href*="/i/article/"]')
+    ) {
+      return true;
+    }
+
+    // 5. 向上遍历检查是否位于包含 "𝕏 Article" / "Article" 徽章的独立卡片组件内部
+    let parent = target.parentElement;
+    while (parent && parent !== article) {
+      if (parent.tagName === "ARTICLE" || parent.getAttribute?.("data-testid") === "tweet") {
+        break;
+      }
+      if (
+        parent.textContent?.includes("𝕏 Article") ||
+        parent.textContent?.includes("X Article")
+      ) {
         return true;
       }
-      // 点击正文内的超链接（如 #话题、@提及、外部网址） -> 放行跳转
-      if (target.closest('[data-testid="tweetText"]')) {
-        return true;
-      }
-      // 点击直接前往 /article/ 的链接 -> 放行
-      const href = anchor.getAttribute("href") || "";
-      if (href.includes("/article/")) {
-        return true;
-      }
+      parent = parent.parentElement;
     }
 
     return false;
