@@ -693,7 +693,7 @@ article[data-testid="tweet"].sidepeek-focal-active {
 }
 
 /* ==========================================================================
-   Drill-down Trigger (展开 N 条对话)
+   Drill-down & Secondary Reply Threads (展开/收起二级回复控件)
    ========================================================================== */
 .sidepeek-drilldown-trigger {
   display: inline-flex;
@@ -711,6 +711,122 @@ article[data-testid="tweet"].sidepeek-focal-active {
 
 .sidepeek-drilldown-trigger:hover {
   text-decoration: underline;
+}
+
+.sidepeek-expand-btn-row {
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding: 2px 16px 8px 16px;
+  gap: 12px;
+}
+
+.sidepeek-thread-line-col {
+  position: relative;
+  width: 36px;
+  min-height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidepeek-thread-line-col .sidepeek-thread-line {
+  position: absolute;
+  top: -12px;
+  bottom: 50%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  background: var(--sp-border);
+}
+
+.sidepeek-thread-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--sp-border);
+  z-index: 1;
+}
+
+.sidepeek-expand-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--sp-accent, #1d9bf0);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  transition: background 0.15s ease, opacity 0.15s ease;
+  line-height: 1.4;
+}
+
+.sidepeek-expand-btn:hover {
+  background: rgba(29, 155, 240, 0.1);
+  text-decoration: underline;
+}
+
+.sidepeek-expand-btn:disabled {
+  opacity: 0.75;
+  cursor: default;
+  text-decoration: none;
+}
+
+.sidepeek-collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--sp-muted, #71767b);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.sidepeek-collapse-btn:hover {
+  color: var(--sp-text, #e7e9ea);
+  background: rgba(128, 128, 128, 0.1);
+}
+
+.sidepeek-thread-loader-row {
+  display: flex;
+  align-items: center;
+  padding: 4px 16px 8px 16px;
+  gap: 12px;
+}
+
+.sidepeek-thread-loader-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--sp-muted, #71767b);
+}
+
+.sidepeek-thread-empty-tip {
+  font-size: 12.5px;
+  color: var(--sp-muted, #71767b);
+  padding: 2px 0;
+}
+
+.sidepeek-mini-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--sp-border, rgba(255, 255, 255, 0.2));
+  border-top-color: var(--sp-accent, #1d9bf0);
+  border-radius: 50%;
+  animation: sidepeek-spin 0.7s linear infinite;
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
 }
 
 /* ==========================================================================

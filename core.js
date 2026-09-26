@@ -290,8 +290,18 @@
 
     if (!focal) return { focal: null, replies: [], cursor: null };
 
+    const ancestors = new Set();
+    let ancId = focal.inReplyToId;
+    while (ancId && !ancestors.has(ancId)) {
+      ancestors.add(ancId);
+      ancId = byId.get(ancId)?.inReplyToId || "";
+    }
+
     function descendsFromFocal(model) {
       if (!model || model.id === focalId) return false;
+      if (ancestors.has(model.id)) return false;
+      // 只要属于当前推文会话（conversation_id 匹配），一律收纳进 replies
+      if (model.conversationId && model.conversationId === focalId) return true;
       if (model.inReplyToId === focalId) return true;
       const visited = new Set([model.id]);
       let parentId = model.inReplyToId;
@@ -299,6 +309,10 @@
         if (parentId === focalId) return true;
         visited.add(parentId);
         parentId = byId.get(parentId)?.inReplyToId || "";
+      }
+      // 如果推特返回了当前 focalId 会话中的其他子回复，即使中间父节点未完整返回，只要属于同一个会话且不是祖先，也作为回复纳入
+      if (focal.conversationId && model.conversationId && model.conversationId === focal.conversationId) {
+        return true;
       }
       return false;
     }
@@ -321,25 +335,37 @@
 
     for (const reply of replies) {
       const parentId = reply.inReplyToId;
-      if (parentId === focalId || !byId.has(parentId)) {
+      if (parentId === focalId) {
         rootReplies.push(reply);
-      } else {
+      } else if (parentId && byId.has(parentId)) {
         const children = childrenMap.get(parentId) || [];
         children.push(reply);
         childrenMap.set(parentId, children);
+      } else if (reply._subThreadOf && byId.has(reply._subThreadOf)) {
+        // 如果该回复是由二级评论请求拉取的子回复，归属于该二级评论的子树
+        const children = childrenMap.get(reply._subThreadOf) || [];
+        children.push(reply);
+        childrenMap.set(reply._subThreadOf, children);
+      } else {
+        rootReplies.push(reply);
       }
     }
 
-    // 递归收集某个评论的所有后代（用于下钻视图）
+    // 递归收集某个评论的所有后代（深度优先遍历，保持阅读对话连贯性）
     function getSubtree(replyId) {
       const result = [];
-      const queue = [...(childrenMap.get(replyId) || [])];
-      while (queue.length > 0) {
-        const item = queue.shift();
-        result.push(item);
-        const sub = childrenMap.get(item.id) || [];
-        queue.push(...sub);
+      const visited = new Set();
+      function traverse(id) {
+        const list = childrenMap.get(id) || [];
+        for (const item of list) {
+          if (!visited.has(item.id)) {
+            visited.add(item.id);
+            result.push(item);
+            traverse(item.id);
+          }
+        }
       }
+      traverse(replyId);
       return result;
     }
 

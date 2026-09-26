@@ -57,7 +57,7 @@ Compatible with Chrome, Edge, Brave, Arc, and other Chromium browsers:
 👉 **[Install from Chrome Web Store](https://chromewebstore.google.com/detail/ccbkagemmobenjoioicemekhjbggmpde)** with seamless automatic updates!
 
 ### Method 2: ZIP Package (100% Reliable & Offline)
-1. Download **`SideX-v1.1.5.zip`** from [Releases](https://github.com/UncleK/SideX/releases) and extract it.
+1. Download **`SideX-v1.1.6.zip`** from [Releases](https://github.com/UncleK/SideX/releases) and extract it.
 2. Open `chrome://extensions/` (or `edge://extensions/`), enable **"Developer mode"** in the top-right corner.
 3. Click **"Load unpacked"** and select the extracted folder.
 

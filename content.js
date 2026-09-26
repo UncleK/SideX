@@ -74,6 +74,8 @@
     replies: [],
     tree: null,
     expandedThreadIds: new Set(),
+    loadedThreadIds: new Set(),
+    loadingThreadIds: new Set(),
     activeView: "root", // "root" or { type: "drilldown", parentId: string }
     replyTarget: null, // Comment model being replied to, or null for focal tweet
     loading: false,
@@ -191,8 +193,10 @@
       noMoreReplies: "暂无更多子回复",
       loadingReplies: "正在加载评论...",
       retryBtn: "重试",
+      showReplies: "展开 {count} 条回复",
       showMoreReplies: "展开另外 {count} 条回复",
       collapseReplies: "收起回复",
+      loadRepliesFailed: "加载回复失败，请重试",
       replyToTag: "回复",
       replyAction: "回复",
       repostAction: "转发",
@@ -284,8 +288,10 @@
       noMoreReplies: "No more replies",
       loadingReplies: "Loading replies...",
       retryBtn: "Retry",
+      showReplies: "Show {count} replies",
       showMoreReplies: "Show {count} more replies",
       collapseReplies: "Collapse replies",
+      loadRepliesFailed: "Failed to load replies",
       replyToTag: "Replying to",
       replyAction: "Reply",
       repostAction: "Repost",
@@ -911,9 +917,24 @@
       const parentNode = renderCommentNode(drillDownParent, true);
       body.appendChild(parentNode);
 
-      // Render children
-      const children = state.tree?.childrenMap.get(drillDownParent.id) || [];
-      if (children.length === 0) {
+      // Render children (深度优先收集所有后代回复)
+      const children = state.tree?.getSubtree ? state.tree.getSubtree(drillDownParent.id) : (state.tree?.childrenMap.get(drillDownParent.id) || []);
+      const totalReplies = drillDownParent.counts?.replies || 0;
+      const isSubLoading = state.loadingThreadIds.has(drillDownParent.id);
+
+      if (children.length === 0 && totalReplies > 0 && !state.loadedThreadIds.has(drillDownParent.id)) {
+        if (!isSubLoading) {
+          fetchSubReplies(drillDownParent.id);
+        }
+        const loader = document.createElement("div");
+        loader.className = "sidepeek-thread-loader-row";
+        loader.style.padding = "24px 16px";
+        loader.innerHTML = `
+          <div class="sidepeek-mini-spinner"></div>
+          <span style="font-size: 13px; color: var(--sp-muted); margin-left: 8px;">${t("loadingReplies")}</span>
+        `;
+        body.appendChild(loader);
+      } else if (children.length === 0) {
         const empty = document.createElement("div");
         empty.className = "sidepeek-empty-box";
         empty.textContent = t("noMoreReplies");
@@ -925,7 +946,7 @@
         }
       }
     } else {
-      // Root view: 默认直接展开二级回复
+      // Root view: 默认就地展示或折叠展开二级回复
       const roots = state.tree?.rootReplies || [];
       if (roots.length === 0) {
         body.innerHTML = `<div class="sidepeek-empty-box"><span>${t("emptyReplies")}</span></div>`;
@@ -935,50 +956,112 @@
       const INLINE_LIMIT = 2; // 默认就地展示最多 2 条二级回复
 
       for (const rootReply of roots) {
-        const children = state.tree?.childrenMap.get(rootReply.id) || [];
+        const children = state.tree?.getSubtree ? state.tree.getSubtree(rootReply.id) : (state.tree?.childrenMap.get(rootReply.id) || []);
         const childrenCount = children.length;
+        const totalRepliesCount = rootReply.counts?.replies || 0;
+        const hasReplies = childrenCount > 0 || totalRepliesCount > 0;
 
-        if (childrenCount === 0) {
+        if (!hasReplies) {
           body.appendChild(renderCommentNode(rootReply, false));
         } else {
           const threadGroup = document.createElement("div");
           threadGroup.className = "sidepeek-thread-group";
 
+          const isExpanded = state.expandedThreadIds.has(rootReply.id);
+          const isLoading = state.loadingThreadIds.has(rootReply.id);
+
           // 父评论带有向下连接子评论的 Thread Line
           threadGroup.appendChild(renderCommentNode(rootReply, true));
 
-          const isExpanded = state.expandedThreadIds.has(rootReply.id);
-          const showAll = isExpanded || childrenCount <= INLINE_LIMIT;
-          const visibleChildren = showAll ? children : children.slice(0, INLINE_LIMIT);
+          if (isExpanded) {
+            // 已展开：显示所有已加载的子回复
+            for (let i = 0; i < childrenCount; i++) {
+              const child = children[i];
+              const hasNext = (i < childrenCount - 1) || isLoading;
+              threadGroup.appendChild(renderCommentNode(child, hasNext, true));
+            }
 
-          for (let i = 0; i < visibleChildren.length; i++) {
-            const child = visibleChildren[i];
-            const isLast = (i === visibleChildren.length - 1) && (showAll || isExpanded);
-            const childHasLine = !isLast;
-            threadGroup.appendChild(renderCommentNode(child, childHasLine, true));
-          }
+            if (isLoading) {
+              const loaderEl = document.createElement("div");
+              loaderEl.className = "sidepeek-thread-loader-row";
+              loaderEl.innerHTML = `
+                <div class="sidepeek-thread-line-col"><div class="sidepeek-thread-line"></div></div>
+                <div class="sidepeek-thread-loader-content">
+                  <span class="sidepeek-mini-spinner"></span>
+                  <span>${t("loadingReplies")}</span>
+                </div>
+              `;
+              threadGroup.appendChild(loaderEl);
+            } else if (childrenCount === 0) {
+              const emptyTip = document.createElement("div");
+              emptyTip.className = "sidepeek-thread-loader-row";
+              emptyTip.innerHTML = `
+                <div class="sidepeek-thread-line-col"></div>
+                <div class="sidepeek-thread-empty-tip">${t("noMoreReplies")}</div>
+              `;
+              threadGroup.appendChild(emptyTip);
+            }
 
-          if (!showAll) {
-            const remaining = childrenCount - INLINE_LIMIT;
-            const moreBtn = document.createElement("button");
-            moreBtn.type = "button";
-            moreBtn.className = "sidepeek-drilldown-trigger";
-            moreBtn.textContent = t("showMoreReplies", { count: remaining });
-            moreBtn.addEventListener("click", () => {
-              state.expandedThreadIds.add(rootReply.id);
-              renderDrawer();
-            });
-            threadGroup.appendChild(moreBtn);
-          } else if (childrenCount > INLINE_LIMIT && isExpanded) {
-            const collapseBtn = document.createElement("button");
-            collapseBtn.type = "button";
-            collapseBtn.className = "sidepeek-drilldown-trigger";
-            collapseBtn.textContent = t("collapseReplies");
-            collapseBtn.addEventListener("click", () => {
+            // 收起按钮
+            const collapseRow = document.createElement("div");
+            collapseRow.className = "sidepeek-expand-btn-row";
+            collapseRow.innerHTML = `
+              <div class="sidepeek-thread-line-col"></div>
+              <button type="button" class="sidepeek-collapse-btn">
+                <span>▲ ${t("collapseReplies")}</span>
+              </button>
+            `;
+            collapseRow.querySelector(".sidepeek-collapse-btn")?.addEventListener("click", () => {
               state.expandedThreadIds.delete(rootReply.id);
               renderDrawer();
             });
-            threadGroup.appendChild(collapseBtn);
+            threadGroup.appendChild(collapseRow);
+          } else {
+            // 未展开：
+            // 如果子回复数量 <= INLINE_LIMIT 且已经全部加载完（childrenCount >= totalRepliesCount && childrenCount > 0）
+            if (childrenCount > 0 && childrenCount <= INLINE_LIMIT && childrenCount >= totalRepliesCount) {
+              for (let i = 0; i < childrenCount; i++) {
+                const child = children[i];
+                const hasNext = i < childrenCount - 1;
+                threadGroup.appendChild(renderCommentNode(child, hasNext, true));
+              }
+            } else {
+              // 否则展示最多 INLINE_LIMIT 条预览回复（如果有的话）
+              const previewCount = Math.min(childrenCount, INLINE_LIMIT);
+              for (let i = 0; i < previewCount; i++) {
+                threadGroup.appendChild(renderCommentNode(children[i], true, true));
+              }
+
+              // 展开按钮行
+              const expandRow = document.createElement("div");
+              expandRow.className = "sidepeek-expand-btn-row";
+
+              const remaining = totalRepliesCount > previewCount
+                ? (totalRepliesCount - previewCount)
+                : (childrenCount - previewCount);
+              const countToDisplay = remaining > 0 ? remaining : (totalRepliesCount || childrenCount);
+
+              const btn = document.createElement("button");
+              btn.type = "button";
+              btn.className = "sidepeek-expand-btn";
+
+              if (isLoading) {
+                btn.disabled = true;
+                btn.innerHTML = `<span class="sidepeek-mini-spinner"></span> <span>${t("loadingReplies")}</span>`;
+              } else {
+                const btnLabel = previewCount > 0
+                  ? t("showMoreReplies", { count: countToDisplay })
+                  : t("showReplies", { count: countToDisplay });
+                btn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M1.751 10c0-4.42 3.584-8 8.005-8h4.366c4.49 0 8.129 3.64 8.129 8.13 0 2.96-1.607 5.68-4.196 7.11l-8.054 4.46v-3.69h-.25c-4.421 0-8-3.58-8-8zm6.822-1.97v3.94l3.415-1.97-3.415-1.97z"/></svg> <span>${btnLabel}</span>`;
+                btn.addEventListener("click", () => {
+                  handleExpandThread(rootReply.id);
+                });
+              }
+
+              expandRow.innerHTML = `<div class="sidepeek-thread-line-col"><div class="sidepeek-thread-line"></div><div class="sidepeek-thread-dot"></div></div>`;
+              expandRow.appendChild(btn);
+              threadGroup.appendChild(expandRow);
+            }
           }
 
           body.appendChild(threadGroup);
@@ -2111,6 +2194,8 @@
     state.loading = true;
     state.error = "";
     state.expandedThreadIds.clear();
+    state.loadedThreadIds.clear();
+    state.loadingThreadIds.clear();
     state.replyTarget = null;
     renderDrawer();
 
@@ -2127,6 +2212,63 @@
       state.error = err.message || "读取评论失败，请重试";
       renderDrawer();
     }
+  }
+
+  async function fetchSubReplies(commentId) {
+    if (!commentId) return;
+    if (state.loadingThreadIds.has(commentId)) return;
+    state.loadingThreadIds.add(commentId);
+    renderDrawer();
+
+    try {
+      const json = await requestPage("READ_THREAD", { tweetId: commentId });
+      const { focal, replies } = Core.parseTweetDetail(json, commentId);
+
+      // 将 sub-replies 标记归属并去重加入 state.replies
+      const existingIds = new Set(state.replies.map((r) => r.id));
+      for (const r of (replies || [])) {
+        if (!existingIds.has(r.id) && r.id !== state.focalTweetId) {
+          r._subThreadOf = commentId;
+          state.replies.push(r);
+          existingIds.add(r.id);
+        }
+      }
+
+      // 如果 focal 自身数据有更新（如 counts），同步更新
+      if (focal && state.tree?.byId?.has(commentId)) {
+        const existing = state.tree.byId.get(commentId);
+        if (existing && focal.counts) {
+          Object.assign(existing.counts, focal.counts);
+        }
+      }
+
+      // 重新构建对话树结构
+      state.tree = Core.buildConversationTree(state.replies, state.focalTweetId);
+      state.loadedThreadIds.add(commentId);
+      state.expandedThreadIds.add(commentId);
+    } catch (err) {
+      console.warn("[SideX] 读取二级回复失败:", err);
+      showToast(t("loadRepliesFailed") || "加载回复失败");
+    } finally {
+      state.loadingThreadIds.delete(commentId);
+      renderDrawer();
+    }
+  }
+
+  async function handleExpandThread(rootReplyId) {
+    const children = state.tree?.getSubtree ? state.tree.getSubtree(rootReplyId) : (state.tree?.childrenMap.get(rootReplyId) || []);
+    const rootModel = state.tree?.byId?.get(rootReplyId);
+    const totalReplies = rootModel?.counts?.replies || 0;
+
+    // 如果本地已经有该二级评论的所有子回复，或者已经成功 fetch 过了，直接就地展开
+    if (state.loadedThreadIds.has(rootReplyId) || (children.length >= totalReplies && totalReplies > 0)) {
+      state.expandedThreadIds.add(rootReplyId);
+      renderDrawer();
+      return;
+    }
+
+    // 否则发起请求拉取完整的二级回复
+    await fetchSubReplies(rootReplyId);
   }
 
   let userClosedTweetId = null;
@@ -2214,6 +2356,9 @@
         state.focalModel = focal;
         state.replies = replies;
         state.tree = Core.buildConversationTree(replies, tweetId);
+        state.expandedThreadIds.clear();
+        state.loadedThreadIds.clear();
+        state.loadingThreadIds.clear();
         state.activeView = "root";
         state.replyTarget = null;
         state.loading = false;
