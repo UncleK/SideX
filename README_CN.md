@@ -57,7 +57,7 @@
 👉 **[点击直达 Chrome Web Store 官方商店](https://chromewebstore.google.com/detail/ccbkagemmobenjoioicemekhjbggmpde)**，一键添加至浏览器并享受自动更新！
 
 ### 方式二：下载 ZIP 压缩包（离线直装，100% 成功）
-1. 前往 [Releases 页面](https://github.com/UncleK/SideX/releases) 下载 **`SideX-v1.1.4.zip`** 并解压。
+1. 前往 [Releases 页面](https://github.com/UncleK/SideX/releases) 下载 **`SideX-v1.1.5.zip`** 并解压。
 2. 打开 `chrome://extensions/`（或 `edge://extensions/`），开启右上角**「开发者模式」**。
 3. 点击左上角**「加载已解压的扩展程序」**（Load unpacked），选择解压后的文件夹即可。
 

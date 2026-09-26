@@ -595,6 +595,163 @@
     bindDrag(handleLeft, true);
   }
 
+  // ==========================================================================
+  // Vertical Drag-to-Scroll Slider (上下拖拽快速滚动滑块)
+  // ==========================================================================
+  function initScrollSlider(root) {
+    const body = root.querySelector(".sidepeek-body");
+    const track = root.querySelector(".sidepeek-scroll-track");
+    const thumb = root.querySelector(".sidepeek-scroll-thumb");
+    const badge = root.querySelector(".sidepeek-scroll-badge");
+    if (!body || !track || !thumb) return;
+
+    let isDragging = false;
+    let startY = 0;
+    let startScrollTop = 0;
+    let scrollTimer = null;
+
+    function updateSlider() {
+      if (!state.open) return;
+      const clientHeight = body.clientHeight;
+      const scrollHeight = body.scrollHeight;
+      const canScroll = scrollHeight > clientHeight + 4;
+
+      if (!canScroll) {
+        track.style.display = "none";
+        root.classList.remove("sidepeek-has-scroll");
+        return;
+      }
+
+      track.style.display = "flex";
+      root.classList.add("sidepeek-has-scroll");
+      const trackHeight = track.clientHeight;
+      if (trackHeight <= 0) return;
+
+      const minThumbHeight = 36;
+      const maxThumbHeight = Math.max(minThumbHeight, trackHeight - 20);
+      const calculatedHeight = Math.round((clientHeight / scrollHeight) * trackHeight);
+      const thumbHeight = Math.max(minThumbHeight, Math.min(maxThumbHeight, calculatedHeight));
+
+      thumb.style.height = `${thumbHeight}px`;
+
+      const maxScrollTop = scrollHeight - clientHeight;
+      const maxThumbTop = trackHeight - thumbHeight;
+      const scrollRatio = maxScrollTop > 0 ? (body.scrollTop / maxScrollTop) : 0;
+      const thumbTop = Math.round(scrollRatio * maxThumbTop);
+
+      thumb.style.transform = `translateY(${thumbTop}px)`;
+
+      if (badge && isDragging) {
+        const percent = Math.round(scrollRatio * 100);
+        badge.textContent = `${percent}%`;
+      }
+    }
+
+    body.addEventListener("scroll", () => {
+      if (!isDragging) {
+        updateSlider();
+        thumb.classList.add("scrolling");
+        clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(() => {
+          thumb.classList.remove("scrolling");
+        }, 800);
+      }
+    }, { passive: true });
+
+    thumb.addEventListener("mousedown", (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      isDragging = true;
+      state.isResizing = true;
+      startY = e.clientY;
+      startScrollTop = body.scrollTop;
+
+      thumb.classList.add("dragging");
+      track.classList.add("active");
+      document.body.style.userSelect = "none";
+      document.body.style.cursor = "ns-resize";
+
+      updateSlider();
+
+      function onMouseMove(moveEvent) {
+        if (!isDragging) return;
+        const deltaY = moveEvent.clientY - startY;
+        const trackHeight = track.clientHeight;
+        const thumbHeight = thumb.offsetHeight;
+        const maxThumbTop = trackHeight - thumbHeight;
+        const maxScrollTop = body.scrollHeight - body.clientHeight;
+
+        if (maxThumbTop > 0 && maxScrollTop > 0) {
+          const scrollDelta = (deltaY / maxThumbTop) * maxScrollTop;
+          body.scrollTop = Math.max(0, Math.min(maxScrollTop, startScrollTop + scrollDelta));
+          const currentRatio = body.scrollTop / maxScrollTop;
+          const currentThumbTop = Math.round(currentRatio * maxThumbTop);
+          thumb.style.transform = `translateY(${currentThumbTop}px)`;
+          if (badge) {
+            badge.textContent = `${Math.round(currentRatio * 100)}%`;
+          }
+        }
+      }
+
+      function onMouseUp() {
+        if (!isDragging) return;
+        isDragging = false;
+        thumb.classList.remove("dragging");
+        track.classList.remove("active");
+        document.body.style.userSelect = "";
+        document.body.style.cursor = "";
+        window.removeEventListener("mousemove", onMouseMove);
+        window.removeEventListener("mouseup", onMouseUp);
+
+        const captureClick = (clickEvent) => {
+          clickEvent.preventDefault();
+          clickEvent.stopPropagation();
+          clickEvent.stopImmediatePropagation();
+          window.removeEventListener("click", captureClick, true);
+        };
+        window.addEventListener("click", captureClick, true);
+        setTimeout(() => {
+          window.removeEventListener("click", captureClick, true);
+          state.isResizing = false;
+        }, 120);
+      }
+
+      window.addEventListener("mousemove", onMouseMove);
+      window.addEventListener("mouseup", onMouseUp);
+    });
+
+    // 点击滚动条轨道直接跳转到目标区域
+    track.addEventListener("click", (e) => {
+      if (e.target === thumb || thumb.contains(e.target)) return;
+      e.stopPropagation();
+      const trackRect = track.getBoundingClientRect();
+      const clickY = e.clientY - trackRect.top;
+      const trackHeight = track.clientHeight;
+      const thumbHeight = thumb.offsetHeight;
+      const maxThumbTop = trackHeight - thumbHeight;
+      const maxScrollTop = body.scrollHeight - body.clientHeight;
+
+      if (maxThumbTop > 0 && maxScrollTop > 0) {
+        const targetThumbTop = Math.max(0, Math.min(maxThumbTop, clickY - thumbHeight / 2));
+        const targetScrollTop = (targetThumbTop / maxThumbTop) * maxScrollTop;
+        body.scrollTo({ top: targetScrollTop, behavior: "smooth" });
+      }
+    });
+
+    if (window.ResizeObserver) {
+      const ro = new ResizeObserver(() => {
+        updateSlider();
+      });
+      ro.observe(body);
+    }
+
+    requestAnimationFrame(updateSlider);
+    setTimeout(updateSlider, 80);
+    setTimeout(updateSlider, 350);
+  }
+
   window.addEventListener("resize", updateDrawerPosition);
 
   // ==========================================================================
@@ -647,7 +804,19 @@
           <button type="button" class="sidepeek-icon-btn sidepeek-btn-close" aria-label="${t("closeSidebar")}">${ICONS.close}</button>
         </div>
       </header>
-      <div class="sidepeek-body"></div>
+      <div class="sidepeek-body-wrap">
+        <div class="sidepeek-body"></div>
+        <div class="sidepeek-scroll-track" title="${getLocale() === "zh" ? "上下拖动快速浏览评论 · 点击轨道直接跳转" : "Drag up/down to scroll comments · Click track to jump"}">
+          <div class="sidepeek-scroll-thumb">
+            <div class="sidepeek-scroll-thumb-grip">
+              <svg viewBox="0 0 16 16" width="10" height="10" fill="currentColor">
+                <path d="M8 1.5L10.5 4H8.5V12H10.5L8 14.5L5.5 12H7.5V4H5.5Z"/>
+              </svg>
+            </div>
+            <div class="sidepeek-scroll-badge">0%</div>
+          </div>
+        </div>
+      </div>
       <footer class="sidepeek-footer-composer">
         <!-- In-place Popovers -->
         <div class="sidepeek-popover sidepeek-emoji-popover" style="display: none;"></div>
@@ -706,6 +875,7 @@
     `;
 
     initResizeHandle(root);
+    initScrollSlider(root);
     initFooterComposer(root, isDrillDown, drillDownParent);
 
     // Event listeners on header

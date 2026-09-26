@@ -114,6 +114,11 @@ article[data-testid="tweet"].sidepeek-focal-active {
   transform: scaleY(1.25);
 }
 
+/* 当评论过多启用上下拖动滑块时，隐藏右侧水平调宽把手，避免视觉混杂 */
+#sidepeek-drawer-root.sidepeek-has-scroll .sidepeek-resize-handle-right .sidepeek-resize-grip {
+  display: none !important;
+}
+
 /* ==========================================================================
    Header & Navigation
    ========================================================================== */
@@ -208,8 +213,17 @@ article[data-testid="tweet"].sidepeek-focal-active {
 }
 
 /* ==========================================================================
-   Comment Scrollable Stream
+   Comment Scrollable Stream & Custom Drag Scrollbar
    ========================================================================== */
+.sidepeek-body-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .sidepeek-body {
   flex: 1 1 auto;
   overflow-y: auto;
@@ -219,11 +233,125 @@ article[data-testid="tweet"].sidepeek-focal-active {
   -ms-overflow-style: none; /* IE 10+ */
 }
 
-/* 彻底隐藏滚动条，避免 Windows Fluent 默认滚动条和箭头长期占用空间 */
+/* 彻底隐藏原生滚动条，避免 Windows Fluent 默认滚动条和箭头长期占用空间 */
 .sidepeek-body::-webkit-scrollbar {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
+}
+
+/* 优雅精致的右侧上下拖拽快速滚动轨道与滑块 */
+.sidepeek-scroll-track {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  right: 1px;
+  width: 14px;
+  z-index: 1002;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 9999px;
+  transition: background 0.18s ease;
+  user-select: none;
+}
+
+.sidepeek-scroll-track:hover,
+.sidepeek-scroll-track.active {
+  background: rgba(128, 128, 128, 0.08);
+}
+
+.sidepeek-scroll-thumb {
+  position: absolute;
+  top: 0;
+  right: 3px;
+  width: 6px;
+  min-height: 38px;
+  border-radius: 9999px;
+  background: rgba(140, 150, 160, 0.45);
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              right 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.18s ease,
+              box-shadow 0.18s ease,
+              opacity 0.18s ease;
+  box-sizing: border-box;
+}
+
+.sidepeek-theme-dark .sidepeek-scroll-thumb,
+.sidepeek-theme-dim .sidepeek-scroll-thumb {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* 滚轮滚动时短暂高亮滑块，提供即时视觉反馈 */
+.sidepeek-scroll-thumb.scrolling {
+  opacity: 0.9;
+  background: var(--sp-accent);
+}
+
+/* 鼠标悬停及拖动激活状态：变宽为 10px，官方 Twitter 蓝发光，展示上下双箭头指示符 */
+.sidepeek-scroll-track:hover .sidepeek-scroll-thumb,
+.sidepeek-scroll-thumb:hover,
+.sidepeek-scroll-thumb.dragging {
+  width: 10px;
+  right: 2px;
+  background: var(--sp-accent);
+  box-shadow: 0 0 10px rgba(29, 155, 240, 0.5);
+}
+
+.sidepeek-scroll-thumb.dragging {
+  background: #1a8cd8;
+  box-shadow: 0 0 14px rgba(29, 155, 240, 0.75);
+}
+
+/* 上下双向拖拽箭头指示符 (↕) */
+.sidepeek-scroll-thumb-grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  opacity: 0;
+  transform: scale(0.65);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  pointer-events: none;
+}
+
+.sidepeek-scroll-track:hover .sidepeek-scroll-thumb-grip,
+.sidepeek-scroll-thumb:hover .sidepeek-scroll-thumb-grip,
+.sidepeek-scroll-thumb.dragging .sidepeek-scroll-thumb-grip {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* 拖动过程中的悬浮滚动进度胶囊 (0% - 100%) */
+.sidepeek-scroll-badge {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(15, 20, 25, 0.88);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.sidepeek-scroll-thumb.dragging .sidepeek-scroll-badge {
+  opacity: 1;
 }
 
 /* ==========================================================================
