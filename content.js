@@ -627,11 +627,8 @@
       const trackHeight = track.clientHeight;
       if (trackHeight <= 0) return;
 
-      const minThumbHeight = 36;
-      const maxThumbHeight = Math.max(minThumbHeight, trackHeight - 20);
-      const calculatedHeight = Math.round((clientHeight / scrollHeight) * trackHeight);
-      const thumbHeight = Math.max(minThumbHeight, Math.min(maxThumbHeight, calculatedHeight));
-
+      // 保持为小巧精致的胶囊按钮尺寸（固定 44px），绝不笨重拉长
+      const thumbHeight = 44;
       thumb.style.height = `${thumbHeight}px`;
 
       const maxScrollTop = scrollHeight - clientHeight;
