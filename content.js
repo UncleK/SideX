@@ -76,6 +76,8 @@
     expandedThreadIds: new Set(),
     loadedThreadIds: new Set(),
     loadingThreadIds: new Set(),
+    anchorCommentId: null,
+    resetScrollOnRender: false,
     activeView: "root", // "root" or { type: "drilldown", parentId: string }
     replyTarget: null, // Comment model being replied to, or null for focal tweet
     loading: false,
@@ -788,107 +790,155 @@
         ? t("replyToUser", { handle: drillDownParent?.author?.handle || (getLocale() === "zh" ? "此人" : "user") })
         : t("replyToAuthor", { handle: state.focalModel?.author?.handle || (getLocale() === "zh" ? "楼主" : "author") });
 
-    root.innerHTML = `
-      <div class="sidepeek-resize-handle sidepeek-resize-handle-left" title="${getLocale() === "zh" ? "拖动左边缘调整宽度，双击恢复默认" : "Drag left edge to resize, double-click to reset"}">
-        <div class="sidepeek-resize-grip"></div>
-      </div>
-      <div class="sidepeek-resize-handle sidepeek-resize-handle-right" title="${getLocale() === "zh" ? "拖动右边缘调整宽度，双击恢复默认" : "Drag right edge to resize, double-click to reset"}">
-        <div class="sidepeek-resize-grip"></div>
-      </div>
-      <header class="sidepeek-header">
-        <div class="sidepeek-title-wrap">
-          ${isDrillDown ? `<button type="button" class="sidepeek-back-btn" aria-label="${t("backToAll")}">${ICONS.back}</button>` : ""}
-          <span class="sidepeek-title">${isDrillDown ? t("threadBranch") : "SideX"}</span>
-          <span class="sidepeek-count-badge">(${isDrillDown ? (state.tree?.childrenMap.get(drillDownParent?.id)?.length || 0) : (state.tree?.rootReplies.length || 0)})</span>
-        </div>
-        <div class="sidepeek-header-actions">
-          <button type="button" class="sidepeek-icon-btn sidepeek-btn-reset-width" title="${t("resetWidth")}">${ICONS.resetWidth}</button>
-          ${state.focalModel?.url ? `<a href="${state.focalModel.url}" target="_blank" class="sidepeek-icon-btn" title="${t("openOnX")}">${ICONS.external}</a>` : ""}
-          <button type="button" class="sidepeek-icon-btn sidepeek-btn-close" aria-label="${t("closeSidebar")}">${ICONS.close}</button>
-        </div>
-      </header>
-      <div class="sidepeek-body-wrap">
-        <div class="sidepeek-body"></div>
-        <div class="sidepeek-scroll-track" title="${getLocale() === "zh" ? "上下拖动快速浏览评论 · 点击轨道直接跳转" : "Drag up/down to scroll comments · Click track to jump"}">
-          <div class="sidepeek-scroll-thumb">
-            <div class="sidepeek-scroll-thumb-grip">
-              <svg viewBox="0 0 16 16" width="10" height="10" fill="currentColor">
-                <path d="M8 1.5L10.5 4H8.5V12H10.5L8 14.5L5.5 12H7.5V4H5.5Z"/>
-              </svg>
-            </div>
-            <div class="sidepeek-scroll-badge">0%</div>
-          </div>
-        </div>
-      </div>
-      <footer class="sidepeek-footer-composer">
-        <!-- In-place Popovers -->
-        <div class="sidepeek-popover sidepeek-emoji-popover" style="display: none;"></div>
-        <div class="sidepeek-popover sidepeek-gif-popover" style="display: none;"></div>
-        <div class="sidepeek-popover sidepeek-poll-popover" style="display: none;"></div>
-        <div class="sidepeek-popover sidepeek-schedule-popover" style="display: none;"></div>
+    // 1. 记录重绘前的滚动高度，防止任何操作（展开/收起/加载等）跳回顶部
+    const existingBody = root.querySelector(".sidepeek-body");
+    const prevScrollTop = (existingBody && !state.resetScrollOnRender) ? existingBody.scrollTop : 0;
+    if (state.resetScrollOnRender) {
+      state.resetScrollOnRender = false;
+    }
 
-        <div class="sidepeek-footer-inner">
-          <div class="sidepeek-footer-avatar-wrap">
-            ${userAvatar ? `<img src="${userAvatar}" class="sidepeek-footer-avatar" alt="" />` : `<div class="sidepeek-footer-avatar-default">${ICONS.user}</div>`}
+    if (!existingBody) {
+      root.innerHTML = `
+        <div class="sidepeek-resize-handle sidepeek-resize-handle-left" title="${getLocale() === "zh" ? "拖动左边缘调整宽度，双击恢复默认" : "Drag left edge to resize, double-click to reset"}">
+          <div class="sidepeek-resize-grip"></div>
+        </div>
+        <div class="sidepeek-resize-handle sidepeek-resize-handle-right" title="${getLocale() === "zh" ? "拖动右边缘调整宽度，双击恢复默认" : "Drag right edge to resize, double-click to reset"}">
+          <div class="sidepeek-resize-grip"></div>
+        </div>
+        <header class="sidepeek-header">
+          <div class="sidepeek-title-wrap">
+            <button type="button" class="sidepeek-back-btn" style="display:none;" aria-label="${t("backToAll")}">${ICONS.back}</button>
+            <span class="sidepeek-title">SideX</span>
+            <span class="sidepeek-count-badge"></span>
           </div>
-          <div class="sidepeek-footer-main">
-            <div class="sidepeek-footer-reply-target" style="${state.replyTarget ? 'display:flex;' : 'display:none;'}">
-              <span class="sidepeek-reply-target-text">${state.replyTarget ? `${t("replyToTag")} @${state.replyTarget.author.handle}` : ""}</span>
-              <button type="button" class="sidepeek-cancel-reply-target" title="✕">✕</button>
-            </div>
-            <textarea class="sidepeek-footer-textarea" rows="1" placeholder="${replyPlaceholder}"></textarea>
-            <div class="sidepeek-footer-preview-area"></div>
-            <div class="sidepeek-footer-toolbar">
-              <div class="sidepeek-footer-tools">
-                <label class="sidepeek-tool-btn sidepeek-tool-media" title="${t("mediaToolTitle")}">
-                  <input type="file" accept="image/*,video/*" class="sidepeek-media-file-input" style="display:none;" />
-                  ${ICONS.media}
-                </label>
-                <button type="button" class="sidepeek-tool-btn sidepeek-tool-gif" title="${t("gifToolTitle")}">
-                  ${ICONS.gif}
-                </button>
-                <button type="button" class="sidepeek-tool-btn sidepeek-tool-poll" title="${t("pollToolTitle")}">
-                  ${ICONS.poll}
-                </button>
-                <button type="button" class="sidepeek-tool-btn sidepeek-tool-emoji" title="${t("emojiToolTitle")}">
-                  ${ICONS.emoji}
-                </button>
-                <button type="button" class="sidepeek-tool-btn sidepeek-tool-schedule" title="${t("scheduleToolTitle")}">
-                  ${ICONS.schedule}
-                </button>
-                <button type="button" class="sidepeek-tool-btn sidepeek-tool-location" title="${t("locationToolTitle")}">
-                  ${ICONS.location}
-                </button>
+          <div class="sidepeek-header-actions">
+            <button type="button" class="sidepeek-icon-btn sidepeek-btn-reset-width" title="${t("resetWidth")}">${ICONS.resetWidth}</button>
+            <a href="#" target="_blank" class="sidepeek-icon-btn sidepeek-btn-external" title="${t("openOnX")}" style="display:none;">${ICONS.external}</a>
+            <button type="button" class="sidepeek-icon-btn sidepeek-btn-close" aria-label="${t("closeSidebar")}">${ICONS.close}</button>
+          </div>
+        </header>
+        <div class="sidepeek-body-wrap">
+          <div class="sidepeek-body"></div>
+          <div class="sidepeek-scroll-track" title="${getLocale() === "zh" ? "上下拖动快速浏览评论 · 点击轨道直接跳转" : "Drag up/down to scroll comments · Click track to jump"}">
+            <div class="sidepeek-scroll-thumb">
+              <div class="sidepeek-scroll-thumb-grip">
+                <svg viewBox="0 0 16 16" width="10" height="10" fill="currentColor">
+                  <path d="M8 1.5L10.5 4H8.5V12H10.5L8 14.5L5.5 12H7.5V4H5.5Z"/>
+                </svg>
               </div>
-              <div class="sidepeek-footer-actions">
-                <div class="sidepeek-char-counter" title="${t("charCountTitle")}">
-                  <svg class="sidepeek-char-ring" viewBox="0 0 24 24" width="20" height="20">
-                    <circle class="sidepeek-char-ring-bg" cx="12" cy="12" r="9" />
-                    <circle class="sidepeek-char-ring-progress" cx="12" cy="12" r="9" />
-                  </svg>
-                  <span class="sidepeek-char-warn-num"></span>
+              <div class="sidepeek-scroll-badge">0%</div>
+            </div>
+          </div>
+        </div>
+        <footer class="sidepeek-footer-composer">
+          <!-- In-place Popovers -->
+          <div class="sidepeek-popover sidepeek-emoji-popover" style="display: none;"></div>
+          <div class="sidepeek-popover sidepeek-gif-popover" style="display: none;"></div>
+          <div class="sidepeek-popover sidepeek-poll-popover" style="display: none;"></div>
+          <div class="sidepeek-popover sidepeek-schedule-popover" style="display: none;"></div>
+
+          <div class="sidepeek-footer-inner">
+            <div class="sidepeek-footer-avatar-wrap">
+              ${userAvatar ? `<img src="${userAvatar}" class="sidepeek-footer-avatar" alt="" />` : `<div class="sidepeek-footer-avatar-default">${ICONS.user}</div>`}
+            </div>
+            <div class="sidepeek-footer-main">
+              <div class="sidepeek-footer-reply-target" style="display:none;">
+                <span class="sidepeek-reply-target-text"></span>
+                <button type="button" class="sidepeek-cancel-reply-target" title="✕">✕</button>
+              </div>
+              <textarea class="sidepeek-footer-textarea" rows="1" placeholder="${replyPlaceholder}"></textarea>
+              <div class="sidepeek-footer-preview-area"></div>
+              <div class="sidepeek-footer-toolbar">
+                <div class="sidepeek-footer-tools">
+                  <label class="sidepeek-tool-btn sidepeek-tool-media" title="${t("mediaToolTitle")}">
+                    <input type="file" accept="image/*,video/*" class="sidepeek-media-file-input" style="display:none;" />
+                    ${ICONS.media}
+                  </label>
+                  <button type="button" class="sidepeek-tool-btn sidepeek-tool-gif" title="${t("gifToolTitle")}">
+                    ${ICONS.gif}
+                  </button>
+                  <button type="button" class="sidepeek-tool-btn sidepeek-tool-poll" title="${t("pollToolTitle")}">
+                    ${ICONS.poll}
+                  </button>
+                  <button type="button" class="sidepeek-tool-btn sidepeek-tool-emoji" title="${t("emojiToolTitle")}">
+                    ${ICONS.emoji}
+                  </button>
+                  <button type="button" class="sidepeek-tool-btn sidepeek-tool-schedule" title="${t("scheduleToolTitle")}">
+                    ${ICONS.schedule}
+                  </button>
+                  <button type="button" class="sidepeek-tool-btn sidepeek-tool-location" title="${t("locationToolTitle")}">
+                    ${ICONS.location}
+                  </button>
                 </div>
-                <div class="sidepeek-action-divider"></div>
-                <button type="button" class="sidepeek-footer-submit-btn" disabled>${t("replyBtn")}</button>
+                <div class="sidepeek-footer-actions">
+                  <div class="sidepeek-char-counter" title="${t("charCountTitle")}">
+                    <svg class="sidepeek-char-ring" viewBox="0 0 24 24" width="20" height="20">
+                      <circle class="sidepeek-char-ring-bg" cx="12" cy="12" r="9" />
+                      <circle class="sidepeek-char-ring-progress" cx="12" cy="12" r="9" />
+                    </svg>
+                    <span class="sidepeek-char-warn-num"></span>
+                  </div>
+                  <div class="sidepeek-action-divider"></div>
+                  <button type="button" class="sidepeek-footer-submit-btn" disabled>${t("replyBtn")}</button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </footer>
-    `;
+        </footer>
+      `;
 
-    initResizeHandle(root);
-    initScrollSlider(root);
-    initFooterComposer(root, isDrillDown, drillDownParent);
+      initResizeHandle(root);
+      initScrollSlider(root);
+      initFooterComposer(root, isDrillDown, drillDownParent);
 
-    // Event listeners on header
-    root.querySelector(".sidepeek-btn-close")?.addEventListener("click", closeDrawer);
-    if (isDrillDown) {
+      root.querySelector(".sidepeek-btn-close")?.addEventListener("click", closeDrawer);
       root.querySelector(".sidepeek-back-btn")?.addEventListener("click", () => {
         state.activeView = "root";
         state.replyTarget = null;
+        state.resetScrollOnRender = true;
         renderDrawer();
       });
+    }
+
+    // 动态同步 Header 与 Composer 状态
+    const backBtn = root.querySelector(".sidepeek-back-btn");
+    if (backBtn) backBtn.style.display = isDrillDown ? "inline-flex" : "none";
+
+    const titleEl = root.querySelector(".sidepeek-title");
+    if (titleEl) titleEl.textContent = isDrillDown ? t("threadBranch") : "SideX";
+
+    const countBadge = root.querySelector(".sidepeek-count-badge");
+    if (countBadge) {
+      const countNum = isDrillDown
+        ? (state.tree?.getSubtree ? state.tree.getSubtree(drillDownParent?.id)?.length : (state.tree?.childrenMap.get(drillDownParent?.id)?.length || 0))
+        : (state.tree?.rootReplies.length || 0);
+      countBadge.textContent = `(${countNum})`;
+    }
+
+    const externalBtn = root.querySelector(".sidepeek-btn-external");
+    if (externalBtn) {
+      if (state.focalModel?.url) {
+        externalBtn.href = state.focalModel.url;
+        externalBtn.style.display = "inline-flex";
+      } else {
+        externalBtn.style.display = "none";
+      }
+    }
+
+    const replyTargetBox = root.querySelector(".sidepeek-footer-reply-target");
+    const replyTargetText = root.querySelector(".sidepeek-reply-target-text");
+    const textarea = root.querySelector(".sidepeek-footer-textarea");
+    if (replyTargetBox && replyTargetText) {
+      if (state.replyTarget) {
+        replyTargetBox.style.display = "flex";
+        replyTargetText.textContent = `${t("replyToTag")} @${state.replyTarget.author.handle}`;
+      } else {
+        replyTargetBox.style.display = "none";
+        replyTargetText.textContent = "";
+      }
+    }
+    if (textarea) {
+      textarea.placeholder = replyPlaceholder;
     }
 
     const body = root.querySelector(".sidepeek-body");
@@ -911,6 +961,8 @@
       body.querySelector(".sidepeek-retry-btn")?.addEventListener("click", () => fetchThread(state.focalTweetId));
       return;
     }
+
+    body.innerHTML = "";
 
     if (isDrillDown && drillDownParent) {
       // Render the parent comment first
@@ -953,7 +1005,7 @@
         return;
       }
 
-      const INLINE_LIMIT = 2; // 默认就地展示最多 2 条二级回复
+      const INLINE_LIMIT = 3; // 默认就地展示最多 3 条二级回复
 
       for (const rootReply of roots) {
         const children = state.tree?.getSubtree ? state.tree.getSubtree(rootReply.id) : (state.tree?.childrenMap.get(rootReply.id) || []);
@@ -1012,6 +1064,7 @@
               </button>
             `;
             collapseRow.querySelector(".sidepeek-collapse-btn")?.addEventListener("click", () => {
+              state.anchorCommentId = rootReply.id;
               state.expandedThreadIds.delete(rootReply.id);
               renderDrawer();
             });
@@ -1054,6 +1107,7 @@
                   : t("showReplies", { count: countToDisplay });
                 btn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M1.751 10c0-4.42 3.584-8 8.005-8h4.366c4.49 0 8.129 3.64 8.129 8.13 0 2.96-1.607 5.68-4.196 7.11l-8.054 4.46v-3.69h-.25c-4.421 0-8-3.58-8-8zm6.822-1.97v3.94l3.415-1.97-3.415-1.97z"/></svg> <span>${btnLabel}</span>`;
                 btn.addEventListener("click", () => {
+                  state.anchorCommentId = rootReply.id;
                   handleExpandThread(rootReply.id);
                 });
               }
@@ -1068,6 +1122,23 @@
         }
       }
     }
+
+    // 恢复滚动条位置，彻底解决“点击展开回复后页面跳回顶部”的问题
+    if (prevScrollTop > 0) {
+      body.scrollTop = prevScrollTop;
+    }
+
+    // 若收起后父评论跑到了视口上方，平滑将其贴到视口顶部，避免视口掉入空白
+    if (state.anchorCommentId) {
+      const anchorCommentId = state.anchorCommentId;
+      state.anchorCommentId = null;
+      const targetItem = body.querySelector(`.sidepeek-comment-item[data-id="${anchorCommentId}"]`);
+      if (targetItem && targetItem.offsetTop < body.scrollTop) {
+        body.scrollTop = targetItem.offsetTop;
+      }
+    }
+
+    body.dispatchEvent(new Event("scroll"));
   }
 
   function renderVerifiedBadge(author) {
@@ -2193,6 +2264,7 @@
   async function fetchThread(tweetId) {
     state.loading = true;
     state.error = "";
+    state.resetScrollOnRender = true;
     state.expandedThreadIds.clear();
     state.loadedThreadIds.clear();
     state.loadingThreadIds.clear();
@@ -2207,6 +2279,7 @@
       state.tree = Core.buildConversationTree(replies, tweetId);
       state.loading = false;
       renderDrawer();
+      prefetchSubRepliesForRoots();
     } catch (err) {
       state.loading = false;
       state.error = err.message || "读取评论失败，请重试";
@@ -2214,14 +2287,22 @@
     }
   }
 
-  async function fetchSubReplies(commentId) {
+  async function fetchSubReplies(commentId, isSilent = false, expandOnSuccess = true) {
     if (!commentId) return;
-    if (state.loadingThreadIds.has(commentId)) return;
+    if (state.loadingThreadIds.has(commentId)) {
+      if (expandOnSuccess) state.expandedThreadIds.add(commentId);
+      return;
+    }
     state.loadingThreadIds.add(commentId);
-    renderDrawer();
+    if (!isSilent) {
+      renderDrawer();
+    }
 
     try {
+      const currentFocal = state.focalTweetId;
       const json = await requestPage("READ_THREAD", { tweetId: commentId });
+      if (!state.open || state.focalTweetId !== currentFocal) return;
+
       const { focal, replies } = Core.parseTweetDetail(json, commentId);
 
       // 将 sub-replies 标记归属并去重加入 state.replies
@@ -2245,10 +2326,14 @@
       // 重新构建对话树结构
       state.tree = Core.buildConversationTree(state.replies, state.focalTweetId);
       state.loadedThreadIds.add(commentId);
-      state.expandedThreadIds.add(commentId);
+      if (expandOnSuccess) {
+        state.expandedThreadIds.add(commentId);
+      }
     } catch (err) {
       console.warn("[SideX] 读取二级回复失败:", err);
-      showToast(t("loadRepliesFailed") || "加载回复失败");
+      if (!isSilent) {
+        showToast(t("loadRepliesFailed") || "加载回复失败");
+      }
     } finally {
       state.loadingThreadIds.delete(commentId);
       renderDrawer();
@@ -2256,6 +2341,7 @@
   }
 
   async function handleExpandThread(rootReplyId) {
+    state.anchorCommentId = rootReplyId;
     const children = state.tree?.getSubtree ? state.tree.getSubtree(rootReplyId) : (state.tree?.childrenMap.get(rootReplyId) || []);
     const rootModel = state.tree?.byId?.get(rootReplyId);
     const totalReplies = rootModel?.counts?.replies || 0;
@@ -2268,7 +2354,27 @@
     }
 
     // 否则发起请求拉取完整的二级回复
-    await fetchSubReplies(rootReplyId);
+    await fetchSubReplies(rootReplyId, /* isSilent */ false, /* expandOnSuccess */ true);
+  }
+
+  async function prefetchSubRepliesForRoots() {
+    if (!state.open || !state.tree) return;
+    const currentFocal = state.focalTweetId;
+    const roots = state.tree.rootReplies || [];
+    // 找出回复数 >= 2 且本地子回复少于 3 条的二级评论，顺序在后台静默补齐前几条，达到“默认展示3条”
+    const candidates = roots.filter(
+      (r) => (r.counts?.replies || 0) >= 2 &&
+             (state.tree.childrenMap.get(r.id)?.length || 0) < 3 &&
+             !state.loadedThreadIds.has(r.id) &&
+             !state.loadingThreadIds.has(r.id)
+    ).slice(0, 5);
+
+    for (const r of candidates) {
+      if (!state.open || state.focalTweetId !== currentFocal) break;
+      try {
+        await fetchSubReplies(r.id, /* isSilent */ true, /* expandOnSuccess */ false);
+      } catch {}
+    }
   }
 
   let userClosedTweetId = null;
@@ -2356,6 +2462,7 @@
         state.focalModel = focal;
         state.replies = replies;
         state.tree = Core.buildConversationTree(replies, tweetId);
+        state.resetScrollOnRender = true;
         state.expandedThreadIds.clear();
         state.loadedThreadIds.clear();
         state.loadingThreadIds.clear();
@@ -2364,6 +2471,7 @@
         state.loading = false;
         state.error = "";
         renderDrawer();
+        prefetchSubRepliesForRoots();
       } catch (err) {
         // 静默处理，避免在详情页异常弹窗
       }
@@ -2400,6 +2508,7 @@
     // 3. Open drawer & fetch replies
     state.open = true;
     state.focalTweetId = tweetId;
+    state.resetScrollOnRender = true;
     state.activeView = "root";
     state.replyTarget = null;
     renderDrawer();
@@ -2409,6 +2518,7 @@
   function closeDrawer() {
     state.open = false;
     state.replyTarget = null;
+    state.resetScrollOnRender = true;
     userClosedTweetId = state.focalTweetId;
     if (state.focalArticle) {
       state.focalArticle.classList.remove("sidepeek-focal-active");
