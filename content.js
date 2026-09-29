@@ -82,7 +82,8 @@
     replyTarget: null, // Comment model being replied to, or null for focal tweet
     loading: false,
     error: "",
-    isResizing: false
+    isResizing: false,
+    subReplyLimit: 1
   };
 
   const pendingRequests = new Map();
@@ -135,9 +136,12 @@
 
   const storage = chrome?.storage?.sync || chrome?.storage?.local;
   if (storage) {
-    storage.get({ sidex_enabled: true, sidex_lang: null }, (res) => {
+    storage.get({ sidex_enabled: true, sidex_lang: null, sidex_sub_reply_limit: 1 }, (res) => {
       isSideXEnabled = res.sidex_enabled !== false;
       if (res.sidex_lang) overrideLocale = res.sidex_lang;
+      if (res.sidex_sub_reply_limit !== undefined) {
+        state.subReplyLimit = Math.max(1, Number(res.sidex_sub_reply_limit) || 1);
+      }
       if (!isSideXEnabled) {
         closeDrawer();
         const root = document.getElementById(ROOT_ID);
@@ -159,6 +163,15 @@
       if (changes.sidex_lang !== undefined) {
         overrideLocale = changes.sidex_lang.newValue;
         if (state.open) renderDrawer();
+      }
+      if (changes.sidex_sub_reply_limit !== undefined) {
+        state.subReplyLimit = Math.max(1, Number(changes.sidex_sub_reply_limit.newValue) || 1);
+        if (state.open) {
+          renderDrawer();
+          if (state.subReplyLimit > 1) {
+            prefetchSubRepliesForRoots();
+          }
+        }
       }
       if (changes.sidex_reset_width_trigger !== undefined) {
         localStorage.removeItem("sidepeek_custom_width_v2");
@@ -1005,7 +1018,7 @@
         return;
       }
 
-      const INLINE_LIMIT = 3; // 默认就地展示最多 3 条二级回复
+      const INLINE_LIMIT = state.subReplyLimit || 1; // 默认展示 1 条二级回复，可在插件设置中自定义
 
       for (const rootReply of roots) {
         const children = state.tree?.getSubtree ? state.tree.getSubtree(rootReply.id) : (state.tree?.childrenMap.get(rootReply.id) || []);
@@ -1107,7 +1120,6 @@
                   : t("showReplies", { count: countToDisplay });
                 btn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M1.751 10c0-4.42 3.584-8 8.005-8h4.366c4.49 0 8.129 3.64 8.129 8.13 0 2.96-1.607 5.68-4.196 7.11l-8.054 4.46v-3.69h-.25c-4.421 0-8-3.58-8-8zm6.822-1.97v3.94l3.415-1.97-3.415-1.97z"/></svg> <span>${btnLabel}</span>`;
                 btn.addEventListener("click", () => {
-                  state.anchorCommentId = rootReply.id;
                   handleExpandThread(rootReply.id);
                 });
               }
@@ -1128,13 +1140,18 @@
       body.scrollTop = prevScrollTop;
     }
 
-    // 若收起后父评论跑到了视口上方，平滑将其贴到视口顶部，避免视口掉入空白
+    // 若收起后父评论跑到了视口上方，平滑将其拉回视口顶部，避免视口掉入空白
     if (state.anchorCommentId) {
       const anchorCommentId = state.anchorCommentId;
       state.anchorCommentId = null;
       const targetItem = body.querySelector(`.sidepeek-comment-item[data-id="${anchorCommentId}"]`);
-      if (targetItem && targetItem.offsetTop < body.scrollTop) {
-        body.scrollTop = targetItem.offsetTop;
+      if (targetItem) {
+        const bodyRect = body.getBoundingClientRect();
+        const itemRect = targetItem.getBoundingClientRect();
+        const itemTopInBody = itemRect.top - bodyRect.top;
+        if (itemTopInBody < 0) {
+          body.scrollTop += itemTopInBody;
+        }
       }
     }
 
@@ -2341,7 +2358,6 @@
   }
 
   async function handleExpandThread(rootReplyId) {
-    state.anchorCommentId = rootReplyId;
     const children = state.tree?.getSubtree ? state.tree.getSubtree(rootReplyId) : (state.tree?.childrenMap.get(rootReplyId) || []);
     const rootModel = state.tree?.byId?.get(rootReplyId);
     const totalReplies = rootModel?.counts?.replies || 0;
@@ -2359,15 +2375,19 @@
 
   async function prefetchSubRepliesForRoots() {
     if (!state.open || !state.tree) return;
+    const limit = state.subReplyLimit || 1;
+    // 如果默认仅展示 1 条，X 原生数据已附带首条回复，无需在后台额外预取，彻底杜绝首次加载后的二次闪烁/重绘
+    if (limit <= 1) return;
+
     const currentFocal = state.focalTweetId;
     const roots = state.tree.rootReplies || [];
-    // 找出回复数 >= 2 且本地子回复少于 3 条的二级评论，顺序在后台静默补齐前几条，达到“默认展示3条”
-    const candidates = roots.filter(
-      (r) => (r.counts?.replies || 0) >= 2 &&
-             (state.tree.childrenMap.get(r.id)?.length || 0) < 3 &&
+    const candidates = roots.filter((r) => {
+      const total = r.counts?.replies || 0;
+      const current = state.tree.childrenMap.get(r.id)?.length || 0;
+      return total > 0 && current < total && current < limit &&
              !state.loadedThreadIds.has(r.id) &&
-             !state.loadingThreadIds.has(r.id)
-    ).slice(0, 5);
+             !state.loadingThreadIds.has(r.id);
+    }).slice(0, 3);
 
     for (const r of candidates) {
       if (!state.open || state.focalTweetId !== currentFocal) break;

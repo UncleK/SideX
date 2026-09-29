@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-Available-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.3-00b4f8?style=flat-square" alt="Version 1.1.3" />
+    <img src="https://img.shields.io/badge/Version-1.1.8-00b4f8?style=flat-square" alt="Version 1.1.8" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -41,7 +41,7 @@
 
 * 🚀 **In-Place Drawer**: Click any tweet to dock its replies directly in the 3rd column—zero page redirects or reload.
 * 📖 **Auto-Unroll Long Posts**: Automatically expands "Show more" on focal posts.
-* 🧵 **Conversation Tree & Drill-down**: Reconstructs nested replies with clean thread lines; click to drill into sub-threads.
+* 🧵 **Conversation Tree & Drill-down**: Reconstructs nested replies with clean thread lines; configurable sub-reply previews (1, 2, 3, 5) with zero-jump smooth in-place expansion.
 * 💬 **Inline Reply & Image Paste**: Reply to any comment in-place with `Ctrl+V` clipboard image pasting and `Ctrl+Enter` sending.
 * 🔄 **Live Action Sync**: Like, repost, and bookmark from the drawer with instant bidirectional sync.
 * 🎨 **Adaptive Themes & Resizable**: Matches X's Light, Dim, and Dark themes. Drag the right edge to adjust sidebar width.
@@ -57,7 +57,7 @@ Compatible with Chrome, Edge, Brave, Arc, and other Chromium browsers:
 👉 **[Install from Chrome Web Store](https://chromewebstore.google.com/detail/ccbkagemmobenjoioicemekhjbggmpde)** with seamless automatic updates!
 
 ### Method 2: ZIP Package (100% Reliable & Offline)
-1. Download **`SideX-v1.1.7.zip`** from [Releases](https://github.com/UncleK/SideX/releases) and extract it.
+1. Download **`SideX-v1.1.8.zip`** from [Releases](https://github.com/UncleK/SideX/releases) and extract it.
 2. Open `chrome://extensions/` (or `edge://extensions/`), enable **"Developer mode"** in the top-right corner.
 3. Click **"Load unpacked"** and select the extracted folder.
 

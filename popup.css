@@ -197,7 +197,16 @@ input:checked + .sidex-toggle-slider:before {
 
 /* Actions Card */
 .sidex-actions-card {
-  padding: 10px 14px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sidex-card-divider {
+  height: 1px;
+  background: var(--sidex-border);
+  opacity: 0.7;
 }
 
 .sidex-action-row {
@@ -210,6 +219,38 @@ input:checked + .sidex-toggle-slider:before {
   font-size: 13px;
   font-weight: 500;
   color: var(--sidex-text);
+}
+
+.sidex-pill-group {
+  display: flex;
+  background: var(--sidex-bg);
+  border: 1px solid var(--sidex-border);
+  border-radius: 16px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.sidex-pill-btn {
+  border: none;
+  background: transparent;
+  color: var(--sidex-muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  min-width: 22px;
+  text-align: center;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sidex-pill-btn:hover {
+  color: var(--sidex-text);
+}
+
+.sidex-pill-btn.active {
+  background: var(--sidex-primary);
+  color: #ffffff;
 }
 
 .sidex-action-btn {

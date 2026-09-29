@@ -4,6 +4,8 @@
   const toggleInput = document.getElementById("sidex-toggle-input");
   const switchTitle = document.getElementById("txt-switch-title");
   const switchDesc = document.getElementById("txt-switch-desc");
+  const subReplyLimitLabel = document.getElementById("txt-subreply-limit-label");
+  const limitGroup = document.getElementById("sidex-limit-group");
   const resetLabel = document.getElementById("txt-reset-label");
   const resetBtn = document.getElementById("btn-reset-width");
   const resetBtnText = document.getElementById("txt-reset-btn");
@@ -25,6 +27,7 @@
       enabledDesc: "点击推文原地展开评论流",
       disabledTitle: "插件已停用",
       disabledDesc: "已恢复 X 原生跳转与浏览行为",
+      subReplyLimitLabel: "二级回复展示",
       resetLabel: "抽屉宽度",
       resetBtn: "恢复默认",
       resetDone: "已恢复！",
@@ -35,6 +38,7 @@
       enabledDesc: "Click tweets to open comment stream",
       disabledTitle: "Extension Paused",
       disabledDesc: "Native X navigation restored",
+      subReplyLimitLabel: "Sub-reply Preview",
       resetLabel: "Drawer Width",
       resetBtn: "Reset",
       resetDone: "Restored!",
@@ -44,6 +48,7 @@
 
   let currentLang = "zh";
   let isEnabled = true;
+  let currentSubReplyLimit = 1;
 
   function getSystemLang() {
     const nav = (navigator.language || "zh").toLowerCase();
@@ -61,6 +66,7 @@
       switchTitle.style.color = "var(--sidex-muted)";
       switchDesc.textContent = s.disabledDesc;
     }
+    if (subReplyLimitLabel) subReplyLimitLabel.textContent = s.subReplyLimitLabel;
     resetLabel.textContent = s.resetLabel;
     resetBtnText.textContent = s.resetBtn;
     hintEsc.textContent = s.hintEsc;
@@ -68,6 +74,13 @@
     // Update active language button
     langGroup.querySelectorAll(".sidex-lang-btn").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.lang === currentLang);
+    });
+  }
+
+  function updateLimitButtons(limit) {
+    if (!limitGroup) return;
+    limitGroup.querySelectorAll(".sidex-pill-btn").forEach((btn) => {
+      btn.classList.toggle("active", Number(btn.dataset.limit) === Number(limit));
     });
   }
 
@@ -84,16 +97,19 @@
   // Load saved settings
   const storage = chrome?.storage?.sync || chrome?.storage?.local;
   if (storage) {
-    storage.get({ sidex_enabled: true, sidex_lang: null }, (res) => {
+    storage.get({ sidex_enabled: true, sidex_lang: null, sidex_sub_reply_limit: 1 }, (res) => {
       isEnabled = res.sidex_enabled !== false;
       currentLang = res.sidex_lang || getSystemLang();
+      currentSubReplyLimit = Number(res.sidex_sub_reply_limit) || 1;
       toggleInput.checked = isEnabled;
       updateTexts();
       updateBadge(isEnabled);
+      updateLimitButtons(currentSubReplyLimit);
     });
   } else {
     currentLang = getSystemLang();
     updateTexts();
+    updateLimitButtons(currentSubReplyLimit);
   }
 
   // Toggle switch change handler
@@ -119,6 +135,22 @@
       }
     }
   });
+
+  // Sub-reply limit pill buttons handler
+  if (limitGroup) {
+    limitGroup.addEventListener("click", (e) => {
+      const btn = e.target.closest(".sidex-pill-btn");
+      if (!btn) return;
+      const limit = Number(btn.dataset.limit);
+      if (limit && limit !== currentSubReplyLimit) {
+        currentSubReplyLimit = limit;
+        updateLimitButtons(currentSubReplyLimit);
+        if (storage) {
+          storage.set({ sidex_sub_reply_limit: currentSubReplyLimit });
+        }
+      }
+    });
+  }
 
   // Reset width button handler
   resetBtn.addEventListener("click", () => {
