@@ -84,7 +84,8 @@
     loading: false,
     error: "",
     isResizing: false,
-    subReplyLimit: 1
+    subReplyLimit: 1,
+    replyMode: "drawer"
   };
 
   const pendingRequests = new Map();
@@ -137,11 +138,14 @@
 
   const storage = chrome?.storage?.sync || chrome?.storage?.local;
   if (storage) {
-    storage.get({ sidex_enabled: true, sidex_lang: null, sidex_sub_reply_limit: 1 }, (res) => {
+    storage.get({ sidex_enabled: true, sidex_lang: null, sidex_sub_reply_limit: 1, sidex_reply_mode: "drawer" }, (res) => {
       isSideXEnabled = res.sidex_enabled !== false;
       if (res.sidex_lang) overrideLocale = res.sidex_lang;
       if (res.sidex_sub_reply_limit !== undefined) {
         state.subReplyLimit = Math.max(1, Number(res.sidex_sub_reply_limit) || 1);
+      }
+      if (res.sidex_reply_mode !== undefined) {
+        state.replyMode = res.sidex_reply_mode === "native" ? "native" : "drawer";
       }
       if (!isSideXEnabled) {
         closeDrawer();
@@ -164,6 +168,10 @@
       if (changes.sidex_lang !== undefined) {
         overrideLocale = changes.sidex_lang.newValue;
         if (state.open) renderDrawer();
+      }
+      if (changes.sidex_reply_mode !== undefined) {
+        state.replyMode = changes.sidex_reply_mode.newValue === "native" ? "native" : "drawer";
+        if (state.open) renderDrawer(true);
       }
       if (changes.sidex_sub_reply_limit !== undefined) {
         state.subReplyLimit = Math.max(1, Number(changes.sidex_sub_reply_limit.newValue) || 1);
@@ -231,6 +239,10 @@
       scheduleToolTitle: "定时发布",
       locationToolTitle: "添加位置",
       openNativeReplyTitle: "在官方框中回复 (支持长文/富文本/多功能)",
+      openInOfficialReplyBox: "打开 X 官方回复框",
+      nativeModeFooterDesc: "已开启官方回复模式 · 点击直接呼出官方弹窗",
+      switchToDrawerMode: "切换回侧栏回复",
+      switchToNativeMode: "切换到官方回复",
       charCountTitle: "字数统计",
       maxMediaReached: "单条回复最多添加 4 个附件",
       mediaStillUploading: "附件正在上传中，请稍候...",
@@ -332,6 +344,10 @@
       scheduleToolTitle: "Schedule post",
       locationToolTitle: "Add location",
       openNativeReplyTitle: "Open in official reply box",
+      openInOfficialReplyBox: "Open Official Reply Box",
+      nativeModeFooterDesc: "Native reply mode enabled · Click to open official dialog",
+      switchToDrawerMode: "Switch to Drawer Reply",
+      switchToNativeMode: "Switch to Official Reply",
       charCountTitle: "Character count",
       maxMediaReached: "Maximum 4 attachments allowed",
       mediaStillUploading: "Attachments are still uploading...",
@@ -785,6 +801,102 @@
 
   window.addEventListener("resize", updateDrawerPosition);
 
+  function getNativeFooterHtml(isDrillDown, drillDownParent) {
+    return `
+      <footer class="sidepeek-footer-composer sidepeek-footer-native-mode">
+        <div class="sidepeek-native-mode-wrap">
+          <button type="button" class="sidepeek-native-reply-big-btn">
+            ${ICONS.nativeReply}
+            <span>${isDrillDown && drillDownParent ? t("replyToUser", { handle: drillDownParent.author.handle }) : t("openInOfficialReplyBox")}</span>
+          </button>
+          <div class="sidepeek-native-mode-hint">
+            <span>${t("nativeModeFooterDesc")}</span> · <a href="#" class="sidepeek-switch-mode-link" title="${t("switchToDrawerMode")}">${t("switchToDrawerMode")}</a>
+          </div>
+        </div>
+      </footer>`;
+  }
+
+  function getDrawerFooterHtml(userAvatar, replyPlaceholder) {
+    return `
+      <footer class="sidepeek-footer-composer">
+        <!-- In-place Popovers -->
+        <div class="sidepeek-popover sidepeek-emoji-popover" style="display: none;"></div>
+        <div class="sidepeek-popover sidepeek-gif-popover" style="display: none;"></div>
+        <div class="sidepeek-popover sidepeek-poll-popover" style="display: none;"></div>
+        <div class="sidepeek-popover sidepeek-schedule-popover" style="display: none;"></div>
+
+        <div class="sidepeek-footer-inner">
+          <div class="sidepeek-footer-avatar-wrap">
+            ${userAvatar ? `<img src="${userAvatar}" class="sidepeek-footer-avatar" alt="" />` : `<div class="sidepeek-footer-avatar-default">${ICONS.user}</div>`}
+          </div>
+          <div class="sidepeek-footer-main">
+            <div class="sidepeek-footer-reply-target" style="display:none;">
+              <span class="sidepeek-reply-target-text"></span>
+              <button type="button" class="sidepeek-cancel-reply-target" title="✕">✕</button>
+            </div>
+            <textarea class="sidepeek-footer-textarea" rows="1" placeholder="${replyPlaceholder}"></textarea>
+            <div class="sidepeek-footer-preview-area"></div>
+            <div class="sidepeek-footer-toolbar">
+              <div class="sidepeek-footer-tools">
+                <label class="sidepeek-tool-btn sidepeek-tool-media" title="${t("mediaToolTitle")}">
+                  <input type="file" accept="image/*,video/*" class="sidepeek-media-file-input" multiple style="display:none;" />
+                  ${ICONS.media}
+                </label>
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-gif" title="${t("gifToolTitle")}">
+                  ${ICONS.gif}
+                </button>
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-poll" title="${t("pollToolTitle")}">
+                  ${ICONS.poll}
+                </button>
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-emoji" title="${t("emojiToolTitle")}">
+                  ${ICONS.emoji}
+                </button>
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-schedule" title="${t("scheduleToolTitle")}">
+                  ${ICONS.schedule}
+                </button>
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-location" title="${t("locationToolTitle")}">
+                  ${ICONS.location}
+                </button>
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-native-reply" title="${t("openNativeReplyTitle")}">
+                  ${ICONS.nativeReply}
+                </button>
+              </div>
+              <div class="sidepeek-footer-actions">
+                <div class="sidepeek-char-counter" title="${t("charCountTitle")}">
+                  <svg class="sidepeek-char-ring" viewBox="0 0 24 24" width="20" height="20">
+                    <circle class="sidepeek-char-ring-bg" cx="12" cy="12" r="9" />
+                    <circle class="sidepeek-char-ring-progress" cx="12" cy="12" r="9" />
+                  </svg>
+                  <span class="sidepeek-char-warn-num"></span>
+                </div>
+                <div class="sidepeek-action-divider"></div>
+                <button type="button" class="sidepeek-footer-submit-btn" disabled>${t("replyBtn")}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>`;
+  }
+
+  function initNativeModeFooter(root, isDrillDown, drillDownParent) {
+    const footer = root.querySelector(".sidepeek-footer-composer.sidepeek-footer-native-mode");
+    if (!footer) return;
+
+    const nativeBtn = footer.querySelector(".sidepeek-native-reply-big-btn");
+    nativeBtn?.addEventListener("click", () => {
+      const targetId = isDrillDown && drillDownParent ? drillDownParent.id : state.focalTweetId;
+      openNativeReplyDialog(targetId, "");
+    });
+
+    const switchLink = footer.querySelector(".sidepeek-switch-mode-link");
+    switchLink?.addEventListener("click", (e) => {
+      e.preventDefault();
+      state.replyMode = "drawer";
+      if (storage) storage.set({ sidex_reply_mode: "drawer" });
+      renderDrawer();
+    });
+  }
+
   // ==========================================================================
   // UI Rendering
   // ==========================================================================
@@ -815,6 +927,8 @@
       : isDrillDown
         ? t("replyToUser", { handle: drillDownParent?.author?.handle || (getLocale() === "zh" ? "此人" : "user") })
         : t("replyToAuthor", { handle: state.focalModel?.author?.handle || (getLocale() === "zh" ? "楼主" : "author") });
+
+    const isNativeMode = state.replyMode === "native";
 
     // 1. 记录重绘前的滚动高度，防止任何操作（展开/收起/加载等）跳回顶部
     const existingBody = root.querySelector(".sidepeek-body");
@@ -856,69 +970,16 @@
             </div>
           </div>
         </div>
-        <footer class="sidepeek-footer-composer">
-          <!-- In-place Popovers -->
-          <div class="sidepeek-popover sidepeek-emoji-popover" style="display: none;"></div>
-          <div class="sidepeek-popover sidepeek-gif-popover" style="display: none;"></div>
-          <div class="sidepeek-popover sidepeek-poll-popover" style="display: none;"></div>
-          <div class="sidepeek-popover sidepeek-schedule-popover" style="display: none;"></div>
-
-          <div class="sidepeek-footer-inner">
-            <div class="sidepeek-footer-avatar-wrap">
-              ${userAvatar ? `<img src="${userAvatar}" class="sidepeek-footer-avatar" alt="" />` : `<div class="sidepeek-footer-avatar-default">${ICONS.user}</div>`}
-            </div>
-            <div class="sidepeek-footer-main">
-              <div class="sidepeek-footer-reply-target" style="display:none;">
-                <span class="sidepeek-reply-target-text"></span>
-                <button type="button" class="sidepeek-cancel-reply-target" title="✕">✕</button>
-              </div>
-              <textarea class="sidepeek-footer-textarea" rows="1" placeholder="${replyPlaceholder}"></textarea>
-              <div class="sidepeek-footer-preview-area"></div>
-              <div class="sidepeek-footer-toolbar">
-                <div class="sidepeek-footer-tools">
-                  <label class="sidepeek-tool-btn sidepeek-tool-media" title="${t("mediaToolTitle")}">
-                    <input type="file" accept="image/*,video/*" class="sidepeek-media-file-input" multiple style="display:none;" />
-                    ${ICONS.media}
-                  </label>
-                  <button type="button" class="sidepeek-tool-btn sidepeek-tool-gif" title="${t("gifToolTitle")}">
-                    ${ICONS.gif}
-                  </button>
-                  <button type="button" class="sidepeek-tool-btn sidepeek-tool-poll" title="${t("pollToolTitle")}">
-                    ${ICONS.poll}
-                  </button>
-                  <button type="button" class="sidepeek-tool-btn sidepeek-tool-emoji" title="${t("emojiToolTitle")}">
-                    ${ICONS.emoji}
-                  </button>
-                  <button type="button" class="sidepeek-tool-btn sidepeek-tool-schedule" title="${t("scheduleToolTitle")}">
-                    ${ICONS.schedule}
-                  </button>
-                  <button type="button" class="sidepeek-tool-btn sidepeek-tool-location" title="${t("locationToolTitle")}">
-                    ${ICONS.location}
-                  </button>
-                  <button type="button" class="sidepeek-tool-btn sidepeek-tool-native-reply" title="${t("openNativeReplyTitle")}">
-                    ${ICONS.nativeReply}
-                  </button>
-                </div>
-                <div class="sidepeek-footer-actions">
-                  <div class="sidepeek-char-counter" title="${t("charCountTitle")}">
-                    <svg class="sidepeek-char-ring" viewBox="0 0 24 24" width="20" height="20">
-                      <circle class="sidepeek-char-ring-bg" cx="12" cy="12" r="9" />
-                      <circle class="sidepeek-char-ring-progress" cx="12" cy="12" r="9" />
-                    </svg>
-                    <span class="sidepeek-char-warn-num"></span>
-                  </div>
-                  <div class="sidepeek-action-divider"></div>
-                  <button type="button" class="sidepeek-footer-submit-btn" disabled>${t("replyBtn")}</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </footer>
+        ${isNativeMode ? getNativeFooterHtml(isDrillDown, drillDownParent) : getDrawerFooterHtml(userAvatar, replyPlaceholder)}
       `;
 
       initResizeHandle(root);
       initScrollSlider(root);
-      initFooterComposer(root, isDrillDown, drillDownParent);
+      if (isNativeMode) {
+        initNativeModeFooter(root, isDrillDown, drillDownParent);
+      } else {
+        initFooterComposer(root, isDrillDown, drillDownParent);
+      }
 
       root.querySelector(".sidepeek-btn-close")?.addEventListener("click", closeDrawer);
       root.querySelector(".sidepeek-back-btn")?.addEventListener("click", () => {
@@ -951,6 +1012,28 @@
         externalBtn.style.display = "inline-flex";
       } else {
         externalBtn.style.display = "none";
+      }
+    }
+
+    // 动态同步回复栏模式（根据当前 state.replyMode 切换）
+    const currentFooter = root.querySelector(".sidepeek-footer-composer");
+    const isCurrentFooterNative = currentFooter?.classList.contains("sidepeek-footer-native-mode");
+
+    if (currentFooter && (isNativeMode !== isCurrentFooterNative)) {
+      currentFooter.remove();
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = isNativeMode ? getNativeFooterHtml(isDrillDown, drillDownParent) : getDrawerFooterHtml(userAvatar, replyPlaceholder);
+      const newFooter = tempDiv.firstElementChild;
+      root.appendChild(newFooter);
+      if (isNativeMode) {
+        initNativeModeFooter(root, isDrillDown, drillDownParent);
+      } else {
+        initFooterComposer(root, isDrillDown, drillDownParent);
+      }
+    } else if (isNativeMode) {
+      const nativeBtnSpan = root.querySelector(".sidepeek-native-reply-big-btn span");
+      if (nativeBtnSpan) {
+        nativeBtnSpan.textContent = isDrillDown && drillDownParent ? t("replyToUser", { handle: drillDownParent.author.handle }) : t("openInOfficialReplyBox");
       }
     }
 
@@ -1353,7 +1436,11 @@
 
     actReply?.addEventListener("click", (e) => {
       e.stopPropagation();
-      setReplyTarget(model);
+      if (state.replyMode === "native") {
+        openNativeReplyDialog(model.id, "");
+      } else {
+        setReplyTarget(model);
+      }
     });
     actRepost?.addEventListener("click", () => handleToggleAction(model, "repost", actRepost));
     actLike?.addEventListener("click", () => handleToggleAction(model, "like", actLike));
@@ -1436,6 +1523,53 @@
     const div = document.createElement("div");
     div.textContent = text || "";
     return div.innerHTML;
+  }
+
+  // ==========================================================================
+  // Native Reply Dialog Launcher
+  // ==========================================================================
+  function openNativeReplyDialog(tweetId, textToCopy = "") {
+    if (textToCopy) {
+      try {
+        navigator.clipboard?.writeText(textToCopy).catch(() => {});
+      } catch {}
+    }
+
+    let replyBtn = null;
+    const targetId = tweetId || state.focalTweetId;
+
+    if (targetId) {
+      const article = document.querySelector(`article[data-testid="tweet"] a[href*="/status/${targetId}"]`)?.closest('article[data-testid="tweet"]')
+        || (state.focalTweetId === targetId ? findDetailFocalArticle(targetId) : null);
+      replyBtn = article?.querySelector('[data-testid="reply"]');
+    }
+
+    if (!replyBtn && (!targetId || targetId === state.focalTweetId)) {
+      const focalArticle = findDetailFocalArticle(state.focalTweetId);
+      replyBtn = focalArticle?.querySelector('[data-testid="reply"]');
+    }
+
+    if (replyBtn) {
+      replyBtn.click();
+      showToast(textToCopy ? t("nativeReplyCopiedToast") : t("nativeReplyOpenedToast"));
+      if (textToCopy) {
+        setTimeout(() => {
+          const nativeEditor = document.querySelector('[data-testid="tweetTextarea_0"]');
+          if (nativeEditor) {
+            nativeEditor.focus();
+            try {
+              document.execCommand("insertText", false, textToCopy);
+            } catch {}
+          }
+        }, 350);
+      }
+    } else if (targetId) {
+      const intentUrl = textToCopy
+        ? `https://x.com/intent/tweet?in_reply_to=${targetId}&text=${encodeURIComponent(textToCopy)}`
+        : `https://x.com/intent/tweet?in_reply_to=${targetId}`;
+      window.open(intentUrl, "_blank");
+      showToast(textToCopy ? t("nativeReplyCopiedToast") : t("nativeReplyOpenedToast"));
+    }
   }
 
   // ==========================================================================
@@ -2106,44 +2240,6 @@
     });
 
     // 6.1 Native Reply Dialog Shortcut
-    function openNativeReplyDialog(tweetId, textToCopy) {
-      if (textToCopy) {
-        try {
-          navigator.clipboard?.writeText(textToCopy).catch(() => {});
-        } catch {}
-      }
-
-      let replyBtn = null;
-      if (tweetId) {
-        const article = document.querySelector(`article[data-testid="tweet"] a[href*="/status/${tweetId}"]`)?.closest('article[data-testid="tweet"]')
-          || (state.focalTweetId === tweetId ? findDetailFocalArticle(tweetId) : null);
-        replyBtn = article?.querySelector('[data-testid="reply"]');
-      }
-
-      if (!replyBtn) {
-        replyBtn = document.querySelector('[data-testid="tweet"] [data-testid="reply"]');
-      }
-
-      if (replyBtn) {
-        replyBtn.click();
-        showToast(textToCopy ? t("nativeReplyCopiedToast") : t("nativeReplyOpenedToast"));
-        if (textToCopy) {
-          setTimeout(() => {
-            const nativeEditor = document.querySelector('[data-testid="tweetTextarea_0"]');
-            if (nativeEditor) {
-              nativeEditor.focus();
-              try {
-                document.execCommand("insertText", false, textToCopy);
-              } catch {}
-            }
-          }, 350);
-        }
-      } else if (tweetId) {
-        window.open(`https://x.com/i/status/${tweetId}`, "_blank");
-        showToast(t("nativeReplyCopiedToast"));
-      }
-    }
-
     const btnNativeReply = footer.querySelector(".sidepeek-tool-native-reply");
     btnNativeReply?.addEventListener("click", (e) => {
       e.stopPropagation();

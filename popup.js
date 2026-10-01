@@ -4,6 +4,8 @@
   const toggleInput = document.getElementById("sidex-toggle-input");
   const switchTitle = document.getElementById("txt-switch-title");
   const switchDesc = document.getElementById("txt-switch-desc");
+  const replyModeLabel = document.getElementById("txt-reply-mode-label");
+  const replyModeGroup = document.getElementById("sidex-reply-mode-group");
   const subReplyLimitLabel = document.getElementById("txt-subreply-limit-label");
   const limitGroup = document.getElementById("sidex-limit-group");
   const resetLabel = document.getElementById("txt-reset-label");
@@ -27,6 +29,9 @@
       enabledDesc: "点击推文原地展开评论流",
       disabledTitle: "插件已停用",
       disabledDesc: "已恢复 X 原生跳转与浏览行为",
+      replyModeLabel: "回复模式",
+      replyModeDrawer: "侧栏",
+      replyModeNative: "官方",
       subReplyLimitLabel: "二级回复展示",
       resetLabel: "抽屉宽度",
       resetBtn: "恢复默认",
@@ -38,6 +43,9 @@
       enabledDesc: "Click tweets to open comment stream",
       disabledTitle: "Extension Paused",
       disabledDesc: "Native X navigation restored",
+      replyModeLabel: "Reply Mode",
+      replyModeDrawer: "Drawer",
+      replyModeNative: "Native",
       subReplyLimitLabel: "Sub-reply Preview",
       resetLabel: "Drawer Width",
       resetBtn: "Reset",
@@ -49,6 +57,7 @@
   let currentLang = "zh";
   let isEnabled = true;
   let currentSubReplyLimit = 1;
+  let currentReplyMode = "drawer";
 
   function getSystemLang() {
     const nav = (navigator.language || "zh").toLowerCase();
@@ -66,6 +75,12 @@
       switchTitle.style.color = "var(--sidex-muted)";
       switchDesc.textContent = s.disabledDesc;
     }
+    if (replyModeLabel) replyModeLabel.textContent = s.replyModeLabel;
+    const btnDrawer = document.getElementById("btn-mode-drawer");
+    const btnNative = document.getElementById("btn-mode-native");
+    if (btnDrawer) btnDrawer.textContent = s.replyModeDrawer;
+    if (btnNative) btnNative.textContent = s.replyModeNative;
+
     if (subReplyLimitLabel) subReplyLimitLabel.textContent = s.subReplyLimitLabel;
     resetLabel.textContent = s.resetLabel;
     resetBtnText.textContent = s.resetBtn;
@@ -84,6 +99,13 @@
     });
   }
 
+  function updateReplyModeButtons(mode) {
+    if (!replyModeGroup) return;
+    replyModeGroup.querySelectorAll(".sidex-pill-btn").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.mode === mode);
+    });
+  }
+
   function updateBadge(enabled) {
     if (!chrome?.action?.setBadgeText) return;
     if (enabled) {
@@ -97,19 +119,22 @@
   // Load saved settings
   const storage = chrome?.storage?.sync || chrome?.storage?.local;
   if (storage) {
-    storage.get({ sidex_enabled: true, sidex_lang: null, sidex_sub_reply_limit: 1 }, (res) => {
+    storage.get({ sidex_enabled: true, sidex_lang: null, sidex_sub_reply_limit: 1, sidex_reply_mode: "drawer" }, (res) => {
       isEnabled = res.sidex_enabled !== false;
       currentLang = res.sidex_lang || getSystemLang();
       currentSubReplyLimit = Number(res.sidex_sub_reply_limit) || 1;
+      currentReplyMode = res.sidex_reply_mode === "native" ? "native" : "drawer";
       toggleInput.checked = isEnabled;
       updateTexts();
       updateBadge(isEnabled);
       updateLimitButtons(currentSubReplyLimit);
+      updateReplyModeButtons(currentReplyMode);
     });
   } else {
     currentLang = getSystemLang();
     updateTexts();
     updateLimitButtons(currentSubReplyLimit);
+    updateReplyModeButtons(currentReplyMode);
   }
 
   // Toggle switch change handler
@@ -135,6 +160,22 @@
       }
     }
   });
+
+  // Reply mode pill buttons handler
+  if (replyModeGroup) {
+    replyModeGroup.addEventListener("click", (e) => {
+      const btn = e.target.closest(".sidex-pill-btn");
+      if (!btn) return;
+      const mode = btn.dataset.mode;
+      if (mode && mode !== currentReplyMode) {
+        currentReplyMode = mode;
+        updateReplyModeButtons(currentReplyMode);
+        if (storage) {
+          storage.set({ sidex_reply_mode: currentReplyMode });
+        }
+      }
+    });
+  }
 
   // Sub-reply limit pill buttons handler
   if (limitGroup) {
