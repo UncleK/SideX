@@ -195,6 +195,16 @@
       return op;
     }
 
+    if (operationName === "CreateNoteTweet") {
+      const op = {
+        queryId: "Pwg0RQVkQa_axfgLgqQ4qA",
+        operationName: "CreateNoteTweet",
+        metadata: { featureSwitches: [], fieldToggles: [] }
+      };
+      operationCache.set(operationName, op);
+      return op;
+    }
+
     return null;
   }
 
@@ -445,14 +455,38 @@
     const replyText = String(text || "").trim();
     const mediaEntities = (mediaIds || []).map((id) => ({ media_id: String(id), tagged_users: [] }));
     if (!replyText && !mediaEntities.length) throw new Error("回复内容或图片不能为空");
-    return graphql("CreateTweet", {
+
+    const variables = {
       tweet_text: replyText,
       dark_request: false,
       media: { media_entities: mediaEntities, possibly_sensitive: false },
       semantic_annotation_ids: [],
       disallowed_reply_options: null,
       reply: { in_reply_to_tweet_id: tweetId, exclude_reply_user_ids: [] }
-    });
+    };
+
+    // Calculate length (ASCII=1, Unicode/CJK=2)
+    const textLen = [...replyText].reduce((acc, ch) => acc + (ch.codePointAt(0) <= 127 ? 1 : 2), 0);
+
+    // If text exceeds standard 280 characters, use CreateNoteTweet for Premium members
+    if (textLen > 280) {
+      try {
+        return await graphql("CreateNoteTweet", variables);
+      } catch (noteErr) {
+        console.warn("[SideX] CreateNoteTweet 异常，尝试 CreateTweet 回退:", noteErr);
+        try {
+          return await graphql("CreateTweet", variables);
+        } catch {
+          const errMsg = noteErr?.message || "";
+          if (errMsg.toLowerCase().includes("premium") || errMsg.toLowerCase().includes("subscriber") || errMsg.includes("会员") || errMsg.includes("shorter")) {
+            throw new Error("发布长文失败：该功能需 X Premium (会员) 权限，非会员请精简至 280 字内或在官方回复框中操作");
+          }
+          throw noteErr;
+        }
+      }
+    }
+
+    return graphql("CreateTweet", variables);
   }
 
   function respond(requestId, ok, payload) {

@@ -29,7 +29,8 @@
     poll: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M6 5a2 2 0 100 4 2 2 0 000-4zm-4 2a4 4 0 118 0 4 4 0 01-8 0zm10-1a1 1 0 011-1h9a1 1 0 110 2h-9a1 1 0 01-1-1zm0 8a1 1 0 011-1h9a1 1 0 110 2h-9a1 1 0 01-1-1zm-6 2a2 2 0 100 4 2 2 0 000-4zm-4 2a4 4 0 118 0 4 4 0 01-8 0z"></path></g></svg>`,
     emoji: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M8 9.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm8 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM12 18c-2.28 0-4.22-1.66-5-4h10c-.78 2.34-2.72 4-5 4zm-8-6c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8-8-3.589-8-8zm-2 0c0 5.523 4.477 10 10 10s10-4.477 10-10S17.523 2 12 2 2 6.477 2 12z"></path></g></svg>`,
     schedule: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M6 3V1.5a1 1 0 012 0V3h8V1.5a1 1 0 012 0V3h2.5A2.5 2.5 0 0123 5.5v13a2.5 2.5 0 01-2.5 2.5h-17A2.5 2.5 0 011 18.5v-13A2.5 2.5 0 013.5 3H6zm14.5 4.5h-17a.5.5 0 00-.5.5v10.5c0 .276.224.5.5.5h17c.276 0 .5-.224.5-.5V8a.5.5 0 00-.5-.5zM8 12.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm4 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm4 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm-8 4a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm4 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"></path></g></svg>`,
-    location: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"></path></g></svg>`
+    location: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"></path></g></svg>`,
+    nativeReply: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3m-2 16H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2v7z"></path></g></svg>`
   };
 
   const EMOJI_CATEGORIES = [
@@ -223,13 +224,19 @@
       justNow: "刚刚",
       minutesAgo: "{m}分",
       hoursAgo: "{h}小时",
-      mediaToolTitle: "添加媒体 (图片/视频，支持 Ctrl+V)",
+      mediaToolTitle: "添加媒体 (最多4张图片，支持 Ctrl+V)",
       gifToolTitle: "添加 GIF",
       pollToolTitle: "创建投票",
       emojiToolTitle: "添加表情",
       scheduleToolTitle: "定时发布",
       locationToolTitle: "添加位置",
+      openNativeReplyTitle: "在官方框中回复 (支持长文/富文本/多功能)",
       charCountTitle: "字数统计",
+      maxMediaReached: "单条回复最多添加 4 个附件",
+      mediaStillUploading: "附件正在上传中，请稍候...",
+      nativeReplyOpenedToast: "已打开官方回复框",
+      nativeReplyCopiedToast: "已打开官方回复框，草稿已复制到剪贴板",
+      overCharLimitNote: "超出长文最大限制（25,000 字）",
       // Popover
       searchGifPlaceholder: "搜索反应表情 GIF...",
       noGifFound: "未找到相关 GIF",
@@ -318,13 +325,19 @@
       justNow: "just now",
       minutesAgo: "{m}m",
       hoursAgo: "{h}h",
-      mediaToolTitle: "Add media (Images/video, Ctrl+V)",
+      mediaToolTitle: "Add media (Up to 4 images, Ctrl+V)",
       gifToolTitle: "Add GIF",
       pollToolTitle: "Create poll",
       emojiToolTitle: "Add emoji",
       scheduleToolTitle: "Schedule post",
       locationToolTitle: "Add location",
+      openNativeReplyTitle: "Open in official reply box",
       charCountTitle: "Character count",
+      maxMediaReached: "Maximum 4 attachments allowed",
+      mediaStillUploading: "Attachments are still uploading...",
+      nativeReplyOpenedToast: "Official reply dialog opened",
+      nativeReplyCopiedToast: "Official reply box opened, draft copied to clipboard",
+      overCharLimitNote: "Exceeds long post limit (25,000 characters)",
       // Popover
       searchGifPlaceholder: "Search GIFs...",
       noGifFound: "No GIFs found",
@@ -864,7 +877,7 @@
               <div class="sidepeek-footer-toolbar">
                 <div class="sidepeek-footer-tools">
                   <label class="sidepeek-tool-btn sidepeek-tool-media" title="${t("mediaToolTitle")}">
-                    <input type="file" accept="image/*,video/*" class="sidepeek-media-file-input" style="display:none;" />
+                    <input type="file" accept="image/*,video/*" class="sidepeek-media-file-input" multiple style="display:none;" />
                     ${ICONS.media}
                   </label>
                   <button type="button" class="sidepeek-tool-btn sidepeek-tool-gif" title="${t("gifToolTitle")}">
@@ -881,6 +894,9 @@
                   </button>
                   <button type="button" class="sidepeek-tool-btn sidepeek-tool-location" title="${t("locationToolTitle")}">
                     ${ICONS.location}
+                  </button>
+                  <button type="button" class="sidepeek-tool-btn sidepeek-tool-native-reply" title="${t("openNativeReplyTitle")}">
+                    ${ICONS.nativeReply}
                   </button>
                 </div>
                 <div class="sidepeek-footer-actions">
@@ -1485,15 +1501,15 @@
     const ringProgress = footer.querySelector(".sidepeek-char-ring-progress");
     const charWarnNum = footer.querySelector(".sidepeek-char-warn-num");
 
-    let pastedMediaId = null;
-    let pastedBlob = null;
+    let attachedMedia = []; // Array of { id, mediaId, dataUrl, file, isUploading, isGif }
+    const MAX_MEDIA = 4;
     let activePoll = null;
     let activeSchedule = null;
     let activeLocation = null;
 
     const targetTweetId = isDrillDown && drillDownParent ? drillDownParent.id : state.focalTweetId;
 
-    // Helper: calculate character count (ASCII=1, CJK/Emoji/Fullwidth=2, Limit=280)
+    // Helper: calculate character count (ASCII=1, CJK/Emoji/Fullwidth=2, Limit=280/25000)
     function calculateTweetLength(text) {
       let len = 0;
       for (const ch of (text || "")) {
@@ -1508,12 +1524,17 @@
     function updateComposerState() {
       if (!textarea || !ringProgress || !submitBtn) return;
       textarea.style.height = "auto";
-      textarea.style.height = Math.min(textarea.scrollHeight, 120) + "px";
+      textarea.style.height = Math.min(textarea.scrollHeight, 140) + "px";
 
       const text = textarea.value;
       const len = calculateTweetLength(text);
       const circumference = 2 * Math.PI * 9; // ~56.5487
-      const maxLen = 280;
+      const standardMax = 280;
+      const absoluteMax = 25000;
+
+      const hasMedia = attachedMedia.length > 0;
+      const isMediaUploading = attachedMedia.some((m) => m.isUploading);
+      const hasContent = len > 0 || hasMedia || activePoll !== null;
 
       if (len === 0) {
         ringProgress.style.strokeDasharray = `${circumference}`;
@@ -1523,10 +1544,10 @@
           charWarnNum.textContent = "";
           charWarnNum.className = "sidepeek-char-warn-num";
         }
-        if (charCounter) charCounter.style.opacity = "0.4";
-      } else {
+        if (charCounter) charCounter.style.opacity = hasMedia ? "0.8" : "0.4";
+      } else if (len <= standardMax) {
         if (charCounter) charCounter.style.opacity = "1";
-        const progress = Math.min(1, len / maxLen);
+        const progress = Math.min(1, len / standardMax);
         const offset = circumference * (1 - progress);
         ringProgress.style.strokeDasharray = `${circumference}`;
         ringProgress.style.strokeDashoffset = `${offset}`;
@@ -1537,24 +1558,43 @@
             charWarnNum.textContent = "";
             charWarnNum.className = "sidepeek-char-warn-num";
           }
-        } else if (len <= 280) {
+        } else {
           ringProgress.style.stroke = "#ffd400";
           if (charWarnNum) {
-            charWarnNum.textContent = String(maxLen - len);
+            charWarnNum.textContent = String(standardMax - len);
             charWarnNum.className = "sidepeek-char-warn-num warn-amber";
           }
-        } else {
-          ringProgress.style.stroke = "#f4212e";
-          if (charWarnNum) {
-            charWarnNum.textContent = String(maxLen - len);
-            charWarnNum.className = "sidepeek-char-warn-num warn-red";
-          }
+        }
+      } else if (len <= absoluteMax) {
+        // 会员长文模式 (X Premium Note Tweet: 281 ~ 25,000 字)
+        if (charCounter) charCounter.style.opacity = "1";
+        ringProgress.style.strokeDasharray = `${circumference}`;
+        ringProgress.style.strokeDashoffset = "0";
+        ringProgress.style.stroke = "var(--sp-accent)";
+        if (charWarnNum) {
+          charWarnNum.textContent = String(len);
+          charWarnNum.className = "sidepeek-char-warn-num warn-note";
+          charWarnNum.title = getLocale() === "zh" ? "会员长文模式（上限 25,000 字）" : "Long post mode (up to 25,000 chars)";
+        }
+      } else {
+        // 超出绝对上限 (> 25,000 字)
+        if (charCounter) charCounter.style.opacity = "1";
+        ringProgress.style.strokeDasharray = `${circumference}`;
+        ringProgress.style.strokeDashoffset = "0";
+        ringProgress.style.stroke = "#f4212e";
+        if (charWarnNum) {
+          charWarnNum.textContent = String(absoluteMax - len);
+          charWarnNum.className = "sidepeek-char-warn-num warn-red";
         }
       }
 
-      const hasContent = (len > 0 && len <= maxLen) || pastedMediaId !== null || activePoll !== null;
-      const isOverLimit = len > maxLen;
-      submitBtn.disabled = !hasContent || isOverLimit;
+      const isOverLimit = len > absoluteMax;
+      submitBtn.disabled = !hasContent || isOverLimit || isMediaUploading;
+      if (isMediaUploading) {
+        submitBtn.textContent = t("uploading");
+      } else if (submitBtn.textContent === t("uploading")) {
+        submitBtn.textContent = t("replyBtn");
+      }
     }
 
     textarea?.addEventListener("input", updateComposerState);
@@ -1721,47 +1761,18 @@
           item.addEventListener("click", async (e) => {
             e.stopPropagation();
             const gifUrl = item.dataset.url;
-            const gifTitle = item.dataset.title;
             closeAllPopovers();
 
-            previewArea.innerHTML = `
-              <div class="sidepeek-pasted-preview">
-                <img src="${gifUrl}" alt="${gifTitle}" />
-                <div class="sidepeek-gif-badge">GIF</div>
-                <button type="button" class="sidepeek-remove-img-btn" title="✕">✕</button>
-              </div>
-            `;
-            previewArea.querySelector(".sidepeek-remove-img-btn")?.addEventListener("click", () => {
-              previewArea.innerHTML = "";
-              pastedMediaId = null;
-              pastedBlob = null;
-              updateComposerState();
-            });
+            if (attachedMedia.length >= MAX_MEDIA) {
+              showToast(t("maxMediaReached"));
+              return;
+            }
 
             try {
-              submitBtn.disabled = true;
               submitBtn.textContent = t("processingGif");
               const resp = await fetch(gifUrl);
               const blob = await resp.blob();
-              pastedBlob = blob;
-              const reader = new FileReader();
-              reader.onload = async () => {
-                const dataUrl = reader.result;
-                const base64 = dataUrl.split(",")[1];
-                try {
-                  submitBtn.textContent = t("uploading");
-                  const res = await requestPage("UPLOAD_MEDIA", { base64, mimeType: "image/gif", size: blob.size });
-                  pastedMediaId = res.mediaId;
-                } catch (err) {
-                  showToast(err.message || t("gifUploadFailed"));
-                  previewArea.innerHTML = "";
-                  pastedMediaId = null;
-                } finally {
-                  submitBtn.textContent = t("replyBtn");
-                  updateComposerState();
-                }
-              };
-              reader.readAsDataURL(blob);
+              handleImageFiles([blob], true, gifUrl);
             } catch {
               showToast(t("gifUploadFailed"));
               submitBtn.textContent = t("replyBtn");
@@ -1979,61 +1990,162 @@
     // =========================================================================
     // 6. Media Upload & Paste Image
     // =========================================================================
-    function handleImageFile(file) {
-      if (!file || !file.type.startsWith("image/")) return;
-      pastedBlob = file;
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const dataUrl = reader.result;
-        const base64 = dataUrl.split(",")[1];
-
-        previewArea.innerHTML = `
-          <div class="sidepeek-pasted-preview">
-            <img src="${dataUrl}" alt="" />
-            <button type="button" class="sidepeek-remove-img-btn" title="✕">✕</button>
-          </div>
+    // =========================================================================
+    // 6. Media Upload & Attachments (Up to 4)
+    // =========================================================================
+    function renderMediaPreviews() {
+      previewArea.querySelectorAll(".sidepeek-pasted-preview").forEach((el) => el.remove());
+      for (const item of attachedMedia) {
+        const previewEl = document.createElement("div");
+        previewEl.className = "sidepeek-pasted-preview";
+        previewEl.dataset.id = item.id;
+        previewEl.innerHTML = `
+          <img src="${item.dataUrl || ""}" alt="" />
+          ${item.isGif ? '<div class="sidepeek-gif-badge">GIF</div>' : ""}
+          ${item.isUploading ? '<div class="sidepeek-preview-loading"><span class="sidepeek-mini-spinner"></span></div>' : ""}
+          <button type="button" class="sidepeek-remove-img-btn" title="✕">✕</button>
         `;
-        previewArea.querySelector(".sidepeek-remove-img-btn")?.addEventListener("click", () => {
-          previewArea.innerHTML = "";
-          pastedMediaId = null;
-          pastedBlob = null;
+        previewEl.querySelector(".sidepeek-remove-img-btn")?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          attachedMedia = attachedMedia.filter((m) => m.id !== item.id);
+          renderMediaPreviews();
           updateComposerState();
         });
+        previewArea.appendChild(previewEl);
+      }
+    }
 
-        try {
-          submitBtn.disabled = true;
-          submitBtn.textContent = t("uploading");
-          const res = await requestPage("UPLOAD_MEDIA", { base64, mimeType: file.type, size: file.size });
-          pastedMediaId = res.mediaId;
-        } catch (err) {
-          showToast(err.message || t("uploadFailed"));
-          previewArea.innerHTML = "";
-          pastedMediaId = null;
-        } finally {
-          submitBtn.textContent = t("replyBtn");
+    async function uploadMediaItem(item, mimeType, size) {
+      try {
+        const base64 = item.dataUrl.split(",")[1];
+        const res = await requestPage("UPLOAD_MEDIA", {
+          base64,
+          mimeType: mimeType || "image/png",
+          size: size || item.file?.size || 0
+        });
+        item.mediaId = res.mediaId;
+        item.isUploading = false;
+      } catch (err) {
+        showToast((err.message || t("uploadFailed")) + (item.file?.name ? ` (${item.file.name})` : ""));
+        attachedMedia = attachedMedia.filter((m) => m.id !== item.id);
+      } finally {
+        renderMediaPreviews();
+        updateComposerState();
+      }
+    }
+
+    function handleImageFiles(fileList, isGif = false, gifUrl = null) {
+      const files = Array.from(fileList || []).filter((f) => f && (f.type?.startsWith("image/") || f.type?.startsWith("video/") || isGif));
+      if (!files.length && !gifUrl) return;
+
+      const remaining = MAX_MEDIA - attachedMedia.length;
+      if (remaining <= 0) {
+        showToast(t("maxMediaReached"));
+        return;
+      }
+
+      if (files.length > remaining) {
+        showToast(t("maxMediaReached"));
+      }
+
+      const filesToProcess = files.slice(0, remaining);
+      for (const file of filesToProcess) {
+        const item = {
+          id: "media_" + Math.random().toString(36).slice(2, 9),
+          mediaId: null,
+          dataUrl: gifUrl || "",
+          file,
+          isUploading: true,
+          isGif
+        };
+        attachedMedia.push(item);
+        if (gifUrl) {
+          renderMediaPreviews();
           updateComposerState();
+          uploadMediaItem(item, "image/gif", file.size);
+        } else {
+          const reader = new FileReader();
+          reader.onload = () => {
+            item.dataUrl = reader.result;
+            renderMediaPreviews();
+            updateComposerState();
+            uploadMediaItem(item, file.type, file.size);
+          };
+          reader.readAsDataURL(file);
         }
-      };
-      reader.readAsDataURL(file);
+      }
+      renderMediaPreviews();
+      updateComposerState();
     }
 
     fileInput?.addEventListener("change", (e) => {
-      const file = e.target.files?.[0];
-      if (file) handleImageFile(file);
+      const files = e.target.files;
+      if (files && files.length > 0) {
+        handleImageFiles(files);
+      }
       fileInput.value = "";
     });
 
     textarea?.addEventListener("paste", (e) => {
       const items = e.clipboardData?.items;
       if (!items) return;
+      const files = [];
       for (const item of items) {
         if (item.type.startsWith("image/")) {
-          e.preventDefault();
           const file = item.getAsFile();
-          if (file) handleImageFile(file);
-          break;
+          if (file) files.push(file);
         }
       }
+      if (files.length > 0) {
+        e.preventDefault();
+        handleImageFiles(files);
+      }
+    });
+
+    // 6.1 Native Reply Dialog Shortcut
+    function openNativeReplyDialog(tweetId, textToCopy) {
+      if (textToCopy) {
+        try {
+          navigator.clipboard?.writeText(textToCopy).catch(() => {});
+        } catch {}
+      }
+
+      let replyBtn = null;
+      if (tweetId) {
+        const article = document.querySelector(`article[data-testid="tweet"] a[href*="/status/${tweetId}"]`)?.closest('article[data-testid="tweet"]')
+          || (state.focalTweetId === tweetId ? findDetailFocalArticle(tweetId) : null);
+        replyBtn = article?.querySelector('[data-testid="reply"]');
+      }
+
+      if (!replyBtn) {
+        replyBtn = document.querySelector('[data-testid="tweet"] [data-testid="reply"]');
+      }
+
+      if (replyBtn) {
+        replyBtn.click();
+        showToast(textToCopy ? t("nativeReplyCopiedToast") : t("nativeReplyOpenedToast"));
+        if (textToCopy) {
+          setTimeout(() => {
+            const nativeEditor = document.querySelector('[data-testid="tweetTextarea_0"]');
+            if (nativeEditor) {
+              nativeEditor.focus();
+              try {
+                document.execCommand("insertText", false, textToCopy);
+              } catch {}
+            }
+          }, 350);
+        }
+      } else if (tweetId) {
+        window.open(`https://x.com/i/status/${tweetId}`, "_blank");
+        showToast(t("nativeReplyCopiedToast"));
+      }
+    }
+
+    const btnNativeReply = footer.querySelector(".sidepeek-tool-native-reply");
+    btnNativeReply?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const currentTargetId = state.replyTarget ? state.replyTarget.id : targetTweetId;
+      openNativeReplyDialog(currentTargetId, textarea?.value?.trim() || "");
     });
 
     // =========================================================================
@@ -2042,11 +2154,16 @@
     async function doSubmit() {
       const text = textarea.value.trim();
       const len = calculateTweetLength(text);
-      if (len > 280) {
-        showToast(t("overCharLimit"));
+      if (len > 25000) {
+        showToast(t("overCharLimitNote"));
         return;
       }
-      if (!text && !pastedMediaId && !activePoll) return;
+      if (!text && !attachedMedia.length && !activePoll) return;
+
+      if (attachedMedia.some((m) => m.isUploading)) {
+        showToast(t("mediaStillUploading"));
+        return;
+      }
 
       submitBtn.disabled = true;
       submitBtn.textContent = t("sending");
@@ -2065,7 +2182,7 @@
           finalText += `\n[${t("pollTitle")}: ${activePoll.options.join(" / ")}]`;
         }
 
-        const mediaIds = pastedMediaId ? [pastedMediaId] : [];
+        const mediaIds = attachedMedia.map((m) => m.mediaId).filter(Boolean);
         await requestPage("CREATE_REPLY", {
           tweetId: effectiveTargetId,
           text: finalText,
@@ -2074,13 +2191,12 @@
 
         // 1. Snapshot user info & media preview before clearing
         const currentUser = getCurrentUserInfo();
-        const mediaSnapshot = pastedBlob ? [{ type: "photo", url: previewArea.querySelector("img")?.src || "" }] : [];
+        const mediaSnapshot = attachedMedia.map((m) => ({ type: m.isGif ? "animated_gif" : "photo", url: m.dataUrl }));
 
         // 2. Reset composer inputs immediately
         textarea.value = "";
         previewArea.innerHTML = "";
-        pastedMediaId = null;
-        pastedBlob = null;
+        attachedMedia = [];
         activePoll = null;
         activeSchedule = null;
         activeLocation = null;

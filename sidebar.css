@@ -1003,6 +1003,16 @@ article[data-testid="tweet"].sidepeek-focal-active {
   font-size: 11px;
 }
 
+.sidepeek-preview-loading {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
 .sidepeek-composer-footer {
   display: flex;
   align-items: center;
@@ -1295,6 +1305,12 @@ article[data-testid="tweet"].sidepeek-focal-active {
 
 .sidepeek-char-warn-num.warn-red {
   color: #f4212e;
+}
+
+.sidepeek-char-warn-num.warn-note {
+  color: var(--sp-accent);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .sidepeek-action-divider {
