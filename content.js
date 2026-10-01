@@ -1572,9 +1572,12 @@
         ringProgress.style.strokeDashoffset = "0";
         ringProgress.style.stroke = "var(--sp-accent)";
         if (charWarnNum) {
-          charWarnNum.textContent = String(len);
+          const isZh = getLocale() === "zh";
+          charWarnNum.textContent = `${len} ${isZh ? "(需会员)" : "(Premium)"}`;
           charWarnNum.className = "sidepeek-char-warn-num warn-note";
-          charWarnNum.title = getLocale() === "zh" ? "会员长文模式（上限 25,000 字）" : "Long post mode (up to 25,000 chars)";
+          charWarnNum.title = isZh
+            ? "长文模式（需 X Premium 会员权限，非会员上限 280 字）"
+            : "Long post mode (requires X Premium, max 280 chars for non-subscribers)";
         }
       } else {
         // 超出绝对上限 (> 25,000 字)
@@ -2303,7 +2306,12 @@
 
         showToast(t("replySent"));
       } catch (err) {
-        showToast(err.message || t("replyFailed"));
+        const errMsg = err.message || t("replyFailed");
+        showToast(errMsg);
+        if (errMsg.includes("Premium") || errMsg.includes("会员")) {
+          btnNativeReply?.classList.add("sidepeek-tool-btn-highlight");
+          setTimeout(() => btnNativeReply?.classList.remove("sidepeek-tool-btn-highlight"), 3000);
+        }
         submitBtn.disabled = false;
         submitBtn.textContent = t("replyBtn");
       }
