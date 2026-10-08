@@ -71,6 +71,12 @@ article[data-testid="tweet"].sidepeek-focal-active {
   pointer-events: auto;
 }
 
+/* Official menus and dialogs must remain above the docked comments. */
+body:has(#sidepeek-drawer-root.sidepeek-open) #layers {
+  position: relative;
+  z-index: 2147483647;
+}
+
 #sidepeek-drawer-root *,
 #sidepeek-drawer-root *::before,
 #sidepeek-drawer-root *::after {
@@ -1900,18 +1906,21 @@ article[data-testid="tweet"].sidepeek-focal-active {
    User Profile Hover Card (Avatar Hover Popover)
    ========================================================================== */
 .sidepeek-user-hovercard {
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
   position: fixed;
   z-index: 2147483646;
-  width: 310px;
+  width: 300px;
   max-width: calc(100vw - 24px);
   background: var(--sp-bg);
-  border: 1px solid var(--sp-border);
+  border: 0;
   border-radius: 16px;
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.32), 0 2px 10px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 0 15px rgba(101, 119, 134, 0.2), 0 0 3px 1px rgba(101, 119, 134, 0.15);
   color: var(--sp-fg);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   overflow: hidden;
   opacity: 0;
+  overflow-y: auto;
   transform: scale(0.96) translateY(4px);
   transition: opacity 0.16s cubic-bezier(0.16, 1, 0.3, 1), transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
@@ -1931,26 +1940,39 @@ article[data-testid="tweet"].sidepeek-focal-active {
   background-color: var(--sp-soft);
 }
 
+.sidepeek-hovercard-banner img { width: 100%; height: 100%; object-fit: cover; }
+.sidepeek-hovercard-meta, .sidepeek-profile-status, .sidepeek-profile-retry {
+  display: block;
+  color: var(--sp-muted);
+  font-size: 13px;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+.sidepeek-profile-retry { border: 0; background: none; color: var(--sp-accent); cursor: pointer; }
+.sidepeek-hovercard-follow-btn:disabled, .sidepeek-action-btn:disabled { opacity: .55; cursor: wait; }
+a.sidepeek-handle, a.sidepeek-action-btn { text-decoration: none; }
+a.sidepeek-handle:hover { text-decoration: underline; }
+
 .sidepeek-hovercard-content {
-  padding: 12px 16px 16px 16px;
+  padding: 16px;
 }
 
 .sidepeek-hovercard-top {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 8px;
 }
 
 .sidepeek-hovercard-avatar-wrap {
   display: block;
-  width: 60px;
-  height: 60px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   overflow: hidden;
-  border: 3px solid var(--sp-bg);
+  border: 0;
   background: var(--sp-soft);
-  margin-top: -30px;
+  margin-top: 0;
   position: relative;
   z-index: 2;
   flex-shrink: 0;
@@ -1975,7 +1997,7 @@ article[data-testid="tweet"].sidepeek-focal-active {
 .sidepeek-hovercard-follow-btn {
   border-radius: 9999px;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 15px;
   padding: 6px 16px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -1984,6 +2006,7 @@ article[data-testid="tweet"].sidepeek-focal-active {
   align-items: center;
   justify-content: center;
   min-width: 80px;
+  min-height: 36px;
   line-height: 1.25;
   outline: none;
   font-family: inherit;
@@ -2030,7 +2053,7 @@ article[data-testid="tweet"].sidepeek-focal-active {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--sp-fg);
   text-decoration: none;
@@ -2053,7 +2076,7 @@ article[data-testid="tweet"].sidepeek-focal-active {
 }
 
 .sidepeek-hovercard-handle {
-  font-size: 14px;
+  font-size: 15px;
   color: var(--sp-muted);
   text-decoration: none;
 }
@@ -2068,8 +2091,9 @@ article[data-testid="tweet"].sidepeek-focal-active {
 }
 
 .sidepeek-hovercard-bio {
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: 15px;
+  line-height: 20px;
+  white-space: pre-wrap;
   color: var(--sp-fg);
   margin-bottom: 12px;
   word-break: break-word;
@@ -2112,6 +2136,50 @@ article[data-testid="tweet"].sidepeek-focal-active {
 .sidepeek-hovercard-label {
   color: var(--sp-muted);
 }
+
+.sidepeek-hovercard-mutual {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  color: var(--sp-muted);
+  font-size: 13px;
+  line-height: 16px;
+  text-decoration: none;
+}
+.sidepeek-mutual-avatars { display: flex; padding-left: 8px; flex-shrink: 0; }
+.sidepeek-mutual-avatars img { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--sp-bg); margin-left: -8px; }
+.sidepeek-hovercard-full-profile {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 34px;
+  margin-top: 16px;
+  border: 1px solid var(--sp-border);
+  border-radius: 9999px;
+  color: var(--sp-fg);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+}
+.sidepeek-hovercard-full-profile:hover { background: var(--sp-soft); }
+
+/* Keep the real X component in its React tree; top-layer placement escapes
+   nested X stacking contexts without moving or cloning the component. */
+[data-sidex-native-hover][popover] {
+  position: fixed !important;
+  inset: auto !important;
+  left: var(--sidex-hover-left, 12px) !important;
+  top: var(--sidex-hover-top, 12px) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  overflow: visible !important;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
+}
+[data-sidex-native-hover][popover]::backdrop { background: transparent; pointer-events: none; }
 
 /* ==========================================================================
    1. Quoted Tweet Card (引用推文卡片)

@@ -80,6 +80,40 @@
     return current?.legacy || current?.core ? current : null;
   }
 
+  // X now returns profile fields in separate objects; older responses use legacy.
+  // Keep unknown counts/relationships unknown instead of displaying a false zero.
+  function userModel(value) {
+    const user = unwrapUser(value);
+    if (!user) return null;
+    const legacy = user.legacy || {};
+    const core = user.core || {};
+    const relations = user.relationship_perspectives || {};
+    const counts = user.relationship_counts || {};
+    const optionalCount = (value) => value == null ? null : numberValue(value);
+    return {
+      id: String(user.rest_id || legacy.id_str || ""),
+      name: core.name ?? legacy.name ?? "",
+      handle: core.screen_name ?? legacy.screen_name ?? "",
+      avatar: String(user.avatar?.image_url ?? legacy.profile_image_url_https ?? "").replace("_normal.", "_200x200."),
+      banner: user.banner?.image_url ?? legacy.profile_banner_url ?? "",
+      bio: user.profile_bio?.description ?? legacy.description ?? core.description ?? "",
+      bioUrls: (user.profile_bio?.entities?.description?.urls ?? legacy.entities?.description?.urls ?? []).map(url => ({
+        url: url.url, expandedUrl: url.expanded_url, displayUrl: url.display_url
+      })),
+      followersCount: optionalCount(counts.followers ?? legacy.followers_count),
+      followingCount: optionalCount(counts.following ?? legacy.friends_count),
+      following: relations.following ?? legacy.following ?? null,
+      followedBy: relations.followed_by ?? legacy.followed_by ?? null,
+      blocking: relations.blocking ?? legacy.blocking ?? null,
+      muting: relations.muting ?? legacy.muting ?? null,
+      protected: user.privacy?.protected ?? legacy.protected ?? false,
+      location: user.location?.location ?? legacy.location ?? "",
+      url: user.profile_bio?.entities?.url?.urls?.[0]?.expanded_url ?? legacy.entities?.url?.urls?.[0]?.expanded_url ?? user.website?.url ?? legacy.url ?? "",
+      verified: Boolean(user.is_blue_verified || user.verification?.verified || legacy.verified),
+      verifiedType: user.verification?.verified_type || user.verified_type || (user.is_blue_verified || legacy.verified ? "Blue" : "")
+    };
+  }
+
   function mediaItems(legacy, tweet) {
     const modernMedia = Array.isArray(tweet?.media)
       ? tweet.media
@@ -226,22 +260,7 @@
         userMentions,
         hashtags
       },
-      author: {
-        id: String(user?.rest_id || userLegacy.id_str || ""),
-        name: userLegacy.name || userCore.name || handle || "X 用户",
-        handle,
-        avatar: String(userLegacy.profile_image_url_https || user?.avatar?.image_url || "").replace("_normal.", "_200x200."),
-        banner: userLegacy.profile_banner_url || user?.profile_banner_url || "",
-        bio: userLegacy.description || userCore.description || user?.description || "",
-        followersCount: numberValue(userLegacy.followers_count ?? user?.followers_count),
-        followingCount: numberValue(userLegacy.friends_count ?? user?.friends_count ?? user?.following_count),
-        following: Boolean(userLegacy.following || user?.following),
-        followedBy: Boolean(userLegacy.followed_by || user?.followed_by),
-        location: userLegacy.location || "",
-        url: userLegacy.entities?.url?.urls?.[0]?.expanded_url || userLegacy.url || "",
-        verified: Boolean(user?.is_blue_verified || userLegacy.verified || user?.verification?.verified),
-        verifiedType: user?.verification?.verified_type || user?.verified_type || (user?.is_blue_verified ? "Blue" : userLegacy.verified ? "Blue" : "")
-      },
+      author: userModel(user) || { id: "", name: "X 用户", handle: "", avatar: "" },
       createdAt: legacy.created_at || "",
       conversationId: String(legacy.conversation_id_str || ""),
       inReplyToId: String(legacy.in_reply_to_status_id_str || ""),
@@ -413,6 +432,7 @@
     postIdFromUrl,
     isPostDetailUrl,
     selectOwnPostUrl,
+    userModel,
     tweetModel,
     collectTweetModels,
     parseTweetDetail,

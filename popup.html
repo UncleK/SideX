@@ -14,7 +14,7 @@
         <img src="icons/icon-32.png" alt="SideX Logo" class="sidex-popup-logo" />
         <div class="sidex-popup-title-group">
           <span class="sidex-popup-title">SideX</span>
-          <span class="sidex-popup-badge" id="sidex-version-badge">v1.1.9</span>
+          <span class="sidex-popup-badge" id="sidex-version-badge">v1.1.10</span>
         </div>
       </div>
       <!-- Language Switcher in Header -->
@@ -45,6 +45,16 @@
           <button type="button" class="sidex-pill-btn" data-mode="native" id="btn-mode-native">官方</button>
         </div>
       </div>
+      <div class="sidex-card-divider"></div>
+      <div class="sidex-action-row">
+        <label class="sidex-action-label" id="txt-translation-label" for="sidex-translation-provider">翻译方式</label>
+        <select id="sidex-translation-provider" class="sidex-select">
+          <option value="x">X 官方</option>
+          <option value="google">Google</option>
+          <option value="external">已有翻译插件</option>
+        </select>
+      </div>
+      <p class="sidex-setting-hint" id="txt-translation-hint"></p>
       <div class="sidex-card-divider"></div>
       <div class="sidex-action-row">
         <div class="sidex-action-label" id="txt-subreply-limit-label">二级回复展示</div>

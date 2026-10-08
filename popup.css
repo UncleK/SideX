@@ -221,6 +221,21 @@ input:checked + .sidex-toggle-slider:before {
   color: var(--sidex-text);
 }
 
+.sidex-select {
+  max-width: 150px;
+  padding: 5px 8px;
+  color: var(--sidex-text);
+  background: var(--sidex-bg);
+  border: 1px solid var(--sidex-border);
+  border-radius: 8px;
+}
+
+.sidex-setting-hint {
+  color: var(--sidex-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .sidex-pill-group {
   display: flex;
   background: var(--sidex-bg);

@@ -7,7 +7,8 @@
   const CONTENT_SOURCE = "sidepeek-content";
   const PAGE_SOURCE = "sidepeek-page";
   const GRAPHQL_PATH = /\/graphql\/([^/]+)\/([^/?#]+)/;
-  const TRANSLATION_PATH = /\/translation\/service\/translateTweet(?:\.json)?(?:[?#]|$)/;
+  const TRANSLATION_PATH = /\/2\/grok\/translation\.json$/;
+  const nativeFetch = window.fetch.bind(window);
   const AUTH_HEADER_NAMES = new Set([
     "authorization",
     "x-twitter-auth-type",
@@ -51,16 +52,20 @@
   }
 
   function rememberRequest(urlValue, methodValue, headersValue, body) {
-    const url = String(urlValue || "");
+    let parsedUrl;
+    try { parsedUrl = new URL(String(urlValue || ""), location.origin); } catch { return; }
+    if (!/^(?:api\.)?(?:x|twitter)\.com$/.test(parsedUrl.hostname)) return;
+    const url = parsedUrl.toString();
     const headers = normalizeHeaders(headersValue);
     for (const [name, value] of Object.entries(headers)) {
       if (AUTH_HEADER_NAMES.has(name) && value) captured.auth[name] = value;
     }
-    if (TRANSLATION_PATH.test(url)) {
+    if (TRANSLATION_PATH.test(parsedUrl.pathname)) {
       captured.translationTemplate = {
         url,
         method: String(methodValue || "GET").toUpperCase(),
-        headers
+        headers,
+        body: typeof body === "string" ? body : null
       };
     }
     const match = url.match(GRAPHQL_PATH);
@@ -154,10 +159,9 @@
     const cached = operationCache.get(operationName);
     if (cached) return cached;
     const runtime = getWebpackRuntime();
-    if (!runtime) return null;
     const predicate = (value) => value?.operationName === operationName && typeof value?.queryId === "string";
 
-    for (const module of Object.values(runtime.c)) {
+    for (const module of Object.values(runtime?.c || {})) {
       const found = deepFind(module?.exports, predicate);
       if (found) {
         operationCache.set(operationName, found);
@@ -165,7 +169,7 @@
       }
     }
 
-    for (const [moduleId, factory] of Object.entries(runtime.m)) {
+    for (const [moduleId, factory] of Object.entries(runtime?.m || {})) {
       let source = "";
       try {
         source = Function.prototype.toString.call(factory);
@@ -289,8 +293,18 @@
     const operation = findOperation(operationName);
     if (!operation) throw new Error(`当前页面尚未加载 ${operationName} 操作，请刷新页面后重试`);
     const path = `/i/api/graphql/${operation.queryId}/${operationName}`;
-    const features = toggleMap(operation.metadata?.featureSwitches);
-    const fieldToggles = toggleMap(operation.metadata?.fieldToggles);
+    let features = toggleMap(operation.metadata?.featureSwitches);
+    let fieldToggles = toggleMap(operation.metadata?.fieldToggles);
+    // Preserve switches observed on the official client instead of enabling all of them.
+    const template = captured.templates.get(operationName);
+    if (template) {
+      try {
+        const params = new URL(template.url, location.origin).searchParams;
+        const body = template.body ? JSON.parse(template.body) : {};
+        features = JSON.parse(params.get("features") || "null") || body.features || features;
+        fieldToggles = JSON.parse(params.get("fieldToggles") || "null") || body.fieldToggles || fieldToggles;
+      } catch { /* Use operation metadata until an official request is observed. */ }
+    }
     const headers = await requestHeaders(path, method, method === "POST");
     let response;
     if (method === "GET") {
@@ -298,9 +312,9 @@
       url.searchParams.set("variables", JSON.stringify(variables));
       url.searchParams.set("features", JSON.stringify(features));
       url.searchParams.set("fieldToggles", JSON.stringify(fieldToggles));
-      response = await fetch(url.toString(), { method, headers, credentials: "include", cache: "no-store", signal });
+      response = await nativeFetch(url.toString(), { method, headers, credentials: "include", cache: "no-store", signal });
     } else {
-      response = await fetch(path, {
+      response = await nativeFetch(path, {
         method,
         headers,
         credentials: "include",
@@ -309,7 +323,7 @@
       });
     }
     const json = await response.json().catch(() => null);
-    if (!response.ok || (!json?.data && json?.errors?.length)) {
+    if (!response.ok || json?.errors?.length || !json?.data) {
       const message = json?.errors?.[0]?.message || `X 请求失败（${response.status}）`;
       throw new Error(message);
     }
@@ -361,11 +375,11 @@
     }
   }
 
-  async function toggleAction(action, tweetId, active) {
+  async function toggleAction(action, tweetId, desiredActive) {
     const mapping = ACTIONS[action];
     if (!mapping) throw new Error("不支持的互动操作");
-    const operationName = active ? mapping.active : mapping.inactive;
-    const variables = action === "repost" && active
+    const operationName = desiredActive ? mapping.inactive : mapping.active;
+    const variables = action === "repost" && !desiredActive
       ? { source_tweet_id: tweetId, dark_request: false }
       : action === "repost"
         ? { tweet_id: tweetId, dark_request: false }
@@ -496,31 +510,15 @@
     const res = await graphql("UserByScreenName", variables, "GET");
     const userResult = res?.data?.user?.result;
     if (!userResult) throw new Error("未找到用户信息");
-    const legacy = userResult.legacy || {};
-    const core = userResult.core || {};
-    return {
-      id: String(userResult.rest_id || legacy.id_str || ""),
-      name: legacy.name || core.name || handle,
-      handle: legacy.screen_name || handle,
-      avatar: String(legacy.profile_image_url_https || userResult.avatar?.image_url || "").replace("_normal.", "_200x200."),
-      banner: legacy.profile_banner_url || "",
-      bio: legacy.description || "",
-      followersCount: Number(legacy.followers_count || 0),
-      followingCount: Number(legacy.friends_count || 0),
-      following: Boolean(legacy.following),
-      followedBy: Boolean(legacy.followed_by),
-      location: legacy.location || "",
-      url: legacy.entities?.url?.urls?.[0]?.expanded_url || legacy.url || "",
-      verified: Boolean(userResult.is_blue_verified || legacy.verified)
-    };
+    return userResult;
   }
 
   async function toggleFollow(userId, screenName, active) {
     const isCurrentlyFollowing = Boolean(active);
     const endpoint = isCurrentlyFollowing
-      ? "/1.1/friendships/destroy.json"
-      : "/1.1/friendships/create.json";
-    const path = `/1.1/friendships/${isCurrentlyFollowing ? "destroy" : "create"}.json`;
+      ? "/i/api/1.1/friendships/destroy.json"
+      : "/i/api/1.1/friendships/create.json";
+    const path = endpoint;
     const headers = await requestHeaders(path, "POST", true);
     headers["content-type"] = "application/x-www-form-urlencoded";
     const params = new URLSearchParams();
@@ -544,78 +542,61 @@
     return json;
   }
 
+  async function fetchMutualFollowers(userId) {
+    if (!/^\d+$/.test(String(userId))) throw new Error("用户 ID 无效");
+    // Same endpoint and parameters used by X's official HoverCard.
+    const path = "/i/api/1.1/friends/following/list.json";
+    const url = new URL(path, location.origin);
+    url.search = new URLSearchParams({
+      include_profile_interstitial_type: "1", include_blocking: "1", include_blocked_by: "1",
+      include_followed_by: "1", include_want_retweets: "1", include_mute_edge: "1",
+      include_can_dm: "1", include_can_media_tag: "1", include_ext_is_blue_verified: "1",
+      include_ext_verified_type: "1", include_ext_profile_image_shape: "1", skip_status: "1",
+      cursor: "-1", user_id: String(userId), count: "3", with_total_count: "true"
+    });
+    const response = await nativeFetch(url.toString(), {
+      headers: await requestHeaders(path, "GET", false), credentials: "include",
+      signal: AbortSignal.timeout(10000)
+    });
+    const json = await response.json().catch(() => null);
+    if (!response.ok || !Array.isArray(json?.users)) throw new Error(`X_PROFILE_CONTEXT_${response.status}`);
+    return { count: Number(json.total_count || 0), users: json.users.slice(0, 3).map(user => ({
+      name: user.name, handle: user.screen_name, avatar: user.profile_image_url_https
+    })) };
+  }
+
   async function translateTweet(tweetId, text, destLang = "zh") {
-    const targetLang = destLang === "zh" ? "zh-CN" : destLang || "zh-CN";
-    const twitterLang = destLang === "zh" ? "zh" : destLang || "zh";
-
-    // 1. Try Twitter native Strato translation service
-    if (tweetId) {
-      const candidates = [
-        `/i/api/1.1/strato/column/None/tweetId=${tweetId},destinationLanguage=${twitterLang},translationSource=Some(Google)/translation/service/translateTweet`,
-        `/i/api/1.1/strato/column/None/tweetId=${tweetId},destinationLanguage=${twitterLang}/translation/service/translateTweet`,
-        `/i/api/1.1/strato/column/None/translation/service/translateTweet?id=${tweetId}&dest=${twitterLang}`
-      ];
-
-      for (const path of candidates) {
-        try {
-          const url = new URL(path, location.origin);
-          const headers = await requestHeaders(url.pathname, "GET", false);
-          delete headers["content-type"]; // Never send Content-Type on GET requests
-          const res = await fetch(url.toString(), {
-            method: "GET",
-            headers,
-            credentials: "include"
-          });
-          if (res.ok) {
-            const json = await res.json().catch(() => null);
-            const translation = json?.translation || json?.data?.translation || json?.text;
-            if (translation) {
-              return {
-                translation,
-                sourceLanguage: json.localizedSourceLanguage || json.sourceLanguage || "原语言",
-                provider: "X"
-              };
-            }
-          }
-        } catch {
-          // Continue to next candidate or fallback
-        }
-      }
-    }
-
-    // 2. Fallback: Google Translate GTX endpoint (100% reliable)
-    if (text) {
-      try {
-        const cleanText = String(text).replace(/https?:\/\/[^\s]+/g, "").trim();
-        const gUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(targetLang)}&dt=t&q=${encodeURIComponent(cleanText || text)}`;
-        const gRes = await fetch(gUrl);
-        if (gRes.ok) {
-          const gJson = await gRes.json();
-          if (Array.isArray(gJson) && Array.isArray(gJson[0])) {
-            const translation = gJson[0].map((item) => item[0]).filter(Boolean).join("");
-            const srcLang = gJson[2] || "原语言";
-            if (translation) {
-              return {
-                translation,
-                sourceLanguage: srcLang,
-                provider: "Google"
-              };
-            }
-          }
-        }
-      } catch (err) {
-        console.warn("[SideX] Translation fallback failed:", err);
-      }
-    }
-
-    throw new Error("翻译服务暂时不可用，请稍后重试");
+    if (!/^\d+$/.test(String(tweetId))) throw new Error("帖子 ID 无效");
+    if (!/^[a-z]{2,3}(?:-[a-zA-Z]{2,4})?$/.test(destLang)) throw new Error("翻译语言无效");
+    // Observed on X's official Show translation button (2026-10-09).
+    const template = captured.translationTemplate;
+    const url = new URL(template?.url || "https://api.x.com/2/grok/translation.json");
+    const headers = await requestHeaders(url.pathname, "POST", true);
+    let body = {};
+    try { body = JSON.parse(template?.body || "{}"); } catch { /* Default request below. */ }
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 25000);
+    try {
+      const response = await nativeFetch(url.toString(), {
+        method: "POST", headers, credentials: "include", signal: controller.signal,
+        body: JSON.stringify({ ...body, content_type: "POST", id: String(tweetId), dst_lang: destLang })
+      });
+      const json = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(`X_TRANSLATION_HTTP_${response.status}`);
+      const translation = json?.result?.text;
+      if (typeof translation !== "string" || !translation.trim()) throw new Error("X_TRANSLATION_EMPTY");
+      return { translation, sourceLanguage: json.result.src_lang || "", provider: "X / Grok" };
+    } catch (error) {
+      if (error.name === "AbortError") throw new Error("X_TRANSLATION_TIMEOUT");
+      throw error;
+    } finally { clearTimeout(timer); }
   }
 
   async function toggleMute(screenName, active) {
     const endpoint = active
-      ? "/1.1/mutes/users/destroy.json"
-      : "/1.1/mutes/users/create.json";
-    const path = `/1.1/mutes/users/${active ? "destroy" : "create"}.json`;
+      ? "/i/api/1.1/mutes/users/destroy.json"
+      : "/i/api/1.1/mutes/users/create.json";
+    const path = endpoint;
     const headers = await requestHeaders(path, "POST", true);
     headers["content-type"] = "application/x-www-form-urlencoded";
     const params = new URLSearchParams({ screen_name: String(screenName) });
@@ -634,9 +615,9 @@
 
   async function toggleBlock(screenName, active) {
     const endpoint = active
-      ? "/1.1/blocks/destroy.json"
-      : "/1.1/blocks/create.json";
-    const path = `/1.1/blocks/${active ? "destroy" : "create"}.json`;
+      ? "/i/api/1.1/blocks/destroy.json"
+      : "/i/api/1.1/blocks/create.json";
+    const path = endpoint;
     const headers = await requestHeaders(path, "POST", true);
     headers["content-type"] = "application/x-www-form-urlencoded";
     const params = new URLSearchParams({ screen_name: String(screenName) });
@@ -679,6 +660,12 @@
       } catch (error) {
         respond(message.requestId, false, error instanceof Error ? error.message : "获取用户信息失败");
       }
+      return;
+    }
+
+    if (message.type === "FETCH_MUTUAL_FOLLOWERS") {
+      try { respond(message.requestId, true, await fetchMutualFollowers(message.userId)); }
+      catch (error) { respond(message.requestId, false, error.message || "PROFILE_CONTEXT_UNAVAILABLE"); }
       return;
     }
 

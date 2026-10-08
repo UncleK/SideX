@@ -1,63 +1,66 @@
-# Chrome Web Store Listing Description (商店详细说明文案)
+# Chrome Web Store Listing Description
 
-> **使用指南**：在 [Chrome 开发者控制台 (Chrome Web Store Developer Dashboard)](https://chrome.google.com/webstore/devconsole) -> 选择 SideX -> 进入 **商店名录 (Store Listing)** -> **详细说明 (Detailed Description)**，将下方框线内的纯文本直接复制粘贴进去即可。
+在现有 SideX 商店项目的详细说明中粘贴下方文本。更新包不会自动替换这段说明。
 
 ```text
-SideX redefines how you read and interact with X (Twitter) on the web. Click any tweet to dock its comments directly in the right-hand column and auto-expand long posts in-place—experience seamless, uninterrupted reading with zero page hops. Never lose your timeline scroll position again.
+SideX makes X (Twitter) conversations easier to read. Click a post's text or blank area to open its replies in the right-hand column while keeping your timeline in place.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✨ KEY FEATURES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FEATURES
+• Docked comments: read replies beside the timeline without opening a separate detail page.
+• Long-post reading: automatically open the post's native Show more control when available.
+• Conversation threads: expand and collapse reply branches, with configurable reply previews.
+• Reply options: use the inline composer with image attachments, or open X's official reply dialog.
+• Native interactions: reuse X controls when the matching native post is present. Other comments use your active X session.
+• Profile cards: show the actual X hover card when a matching native profile link is available. Otherwise, show a fallback with biography, relationship counts and followers you know.
+• Translation choices: use X official translation, choose Google, or use your existing translation extension's selection/page translation.
+• Appearance: follows X's theme and supports an adjustable sidebar width.
 
-⚡ In-Place Comment Stream
-Click any tweet or timestamp to open replies in the 3rd column. No redirects, no full-page reloads, and your home feed position stays right where you left it.
+WHAT'S NEW IN 1.1.10
+• Updated X official translation support.
+• Improved profile information and native hover cards.
+• Fixed like, repost and bookmark action direction and failure rollback.
+• Retained translations and expanded text when opening reply branches.
+• Reset comments to the top when switching posts, including quoted posts.
+• Prevented late responses from replacing the currently selected conversation.
 
-📖 Auto-Unroll Long Posts
-Instantly expands truncated "Show more" long tweets in the stream. Seamlessly navigates to native 𝕏 Articles without friction.
+PRIVACY
+SideX runs in your browser and has no SideX relay server or analytics service. It processes the X content you open and uses your current X session for authenticated requests. Replies and selected attachments go to X. If you select Google translation and click Translate, the post text is sent directly to Google. X authentication information is not sent to Google. Other translation extensions follow their own settings and privacy policies.
 
-🧵 Conversation Tree & Sub-thread Drilldown
-Reconstructs nested reply branches with visual connecting lines. Click any comment to drill down into its dedicated conversation thread.
+SHORTCUTS
+• Esc: close the current SideX card, menu or comment drawer.
+• Ctrl + Enter: send a reply from the inline composer.
+• Ctrl + V: paste an image into a reply.
 
-💬 Inline Reply & Media Paste
-Permanent bottom composer lets you reply instantly. Supports Ctrl+V clipboard image pasting, GIF attachments, and emojis.
+SideX is independent and is not affiliated with or endorsed by X Corp.
+Open source: https://github.com/UncleK/SideX
 
-🔄 Bidirectional Live Sync
-Like, repost, or bookmark directly inside the sidebar—actions synchronize with your main timeline in real time.
+────────────────────────
+中文说明
+────────────────────────
+SideX 把 X 的评论区放到右侧。点击帖子正文或空白处，在保留主信息流位置的同时阅读回复。
 
-🛡️ 100% Account Safe & Private
-Directly reuses your browser's official session tokens. Requires zero extra account permissions, zero external servers, and zero risk of suspension.
+主要功能
+• 评论原位停靠在右侧，减少主信息流与详情页之间的来回切换。
+• 帖子存在官方“显示更多”入口时，自动展开长文。
+• 展开、收起回复分支，自定义二级回复默认展示数量。
+• 支持侧栏回复、图片附件，以及打开 X 官方回复框。
+• 页面有对应原生帖子时，优先复用官方交互；其余评论通过当前 X 会话处理。
+• 页面有对应原生用户入口时，显示完整官方悬浮卡；否则显示包含简介、关注数字和共同关注的后备卡片。
+• 默认使用 X 官方翻译，也可选择 Google，或使用已有翻译插件的划词／网页翻译。
+• 跟随 X 主题，支持调整侧栏宽度。
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⌨️ SHORTCUTS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-• Esc: Close the docked comment stream
-• Ctrl + Enter / Cmd + Enter: Quick send reply
-• Ctrl + V: Paste screenshot or clipboard image into reply
+1.1.10 更新
+• 适配当前 X 官方翻译服务。
+• 完善用户资料和原生悬浮卡。
+• 修复点赞、转推、收藏方向及失败回滚。
+• 展开回复分支时保留译文和长文展开状态。
+• 切换帖子或引用帖后，评论回到顶部。
+• 防止旧请求覆盖当前帖子。
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📦 OPEN SOURCE & COMMUNITY
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-SideX is 100% open source under the MIT License.
-GitHub Repository: https://github.com/UncleK/SideX
+隐私说明
+SideX 在浏览器中运行，没有 SideX 中转或统计服务器。扩展处理你打开的 X 内容，并复用当前 X 会话；回复及选择的附件发送给 X。只有选择 Google 翻译并点击翻译时，正文才会直接发送给 Google，X 认证信息不会发给 Google。已有翻译插件遵循各自的设置和隐私政策。
 
---------------------------------------------------------------------
-🇨🇳 中文说明 / Chinese Version
---------------------------------------------------------------------
-
-SideX 彻底重构了 X (Twitter) 网页端的浏览体验——点击任意推文，评论流秒级就地停靠在右侧第三列，主帖长文原位自动展开，无需跳页、不丢失时间线滚动位置，带来丝滑顺畅的“边刷边看”沉浸式体验。
-
-✨ 核心特性：
-• ⚡ 零跳转就地停靠：点击推文右侧就地出流，告别在主信息流与详情页间反复跳转与重载。
-• 📖 长文与转帖秒展开：原地秒级展开“显示更多（Show more）”长推文，𝕏 Article 官方专栏顺畅原生跳转。
-• 🧵 树状对话流与下钻：智能还原嵌套对话层级，清晰连接线指示，支持点击任意评论下钻进入独立子对话。
-• 💬 常驻快捷回复：底部常驻快捷输入框，支持 Ctrl+V 粘贴剪贴板图片、GIF 与表情包，Ctrl+Enter 快捷发送。
-• 🔄 双向毫秒级同步：在侧栏中点赞、转推、收藏，与主信息流及官方状态实时同步。
-• 🛡️ 原生会话 100% 安全：直接复用浏览器官方登录态与 Session，零敏感权限申请，零封号风险。
-
-⌨️ 常用快捷键：
-• Esc：关闭右侧评论流
-• Ctrl + Enter：快捷发送回复
-• Ctrl + V：直接粘贴截图到回复框
-
-📦 开源地址：https://github.com/UncleK/SideX
+快捷键：Esc 关闭浮层／评论区；Ctrl + Enter 发送回复；Ctrl + V 粘贴图片。
+SideX 与 X 官方无隶属或背书关系。
+开源地址：https://github.com/UncleK/SideX
 ```

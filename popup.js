@@ -14,6 +14,7 @@
   const hintEsc = document.getElementById("txt-hint-esc");
   const langGroup = document.getElementById("sidex-lang-group");
   const versionBadge = document.getElementById("sidex-version-badge");
+  const translationSelect = document.getElementById("sidex-translation-provider");
 
   // Dynamically sync version from manifest
   try {
@@ -32,6 +33,14 @@
       replyModeLabel: "回复模式",
       replyModeDrawer: "侧栏",
       replyModeNative: "官方",
+      translationLabel: "翻译方式",
+      translationNative: "X 官方",
+      translationExternal: "已有翻译插件",
+      translationHints: {
+        x: "使用 X 当前的官方翻译服务。",
+        google: "点击翻译时将正文发送给 Google；免费接口可能限流。",
+        external: "保留正文，隐藏 SideX 翻译按钮。请使用已有插件的划词或网页翻译。"
+      },
       subReplyLimitLabel: "二级回复展示",
       resetLabel: "抽屉宽度",
       resetBtn: "恢复默认",
@@ -46,6 +55,14 @@
       replyModeLabel: "Reply Mode",
       replyModeDrawer: "Drawer",
       replyModeNative: "Native",
+      translationLabel: "Translation",
+      translationNative: "X official",
+      translationExternal: "Your extension",
+      translationHints: {
+        x: "Use X's current official translation service.",
+        google: "Send text to Google when you click Translate. The free endpoint may rate limit requests.",
+        external: "Keep post text and hide SideX translation buttons. Use your extension's selection or page translation."
+      },
       subReplyLimitLabel: "Sub-reply Preview",
       resetLabel: "Drawer Width",
       resetBtn: "Reset",
@@ -58,6 +75,7 @@
   let isEnabled = true;
   let currentSubReplyLimit = 1;
   let currentReplyMode = "drawer";
+  let translationProvider = "x";
 
   function getSystemLang() {
     const nav = (navigator.language || "zh").toLowerCase();
@@ -85,6 +103,11 @@
     resetLabel.textContent = s.resetLabel;
     resetBtnText.textContent = s.resetBtn;
     hintEsc.textContent = s.hintEsc;
+    document.getElementById("txt-translation-label").textContent = s.translationLabel;
+    translationSelect.querySelector('[value="x"]').textContent = s.translationNative;
+    translationSelect.querySelector('[value="external"]').textContent = s.translationExternal;
+    translationSelect.value = translationProvider;
+    document.getElementById("txt-translation-hint").textContent = s.translationHints[translationProvider];
 
     // Update active language button
     langGroup.querySelectorAll(".sidex-lang-btn").forEach((btn) => {
@@ -119,11 +142,12 @@
   // Load saved settings
   const storage = chrome?.storage?.sync || chrome?.storage?.local;
   if (storage) {
-    storage.get({ sidex_enabled: true, sidex_lang: null, sidex_sub_reply_limit: 1, sidex_reply_mode: "drawer" }, (res) => {
+    storage.get({ sidex_enabled: true, sidex_lang: null, sidex_sub_reply_limit: 1, sidex_reply_mode: "drawer", sidex_translation_provider: "x" }, (res) => {
       isEnabled = res.sidex_enabled !== false;
       currentLang = res.sidex_lang || getSystemLang();
       currentSubReplyLimit = Number(res.sidex_sub_reply_limit) || 1;
       currentReplyMode = res.sidex_reply_mode === "native" ? "native" : "drawer";
+      translationProvider = ["x", "google", "external"].includes(res.sidex_translation_provider) ? res.sidex_translation_provider : "x";
       toggleInput.checked = isEnabled;
       updateTexts();
       updateBadge(isEnabled);
@@ -138,6 +162,12 @@
   }
 
   // Toggle switch change handler
+  translationSelect.addEventListener("change", () => {
+    translationProvider = translationSelect.value;
+    storage?.set({ sidex_translation_provider: translationProvider });
+    updateTexts();
+  });
+
   toggleInput.addEventListener("change", () => {
     isEnabled = toggleInput.checked;
     updateTexts();

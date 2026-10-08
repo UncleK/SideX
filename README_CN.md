@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-官方商店上架-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.9-00b4f8?style=flat-square" alt="Version 1.1.9" />
+    <img src="https://img.shields.io/badge/Version-1.1.10-00b4f8?style=flat-square" alt="Version 1.1.10" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -43,9 +43,11 @@
 * 📖 **长文原位展开**：自动展开主帖“显示更多（Show more）”，原地阅读完整长文。
 * 🧵 **树状对话流 & 子评论下钻**：智能重构评论层级与清晰连接线，支持自定义二级回复默认展示数（1/2/3/5），原位平滑展开零跳回顶部。
 * 💬 **行内回复 & 多图长文**：支持原地就地回复，最多支持 4 张图片/GIF（支持文件多选、剪贴板 `Ctrl+V` 连续粘贴），无缝支持 X Premium 会员长文回复（最高 25,000 字），并提供一键转到官方回复框快捷入口。
-* 🔄 **操作实时双向同步**：在侧栏中进行点赞、转推、收藏，与主时间线及 X 官方状态毫秒级实时同步。
+* 🔄 **官方交互优先**：同一帖子已在页面原生渲染时，优先使用官方点赞、收藏和菜单，并同步原生状态；其余评论通过 X 会话请求处理。
+* 🌐 **可选翻译方式**：默认使用 X 官方翻译；可在扩展设置中选择 Google，或隐藏 SideX 翻译按钮，使用已有翻译插件的划词/网页翻译。
+* 👤 **用户悬浮卡**：页面存在对应原生用户入口时，保留官方卡片及其交互，并在侧栏旁显示；其余情况使用包含简介、关注关系和共同关注的后备卡片。
 * 🎨 **主题自适应 & 自由拉伸**：完美自适应浅色（Light）、暗色（Dim）与黑色（Dark）主题；可随意拖拽右边缘调节抽屉宽度。
-* 🛡️ **安全零封号风险**：纯前端 DOM 与会话复用，完全模拟官方 Web 行为，无任何额外第三方服务器中转。
+* 🛡️ **浏览器内运行**：复用当前 X 会话，无 SideX 中转服务器；选用 Google 翻译时，正文直接发送给 Google。
 
 ---
 
@@ -57,7 +59,7 @@
 👉 **[点击直达 Chrome Web Store 官方商店](https://chromewebstore.google.com/detail/ccbkagemmobenjoioicemekhjbggmpde)**，一键添加至浏览器并享受自动更新！
 
 ### 方式二：下载 ZIP 压缩包（离线直装，100% 成功）
-1. 前往 [Releases 页面](https://github.com/UncleK/SideX/releases) 下载 **`SideX-v1.1.9.zip`** 并解压。
+1. 前往 [Releases 页面](https://github.com/UncleK/SideX/releases) 下载最新发布的 **`SideX-v*.zip`** 并解压。
 2. 打开 `chrome://extensions/`（或 `edge://extensions/`），开启右上角**「开发者模式」**。
 3. 点击左上角**「加载已解压的扩展程序」**（Load unpacked），选择解压后的文件夹即可。
 
@@ -90,6 +92,19 @@ git clone https://github.com/UncleK/SideX.git
 SideX 是一款完全开源、用于提升个人阅读效率的第三方辅助工具，**与 X Corp. / Twitter 官方无任何隶属或背书关系**。
 
 ---
+
+## 开发与验证
+
+扩展直接加载源码，不需要构建。修改后在 `chrome://extensions` 重新加载 SideX，再刷新 X 页面。
+
+```bash
+npm ci --ignore-scripts
+npm test
+```
+
+回归检查使用合成 X 响应和 DOM，覆盖新旧用户资料结构、官方翻译请求、Google 长文分段、原生按钮复用、失败回滚、翻译/展开状态保留、切帖滚动重置和过期请求隔离。测试不会对真实 X 账号执行操作。
+
+X 的接口和组件结构会变化；已有翻译插件的兼容性取决于具体插件。缺少对应原生用户入口时，SideX 使用后备资料卡，提供“查看完整资料”链接，不模拟官方 Grok 的 Profile Summary 按钮。缺少原生节点的评论仍由 SideX 渲染。
 
 ## 📄 开源协议
 

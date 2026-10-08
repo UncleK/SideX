@@ -91,11 +91,19 @@
     error: "",
     isResizing: false,
     subReplyLimit: 1,
-    replyMode: "drawer"
+    replyMode: "drawer",
+    translationProvider: "x",
+    threadGeneration: 0
   };
 
   const pendingRequests = new Map();
   let requestSequence = 0;
+  const commentNodes = new Map();
+  const translations = new Map();
+  const expandedTexts = new Set();
+  const pendingActions = new Set();
+  const nativeActionObservers = new Map();
+  const nativeActionArticles = new Map();
 
   function requestPage(type, payload, timeoutMs = 18000) {
     const requestId = ++requestSequence;
@@ -144,8 +152,9 @@
 
   const storage = chrome?.storage?.sync || chrome?.storage?.local;
   if (storage) {
-    storage.get({ sidex_enabled: true, sidex_lang: null, sidex_sub_reply_limit: 1, sidex_reply_mode: "drawer" }, (res) => {
+    storage.get({ sidex_enabled: true, sidex_lang: null, sidex_sub_reply_limit: 1, sidex_reply_mode: "drawer", sidex_translation_provider: "x" }, (res) => {
       isSideXEnabled = res.sidex_enabled !== false;
+      state.translationProvider = ["x", "google", "external"].includes(res.sidex_translation_provider) ? res.sidex_translation_provider : "x";
       if (res.sidex_lang) overrideLocale = res.sidex_lang;
       if (res.sidex_sub_reply_limit !== undefined) {
         state.subReplyLimit = Math.max(1, Number(res.sidex_sub_reply_limit) || 1);
@@ -173,6 +182,10 @@
       }
       if (changes.sidex_lang !== undefined) {
         overrideLocale = changes.sidex_lang.newValue;
+        if (state.open) renderDrawer();
+      }
+      if (changes.sidex_translation_provider !== undefined) {
+        state.translationProvider = ["x", "google", "external"].includes(changes.sidex_translation_provider.newValue) ? changes.sidex_translation_provider.newValue : "x";
         if (state.open) renderDrawer();
       }
       if (changes.sidex_reply_mode !== undefined) {
@@ -254,7 +267,17 @@
       userBlocked: "已屏蔽 @{handle}",
       translateAction: "翻译推文",
       translating: "翻译中...",
-      translatedBy: "由 X 翻译自 {lang}：",
+      translatedBy: "由 {provider} 翻译 · {lang}",
+      originalLanguage: "原语言",
+      translationRetry: "翻译失败，点击重试",
+      translationHelp: "X 翻译暂时不可用，可重试或在扩展设置中选择 Google。",
+      profileLoading: "正在加载用户资料…",
+      profileFailed: "资料加载失败，点击重试",
+      mutualFollowers: "你关注的 {names} 也关注了此人",
+      mutualFollowersMore: "你关注的 {names} 和另外 {count} 人也关注了此人",
+      noMutualFollowers: "你关注的人中没有人关注此账号",
+      openFullProfile: "查看完整资料",
+      actionFailed: "操作失败，已恢复原状态",
       hideTranslation: "隐藏翻译",
       translateFailed: "翻译失败",
       showMorePost: "显示更多",
@@ -388,7 +411,17 @@
       userBlocked: "Blocked @{handle}",
       translateAction: "Translate post",
       translating: "Translating...",
-      translatedBy: "Translated from {lang} by X:",
+      translatedBy: "Translated by {provider} · {lang}",
+      originalLanguage: "Original language",
+      translationRetry: "Translation failed. Retry",
+      translationHelp: "X translation is unavailable. Retry or choose Google in extension settings.",
+      profileLoading: "Loading profile…",
+      profileFailed: "Couldn't load profile. Retry",
+      mutualFollowers: "Followed by {names}",
+      mutualFollowersMore: "Followed by {names}, and {count} others you follow",
+      noMutualFollowers: "Not followed by anyone you’re following",
+      openFullProfile: "View full profile",
+      actionFailed: "Action failed. Previous state restored",
       hideTranslation: "Hide translation",
       translateFailed: "Translation failed",
       showMorePost: "Show more",
@@ -1322,9 +1355,7 @@
     }
 
     // 恢复滚动条位置，彻底解决“点击展开回复后页面跳回顶部”的问题
-    if (prevScrollTop > 0) {
-      body.scrollTop = prevScrollTop;
-    }
+    body.scrollTop = prevScrollTop;
 
     // 若收起后父评论跑到了视口上方，平滑将其拉回视口顶部，避免视口掉入空白
     if (state.anchorCommentId) {
@@ -1502,6 +1533,7 @@
   }
 
   function shouldShowTranslate(model) {
+    if (state.translationProvider === "external") return false;
     if (!model || !model.text) return false;
     const clean = cleanCommentBody(model.text, model.inReplyToHandle).trim();
     if (!clean) return false;
@@ -1518,6 +1550,9 @@
 
     const currentLang = getLocale(); // "zh" or "en"
     const tweetLang = String(model.lang || "").toLowerCase();
+    if (tweetLang && tweetLang !== "und" && tweetLang !== "zxx") {
+      return tweetLang.split("-")[0] !== currentLang;
+    }
 
     if (currentLang === "zh") {
       // If Twitter detected it as Chinese
@@ -1532,11 +1567,7 @@
       // If Twitter detected it as English
       if (tweetLang === "en") return false;
 
-      // If text is predominantly English ASCII words (>= 80%)
-      const asciiChars = (stripped.match(/[A-Za-z]/g) || []).length;
-      if (asciiChars > 0 && asciiChars / stripped.length >= 0.8) {
-        return false;
-      }
+      // Latin letters alone cannot distinguish English from French, Spanish, etc.
     }
 
     if (tweetLang && tweetLang === currentLang) return false;
@@ -1544,7 +1575,87 @@
     return true;
   }
 
+  function requestGoogleTranslation(text, destLang) {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("GOOGLE_TRANSLATION_TIMEOUT")), 35000);
+      try {
+        chrome.runtime.sendMessage({ type: "TRANSLATE_TEXT", text, destLang }, response => {
+          clearTimeout(timer);
+          const error = chrome.runtime.lastError;
+          if (error || !response?.ok) reject(new Error(response?.error || error?.message || "GOOGLE_TRANSLATION_FAILED"));
+          else resolve(response.payload);
+        });
+      } catch (error) { clearTimeout(timer); reject(error); }
+    });
+  }
+
+  function bindTranslation(item, model) {
+    const button = item.querySelector(".sidepeek-translate-btn");
+    const box = item.querySelector(".sidepeek-translation-box");
+    if (!button || !box) return;
+    const provider = state.translationProvider;
+    const destLang = getLocale();
+    const text = cleanCommentBody(model.text, model.inReplyToHandle);
+    const key = JSON.stringify([model.id, text, destLang, provider]);
+    let entry = translations.get(key);
+    if (!entry) {
+      entry = { result: null, showing: false, pending: null, error: "" };
+      translations.set(key, entry);
+      if (translations.size > 500) translations.delete(translations.keys().next().value);
+    }
+    const update = () => {
+      button.disabled = Boolean(entry.pending);
+      button.textContent = entry.pending ? t("translating") : entry.error ? t("translationRetry") : entry.showing ? t("hideTranslation") : t("translateAction");
+      box.style.display = entry.showing || entry.error ? "block" : "none";
+      if (entry.result) {
+        box.innerHTML = `<div class="sidepeek-translation-header">${escapeHtml(t("translatedBy", {
+          provider: entry.result.provider, lang: entry.result.sourceLanguage || model.lang || t("originalLanguage")
+        }))}</div><div class="sidepeek-translation-text" lang="${escapeHtml(destLang)}">${escapeHtml(entry.result.translation)}</div>`;
+      } else if (entry.error) {
+        box.textContent = (provider === "x" ? t("translationHelp") : t("translateFailed")) + ` (${entry.error})`;
+      } else box.textContent = "";
+    };
+    // A rerender during an in-flight request subscribes to the same result.
+    if (entry.pending) entry.pending.then(update);
+    button.addEventListener("click", async event => {
+      event.stopPropagation();
+      if (entry.pending) return;
+      if (entry.result) { entry.showing = !entry.showing; update(); return; }
+      entry.error = "";
+      entry.pending = (async () => {
+        try {
+          const result = provider === "google"
+            ? await requestGoogleTranslation(text, destLang)
+            : await requestPage("TRANSLATE_TWEET", { tweetId: model.id, destLang }, 28000);
+          if (!result?.translation) throw new Error("TRANSLATION_EMPTY");
+          entry.result = result;
+          entry.showing = true;
+        } catch (error) {
+          entry.error = error.message || "TRANSLATION_FAILED";
+        } finally { entry.pending = null; }
+      })();
+      update();
+      await entry.pending;
+      update();
+    });
+    update();
+  }
+
   function renderCommentNode(model, hasThreadLine = false, isChild = false) {
+    const signature = JSON.stringify([getLocale(), state.translationProvider, model.text, model.author, model.media, model.quote, model.card]);
+    const cached = commentNodes.get(model.id);
+    if (cached && cached.signature === signature) {
+      Object.assign(cached.model, model);
+      cached.element.classList.toggle("sidepeek-child-comment", isChild);
+      const line = cached.element.querySelector(".sidepeek-avatar-col > .sidepeek-thread-line");
+      if (hasThreadLine && !line) {
+        const newLine = document.createElement("div");
+        newLine.className = "sidepeek-thread-line";
+        cached.element.querySelector(".sidepeek-avatar-col").appendChild(newLine);
+      } else if (!hasThreadLine) line?.remove();
+      updateActionButtons(cached.model, cached.element);
+      return cached.element;
+    }
     const item = document.createElement("article");
     item.className = `sidepeek-comment-item${isChild ? " sidepeek-child-comment" : ""}`;
     item.dataset.id = model.id;
@@ -1575,7 +1686,7 @@
       ? `<div class="sidepeek-reply-to-tag">${t("replyToTag")} <a href="https://x.com/${escapeHtml(model.inReplyToHandle)}" target="_blank">@${escapeHtml(model.inReplyToHandle)}</a></div>`
       : "";
 
-    const isLongText = Boolean(model.text && (model.text.length > 280 || (model.text.match(/\n/g) || []).length > 4));
+    const isLongText = !expandedTexts.has(model.id) && Boolean(model.text && (model.text.length > 280 || (model.text.match(/\n/g) || []).length > 4));
     const textHtml = model.text
       ? `<div class="sidepeek-text ${isLongText ? "sidepeek-text-clamp" : ""}">${formatCommentText(model)}</div>${isLongText ? `<button type="button" class="sidepeek-show-more-btn">${t("showMorePost")}</button>` : ""}`
       : "";
@@ -1598,7 +1709,7 @@
           ${nameHtml}
           ${renderVerifiedBadge(model.author)}
           ${opBadgeHtml}
-          <span class="sidepeek-handle">@${authorHandle}</span>
+          <a class="sidepeek-handle" href="https://x.com/${authorHandle}" target="_blank">@${authorHandle}</a>
           <span class="sidepeek-dot">·</span>
           ${timeHtml}
           <div class="sidepeek-more-col">
@@ -1623,9 +1734,9 @@
           <button type="button" class="sidepeek-action-btn sidepeek-act-like ${model.flags.liked ? "active" : ""}" title="${t("likeAction")}">
             <span class="sidepeek-action-btn-surface">${model.flags.liked ? ICONS.likeSolid : ICONS.like} <span>${formatCount(model.counts.likes)}</span></span>
           </button>
-          <button type="button" class="sidepeek-action-btn sidepeek-act-views" title="${t("viewsAction")}">
+          <a class="sidepeek-action-btn sidepeek-act-views" href="${escapeHtml(model.url)}/analytics" target="_blank" title="${t("viewsAction")}">
             <span class="sidepeek-action-btn-surface">${ICONS.views} <span>${formatCount(model.counts.views)}</span></span>
-          </button>
+          </a>
           <button type="button" class="sidepeek-action-btn sidepeek-act-bookmark ${model.flags.bookmarked ? "active" : ""}" title="${t("bookmarkAction")}">
             <span class="sidepeek-action-btn-surface">${model.flags.bookmarked ? ICONS.bookmarkSolid : ICONS.bookmark}</span>
           </button>
@@ -1681,81 +1792,13 @@
         e.stopPropagation();
         const textEl = item.querySelector(".sidepeek-text");
         if (textEl) textEl.classList.remove("sidepeek-text-clamp");
+        expandedTexts.add(model.id);
+        if (expandedTexts.size > 500) expandedTexts.delete(expandedTexts.values().next().value);
         showMoreBtn.remove();
       });
     }
 
-    // Translation toggle
-    const translateBtn = item.querySelector(".sidepeek-translate-btn");
-    const translationBox = item.querySelector(".sidepeek-translation-box");
-    if (translateBtn && translationBox) {
-      let isTranslated = false;
-      let isShowing = false;
-      translateBtn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        if (isTranslated) {
-          isShowing = !isShowing;
-          translationBox.style.display = isShowing ? "block" : "none";
-          translateBtn.textContent = isShowing ? t("hideTranslation") : t("translateAction");
-          return;
-        }
-
-        translateBtn.disabled = true;
-        translateBtn.textContent = t("translating");
-        try {
-          let res = null;
-          try {
-            res = await requestPage("TRANSLATE_TWEET", {
-              tweetId: model.id,
-              text: cleanCommentBody(model.text, model.inReplyToHandle),
-              destLang: getLocale()
-            });
-          } catch (bridgeErr) {
-            let bgRes = null;
-            try {
-              bgRes = await new Promise((resolve) => {
-                if (!chrome.runtime?.sendMessage) return resolve(null);
-                chrome.runtime.sendMessage(
-                  {
-                    type: "TRANSLATE_TEXT",
-                    text: cleanCommentBody(model.text, model.inReplyToHandle),
-                    destLang: getLocale()
-                  },
-                  (response) => {
-                    if (chrome.runtime.lastError || !response?.ok) resolve(null);
-                    else resolve(response.payload);
-                  }
-                );
-              });
-            } catch {
-              bgRes = null;
-            }
-            if (bgRes) res = bgRes;
-            else throw bridgeErr;
-          }
-
-          if (res && res.translation) {
-            isTranslated = true;
-            isShowing = true;
-            translationBox.innerHTML = `
-              <div class="sidepeek-translation-header">
-                <span>${t("translatedBy", { lang: res.sourceLanguage || "原语言" })}</span>
-              </div>
-              <div class="sidepeek-translation-text">${escapeHtml(res.translation)}</div>
-            `;
-            translationBox.style.display = "block";
-            translateBtn.disabled = false;
-            translateBtn.textContent = t("hideTranslation");
-          } else {
-            throw new Error();
-          }
-        } catch {
-          translateBtn.disabled = false;
-          translateBtn.textContent = t("translateAction");
-          showToast(t("translateFailed"));
-        }
-      });
-    }
+    bindTranslation(item, model);
 
     // Quote card click & author hover
     const quoteCard = item.querySelector(".sidepeek-quote-card");
@@ -1788,6 +1831,7 @@
     const nameEl = item.querySelector(".sidepeek-name");
     if (avatarLink) attachUserHoverEvents(avatarLink, model.author);
     if (nameEl) attachUserHoverEvents(nameEl, model.author);
+    attachUserHoverEvents(item.querySelector(".sidepeek-handle"), model.author);
 
     // Image zoom / lightbox click
     item.querySelectorAll(".sidepeek-zoomable-img").forEach((img) => {
@@ -1797,6 +1841,12 @@
       });
     });
 
+    item.querySelector(".sidepeek-text")?.setAttribute("lang", model.lang || "und");
+    item.querySelector(".sidepeek-text")?.setAttribute("data-testid", "tweetText");
+    commentNodes.set(model.id, { element: item, model, signature });
+    updateActionButtons(model, item);
+    const nativeArticle = findDetailFocalArticle(model.id);
+    if (nativeArticle) watchNativeActions(model, nativeArticle);
     return item;
   }
 
@@ -1873,7 +1923,7 @@
   function escapeHtml(text) {
     const div = document.createElement("div");
     div.textContent = text || "";
-    return div.innerHTML;
+    return div.innerHTML.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
 
   // ==========================================================================
@@ -1890,8 +1940,7 @@
     const targetId = tweetId || state.focalTweetId;
 
     if (targetId) {
-      const article = document.querySelector(`article[data-testid="tweet"] a[href*="/status/${targetId}"]`)?.closest('article[data-testid="tweet"]')
-        || (state.focalTweetId === targetId ? findDetailFocalArticle(targetId) : null);
+      const article = findDetailFocalArticle(targetId);
       replyBtn = article?.querySelector('[data-testid="reply"]');
     }
 
@@ -2778,43 +2827,98 @@
   // ==========================================================================
   // Action Handlers (Like, Repost, Bookmark, Share, More)
   // ==========================================================================
+  function updateActionButtons(model, item) {
+    for (const [action, flag, count] of [["like", "liked", "likes"], ["repost", "reposted", "reposts"], ["bookmark", "bookmarked", "bookmarks"]]) {
+      const button = item.querySelector(`.sidepeek-act-${action}`);
+      if (!button) continue;
+      button.classList.toggle("active", Boolean(model.flags[flag]));
+      button.setAttribute("aria-pressed", String(Boolean(model.flags[flag])));
+      button.disabled = pendingActions.has(`${model.id}:${action}`);
+      const icon = action === "like" ? (model.flags.liked ? ICONS.likeSolid : ICONS.like)
+        : action === "bookmark" ? (model.flags.bookmarked ? ICONS.bookmarkSolid : ICONS.bookmark) : ICONS.repost;
+      button.querySelector(".sidepeek-action-btn-surface").innerHTML = icon + (action === "bookmark" ? "" : ` <span>${formatCount(model.counts[count])}</span>`);
+    }
+  }
+
   async function handleToggleAction(model, action, btnElement) {
+    const key = `${model.id}:${action}`;
+    if (pendingActions.has(key)) return;
+    const nativeArticle = findDetailFocalArticle(model.id);
+    const nativeSelector = action === "like" ? '[data-testid="like"], [data-testid="unlike"]'
+      : action === "bookmark" ? '[data-testid="bookmark"], [data-testid="removeBookmark"]' : null;
+    const nativeButton = nativeSelector && nativeArticle?.querySelector(nativeSelector);
+    if (nativeButton) {
+      watchNativeActions(model, nativeArticle);
+      if (!nativeButton.disabled) nativeButton.click();
+      return;
+    }
     const flag = action === "like" ? "liked" : action === "repost" ? "reposted" : "bookmarked";
     const countProp = action === "like" ? "likes" : action === "repost" ? "reposts" : "bookmarks";
     const wasActive = Boolean(model.flags[flag]);
-
-    // Optimistic UI update
+    const oldCount = model.counts[countProp];
+    const refresh = () => {
+      const item = commentNodes.get(model.id)?.element || btnElement.closest(".sidepeek-comment-item");
+      if (item) updateActionButtons(model, item);
+    };
+    pendingActions.add(key);
     model.flags[flag] = !wasActive;
-    model.counts[countProp] = Math.max(0, model.counts[countProp] + (wasActive ? -1 : 1));
-
-    btnElement.classList.toggle("active", model.flags[flag]);
-    const iconSpan = btnElement.querySelector(".sidepeek-action-btn-surface");
-    if (action === "like") {
-      iconSpan.innerHTML = `${model.flags.liked ? ICONS.likeSolid : ICONS.like} <span>${formatCount(model.counts.likes)}</span>`;
-      if (model.flags.liked) {
-        btnElement.classList.add("sidepeek-like-anim");
-        setTimeout(() => {
-          btnElement.classList.remove("sidepeek-like-anim");
-        }, 400);
-      }
-    } else if (action === "repost") {
-      iconSpan.innerHTML = `${ICONS.repost} <span>${formatCount(model.counts.reposts)}</span>`;
-    } else if (action === "bookmark") {
-      iconSpan.innerHTML = `${model.flags.bookmarked ? ICONS.bookmarkSolid : ICONS.bookmark}`;
-    }
-
+    model.counts[countProp] = Math.max(0, oldCount + (wasActive ? -1 : 1));
+    refresh();
     try {
-      await requestPage("TOGGLE_ACTION", {
-        tweetId: model.id,
-        action,
-        active: !wasActive
-      });
-    } catch {
-      // Revert on failure
+      await requestPage("TOGGLE_ACTION", { tweetId: model.id, action, active: !wasActive });
+    } catch (error) {
       model.flags[flag] = wasActive;
-      model.counts[countProp] = Math.max(0, model.counts[countProp] + (wasActive ? 1 : -1));
-      btnElement.classList.toggle("active", wasActive);
+      model.counts[countProp] = oldCount;
+      showToast(`${t("actionFailed")} (${error.message})`);
+    } finally {
+      pendingActions.delete(key);
+      refresh();
     }
+  }
+
+  function watchNativeActions(model, article) {
+    nativeActionObservers.get(model.id)?.disconnect();
+    const sync = () => {
+      const current = commentNodes.get(model.id)?.model || model;
+      for (const [flag, count, off, on] of [
+        ["liked", "likes", "like", "unlike"], ["bookmarked", "bookmarks", "bookmark", "removeBookmark"],
+        ["reposted", "reposts", "retweet", "unretweet"]
+      ]) {
+        const button = article.querySelector(`[data-testid="${off}"], [data-testid="${on}"]`);
+        if (!button) continue;
+        const active = button.dataset.testid === on;
+        const aria = (button.getAttribute("aria-label") || "").replace(/[,\s]/g, "");
+        const ariaCount = aria.match(/^(\d+)(?![\d.KM万千亿])/i)?.[1];
+        const label = ariaCount || button.textContent.replace(/[,\s]/g, "");
+        if (/^\d+$/.test(label)) current.counts[count] = Number(label);
+        else if (current.flags[flag] !== active) current.counts[count] = Math.max(0, current.counts[count] + (active ? 1 : -1));
+        current.flags[flag] = active;
+      }
+      const node = commentNodes.get(model.id)?.element;
+      if (node) updateActionButtons(current, node);
+    };
+    const observer = new MutationObserver(sync);
+    observer.observe(article, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-testid"], characterData: true });
+    nativeActionObservers.set(model.id, observer);
+    nativeActionArticles.set(model.id, article);
+    sync();
+  }
+
+  function clearCommentNodes() {
+    for (const observer of nativeActionObservers.values()) observer.disconnect();
+    nativeActionObservers.clear();
+    nativeActionArticles.clear();
+    commentNodes.clear();
+  }
+
+  function openNativeMenu(model, selector) {
+    const article = findDetailFocalArticle(model.id);
+    const button = article?.querySelector(selector);
+    if (!button || button.disabled) return false;
+    closeMoreMenu(); closeShareMenu(); closeRepostMenu();
+    watchNativeActions(model, article);
+    button.click();
+    return true;
   }
 
   // ==========================================================================
@@ -2832,6 +2936,7 @@
   }
 
   function openMoreMenu(model, actMore) {
+    if (openNativeMenu(model, '[data-testid="caret"]')) return;
     if (activeMoreBtn === actMore) {
       closeMoreMenu();
       return;
@@ -2957,6 +3062,7 @@
   }
 
   function openShareMenu(model, actShare) {
+    if (openNativeMenu(model, 'button[aria-label="Share post"], button[aria-label="分享帖子"], button[aria-label="分享推文"]')) return;
     if (activeShareBtn === actShare) {
       closeShareMenu();
       return;
@@ -3068,6 +3174,7 @@
   }
 
   function openRepostMenu(model, actRepost) {
+    if (openNativeMenu(model, '[data-testid="retweet"], [data-testid="unretweet"]')) return;
     if (activeRepostBtn === actRepost) {
       closeRepostMenu();
       return;
@@ -3137,7 +3244,7 @@
     const tweetUrl = model.url || `https://x.com/${handle}/status/${targetId}`;
 
     // 1. Try finding native tweet article on timeline
-    let article = document.querySelector(`article[data-testid="tweet"] a[href*="/status/${targetId}"]`)?.closest('article[data-testid="tweet"]');
+    let article = findDetailFocalArticle(targetId);
     if (!article && state.focalTweetId === targetId) {
       article = findDetailFocalArticle(targetId);
     }
@@ -3188,7 +3295,12 @@
   let hoverCardTimer = null;
   let hoverCardHideTimer = null;
   let activeHoverAuthor = null;
+  let hoverCardGeneration = 0;
+  let nativeHoverCleanup = null;
   const userProfileCache = new Map();
+  const userProfileFetchedAt = new Map();
+  const userProfileRequests = new Map();
+  const pendingFollows = new Set();
 
   function ensureHoverCardElement() {
     if (hoverCardEl) return hoverCardEl;
@@ -3200,6 +3312,7 @@
     hoverCardEl.addEventListener("mouseenter", () => {
       clearTimeout(hoverCardHideTimer);
     });
+    hoverCardEl.addEventListener("focusin", () => clearTimeout(hoverCardHideTimer));
     hoverCardEl.addEventListener("mouseleave", () => {
       hoverCardHideTimer = setTimeout(() => {
         hideUserHoverCard();
@@ -3212,19 +3325,23 @@
 
   function hideUserHoverCard() {
     clearTimeout(hoverCardTimer);
+    clearTimeout(hoverCardHideTimer);
+    activeHoverAuthor = null;
+    hoverCardGeneration++;
+    nativeHoverCleanup?.();
+    nativeHoverCleanup = null;
     if (!hoverCardEl) return;
     hoverCardEl.classList.remove("visible");
     setTimeout(() => {
       if (!hoverCardEl.classList.contains("visible")) {
         hoverCardEl.style.display = "none";
-        activeHoverAuthor = null;
       }
     }, 180);
   }
 
   function positionHoverCard(triggerEl, card) {
     const rect = triggerEl.getBoundingClientRect();
-    const cardWidth = 310;
+    const cardWidth = 300;
     const cardHeight = card.offsetHeight || 240;
 
     let left = rect.left - 10;
@@ -3243,40 +3360,143 @@
     card.style.top = `${Math.round(top)}px`;
   }
 
-  function formatBioText(text) {
-    if (!text) return "";
-    let safe = escapeHtml(text);
-    safe = safe.replace(/(^|[^\w@])@([A-Za-z0-9_]{1,30})\b/g, (match, prefix, handle) => {
-      return `${prefix}<a href="https://x.com/${handle}" target="_blank" class="sidepeek-bio-link">@${handle}</a>`;
+  function formatBioText(text, urls = []) {
+    return formatCommentText({ text, entities: { urls } });
+  }
+
+  function showNativeUserHoverCard(author, triggerEl, generation) {
+    const handle = author.handle.toLowerCase();
+    const source = [...document.querySelectorAll('#react-root a[href], main a[href]')].find(link => {
+      if (link.closest('#layers, #sidepeek-drawer-root')) return false;
+      try { return new URL(link.href).pathname.toLowerCase() === `/${handle}`; } catch { return false; }
     });
-    safe = safe.replace(/(^|[^\w#])#([A-Za-z0-9_\u0080-\uffff]+)/g, (match, prefix, tag) => {
-      return `${prefix}<a href="https://x.com/hashtag/${encodeURIComponent(tag)}" target="_blank" class="sidepeek-bio-link">#${tag}</a>`;
+    const layers = document.getElementById("layers");
+    if (!source || !layers || typeof HTMLElement.prototype.showPopover !== "function") return Promise.resolve(false);
+    nativeHoverCleanup?.();
+    return new Promise(resolve => {
+      let parent = null;
+      let resizeObserver = null;
+      let completed = false;
+      let timer;
+      const finish = value => { if (!completed) { completed = true; resolve(value); } };
+      const enter = () => clearTimeout(hoverCardHideTimer);
+      const leave = () => { hoverCardHideTimer = setTimeout(hideUserHoverCard, 250); };
+      const position = () => {
+        if (!parent || !triggerEl.isConnected) return;
+        const rect = triggerEl.getBoundingClientRect();
+        const cardRect = parent.getBoundingClientRect();
+        const width = cardRect.width || 300;
+        const height = cardRect.height || 300;
+        const left = Math.max(12, Math.min(rect.left - 12, window.innerWidth - width - 12));
+        const top = Math.max(12, Math.min(rect.bottom + 8, window.innerHeight - height - 12));
+        parent.style.setProperty("--sidex-hover-left", `${left}px`);
+        parent.style.setProperty("--sidex-hover-top", `${top}px`);
+      };
+      const observer = new MutationObserver(() => attach());
+      const cleanup = () => {
+        clearTimeout(timer);
+        observer.disconnect();
+        resizeObserver?.disconnect();
+        if (parent) {
+          parent.removeEventListener("mouseenter", enter);
+          parent.removeEventListener("mouseleave", leave);
+          parent.removeEventListener("focusin", enter);
+          parent.removeEventListener("focusout", leave);
+          if (parent.matches(":popover-open")) parent.hidePopover();
+          parent.removeAttribute("popover");
+          parent.removeAttribute("data-sidex-native-hover");
+          parent.style.removeProperty("--sidex-hover-left");
+          parent.style.removeProperty("--sidex-hover-top");
+          parent.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body }));
+        }
+        source.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body }));
+        if (nativeHoverCleanup === cleanup) nativeHoverCleanup = null;
+        finish(false);
+      };
+      const attach = () => {
+        if (generation !== hoverCardGeneration || !triggerEl.isConnected) { cleanup(); return; }
+        const candidate = layers.querySelector('[data-testid="hoverCardParent"]');
+        const identityLink = candidate?.querySelector('[data-testid="HoverCard"] a[href]');
+        if (!identityLink || new URL(identityLink.href).pathname.toLowerCase() !== `/${handle}`) return;
+        if (parent) return;
+        parent = candidate;
+        parent.setAttribute("data-sidex-native-hover", "");
+        parent.setAttribute("popover", "manual");
+        try { parent.showPopover(); } catch { cleanup(); return; }
+        position();
+        parent.addEventListener("mouseenter", enter);
+        parent.addEventListener("mouseleave", leave);
+        parent.addEventListener("focusin", enter);
+        parent.addEventListener("focusout", leave);
+        resizeObserver = new ResizeObserver(position);
+        resizeObserver.observe(parent);
+        clearTimeout(timer);
+        observer.disconnect();
+        finish(true);
+      };
+      nativeHoverCleanup = cleanup;
+      observer.observe(layers, { childList: true, subtree: true });
+      timer = setTimeout(cleanup, 1500);
+      source.dispatchEvent(new MouseEvent("mouseover", { bubbles: true, relatedTarget: document.body }));
+      attach();
     });
-    safe = safe.replace(/(https?:\/\/[^\s<]+)/g, (url) => {
-      return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="sidepeek-bio-link">${url}</a>`;
-    });
-    return safe;
   }
 
   async function showUserHoverCard(author, triggerEl) {
     if (!author || !author.handle) return;
-    activeHoverAuthor = author.handle;
-
-    // Check memory cache
-    const cached = userProfileCache.get(author.handle);
-    if (cached) {
-      Object.assign(author, cached);
+    nativeHoverCleanup?.();
+    if (hoverCardEl) { hoverCardEl.classList.remove("visible"); hoverCardEl.style.display = "none"; }
+    const handle = author.handle.toLowerCase();
+    const generation = ++hoverCardGeneration;
+    activeHoverAuthor = handle;
+    if (await showNativeUserHoverCard(author, triggerEl, generation)) return;
+    if (generation !== hoverCardGeneration || activeHoverAuthor !== handle || !triggerEl.isConnected) return;
+    const cached = userProfileCache.get(handle);
+    if (cached) Object.assign(author, cached);
+    const fresh = Date.now() - (userProfileFetchedAt.get(handle) || 0) < 60000;
+    renderUserHoverCard(author, triggerEl, fresh ? "" : "loading");
+    if (fresh) return;
+    let request = userProfileRequests.get(handle);
+    if (!request) {
+      request = requestPage("FETCH_USER_PROFILE", { screenName: author.handle }).then(async rawProfile => {
+        const profile = Core.userModel(rawProfile);
+        if (!profile?.handle) throw new Error("PROFILE_UNAVAILABLE");
+        try { profile.mutual = await requestPage("FETCH_MUTUAL_FOLLOWERS", { userId: profile.id }, 12000); }
+        catch { /* Keep the profile usable if relationship context is unavailable. */ }
+        userProfileCache.set(handle, profile);
+        userProfileFetchedAt.set(handle, Date.now());
+        if (userProfileCache.size > 300) {
+          const oldest = userProfileCache.keys().next().value;
+          userProfileCache.delete(oldest);
+          userProfileFetchedAt.delete(oldest);
+        }
+        return profile;
+      }).finally(() => userProfileRequests.delete(handle));
+      userProfileRequests.set(handle, request);
     }
+    try {
+      const profile = await request;
+      if (generation !== hoverCardGeneration || activeHoverAuthor !== handle || !triggerEl.isConnected) return;
+      Object.assign(author, profile);
+      renderUserHoverCard(author, triggerEl);
+    } catch {
+      if (generation === hoverCardGeneration && activeHoverAuthor === handle && triggerEl.isConnected) {
+        renderUserHoverCard(author, triggerEl, "error");
+      }
+    }
+  }
+
+  function formatProfileCount(value) {
+    return value == null ? "--" : new Intl.NumberFormat(getLocale()).format(value);
+  }
+
+  function renderUserHoverCard(author, triggerEl, status = "") {
 
     const card = ensureHoverCardElement();
-    card.className = `sidepeek-user-hovercard ${currentThemeClass()}${author.banner ? " has-banner" : ""}`;
+    card.className = `sidepeek-user-hovercard ${currentThemeClass()}`;
 
     const authorName = escapeHtml(author.name || author.handle);
     const authorHandle = escapeHtml(author.handle);
-    const hasBanner = Boolean(author.banner);
-    const bannerHtml = hasBanner
-      ? `<div class="sidepeek-hovercard-banner" style="background-image: url('${author.banner}');"></div>`
-      : "";
 
     const verifiedHtml = renderVerifiedBadge(author);
     const followsYouHtml = author.followedBy
@@ -3284,11 +3504,22 @@
       : "";
 
     const bioHtml = author.bio
-      ? `<div class="sidepeek-hovercard-bio">${formatBioText(author.bio)}</div>`
+      ? `<div class="sidepeek-hovercard-bio">${formatBioText(author.bio, author.bioUrls)}</div>`
       : "";
 
-    const followingCountStr = author.followingCount > 0 ? formatCount(author.followingCount) : (author.followingCount === 0 ? "0" : "--");
-    const followersCountStr = author.followersCount > 0 ? formatCount(author.followersCount) : (author.followersCount === 0 ? "0" : "--");
+    const followingCountStr = formatProfileCount(author.followingCount);
+    const followersCountStr = formatProfileCount(author.followersCount);
+    const mutual = author.mutual;
+    let mutualHtml = "";
+    if (Array.isArray(mutual?.users)) {
+      const names = mutual.users.slice(0, 2).map(user => user.name || user.handle).join(", ");
+      const otherCount = Math.max(0, mutual.count - Math.min(2, mutual.users.length));
+      const label = mutual.count === 0 ? t("noMutualFollowers")
+        : otherCount ? t("mutualFollowersMore", { names, count: otherCount }) : t("mutualFollowers", { names });
+      const avatars = mutual.users.map(user => `<img src="${escapeHtml(user.avatar || "")}" alt="" />`).join("");
+      mutualHtml = `<a href="https://x.com/${authorHandle}/followers_you_follow" target="_blank" class="sidepeek-hovercard-mutual">
+        ${avatars ? `<span class="sidepeek-mutual-avatars">${avatars}</span>` : ""}<span>${escapeHtml(label)}</span></a>`;
+    }
 
     const currentUser = getCurrentUserInfo();
     const isSelf = Boolean(
@@ -3298,14 +3529,13 @@
     );
 
     const followBtnHtml = isSelf ? "" : `
-      <button type="button" class="sidepeek-hovercard-follow-btn ${author.following ? "following" : ""}">
+      <button type="button" class="sidepeek-hovercard-follow-btn ${author.following ? "following" : ""}" ${author.following == null || status === "loading" || pendingFollows.has(author.handle.toLowerCase()) ? "disabled" : ""}>
         <span class="sidepeek-follow-text">${author.following ? t("followingBtn") : t("followBtn")}</span>
         <span class="sidepeek-unfollow-text">${t("unfollowBtn")}</span>
       </button>
     `;
 
     card.innerHTML = `
-      ${bannerHtml}
       <div class="sidepeek-hovercard-content">
         <div class="sidepeek-hovercard-top">
           <a href="https://x.com/${authorHandle}" target="_blank" class="sidepeek-hovercard-avatar-wrap">
@@ -3324,6 +3554,8 @@
           </div>
         </div>
         ${bioHtml}
+        ${status === "loading" ? `<div class="sidepeek-profile-status" role="status">${t("profileLoading")}</div>` : ""}
+        ${status === "error" ? `<button type="button" class="sidepeek-profile-retry">${t("profileFailed")}</button>` : ""}
         <div class="sidepeek-hovercard-stats">
           <a href="https://x.com/${authorHandle}/following" target="_blank" class="sidepeek-hovercard-stat">
             <span class="sidepeek-hovercard-count sidepeek-hovercard-following-count">${followingCountStr}</span>
@@ -3334,6 +3566,8 @@
             <span class="sidepeek-hovercard-label">${t("followersCountLabel")}</span>
           </a>
         </div>
+        ${mutualHtml}
+        <a class="sidepeek-hovercard-full-profile" href="https://x.com/${authorHandle}" target="_blank">${t("openFullProfile")}</a>
       </div>
     `;
 
@@ -3343,6 +3577,7 @@
       e.stopPropagation();
       handleToggleFollow(author, followBtn);
     });
+    card.querySelector(".sidepeek-profile-retry")?.addEventListener("click", () => showUserHoverCard(author, triggerEl));
 
     card.style.display = "block";
     positionHoverCard(triggerEl, card);
@@ -3350,49 +3585,48 @@
       card.classList.add("visible");
     });
 
-    // If bio or followers count is not populated, fetch profile from page-bridge asynchronously
-    if ((!author.bio && author.followersCount === 0) || author.followersCount === undefined) {
-      try {
-        const profile = await requestPage("FETCH_USER_PROFILE", { screenName: author.handle });
-        if (profile && activeHoverAuthor === author.handle) {
-          Object.assign(author, profile);
-          userProfileCache.set(author.handle, profile);
-          showUserHoverCard(author, triggerEl);
-        }
-      } catch {}
-    }
   }
 
   function attachUserHoverEvents(triggerEl, author) {
     if (!triggerEl || !author || !author.handle) return;
 
-    triggerEl.addEventListener("mouseenter", () => {
+    const enter = () => {
+      clearTimeout(hoverCardTimer);
       clearTimeout(hoverCardHideTimer);
       hoverCardTimer = setTimeout(() => {
         showUserHoverCard(author, triggerEl);
       }, 350);
-    });
+    };
 
-    triggerEl.addEventListener("mouseleave", () => {
+    const leave = () => {
       clearTimeout(hoverCardTimer);
       hoverCardHideTimer = setTimeout(() => {
         hideUserHoverCard();
       }, 250);
-    });
+    };
+    triggerEl.addEventListener("mouseenter", enter);
+    triggerEl.addEventListener("mouseleave", leave);
+    triggerEl.addEventListener("focus", enter);
+    triggerEl.addEventListener("blur", leave);
   }
 
   async function handleToggleFollow(author, btn) {
     if (!author || !author.handle) return;
+    const key = author.handle.toLowerCase();
+    if (pendingFollows.has(key) || author.following == null) return;
+    pendingFollows.add(key);
+    btn.disabled = true;
     const wasFollowing = Boolean(author.following);
+    const oldFollowersCount = author.followersCount;
     // Optimistic UI
     author.following = !wasFollowing;
-    author.followersCount = Math.max(0, (author.followersCount || 0) + (wasFollowing ? -1 : 1));
+    author.followersCount = oldFollowersCount == null ? null : Math.max(0, oldFollowersCount + (wasFollowing ? -1 : 1));
     btn.classList.toggle("following", author.following);
     const followText = btn.querySelector(".sidepeek-follow-text");
     if (followText) followText.textContent = author.following ? t("followingBtn") : t("followBtn");
     const countEl = document.querySelector("#sidepeek-user-hovercard .sidepeek-hovercard-followers-count");
-    if (countEl) countEl.textContent = author.followersCount > 0 ? formatCount(author.followersCount) : "0";
-    userProfileCache.set(author.handle, { ...author });
+    if (countEl) countEl.textContent = formatProfileCount(author.followersCount);
+    userProfileCache.set(key, { ...author });
 
     try {
       await requestPage("TOGGLE_FOLLOW", {
@@ -3403,12 +3637,27 @@
     } catch (err) {
       // Revert on failure
       author.following = wasFollowing;
-      author.followersCount = Math.max(0, (author.followersCount || 0) + (wasFollowing ? 1 : -1));
+      author.followersCount = oldFollowersCount;
       btn.classList.toggle("following", wasFollowing);
       if (followText) followText.textContent = wasFollowing ? t("followingBtn") : t("followBtn");
-      if (countEl) countEl.textContent = author.followersCount > 0 ? formatCount(author.followersCount) : "0";
-      userProfileCache.set(author.handle, { ...author });
+      if (countEl) countEl.textContent = formatProfileCount(author.followersCount);
+      userProfileCache.set(key, { ...author });
       showToast(err instanceof Error ? err.message : (getLocale() === "zh" ? "操作失败" : "Action failed"));
+    } finally {
+      pendingFollows.delete(key);
+      btn.disabled = false;
+      userProfileCache.set(key, { ...author });
+      userProfileFetchedAt.set(key, Date.now());
+      if (activeHoverAuthor === key) {
+        const currentButton = hoverCardEl?.querySelector(".sidepeek-hovercard-follow-btn");
+        if (currentButton) {
+          currentButton.disabled = false;
+          currentButton.classList.toggle("following", author.following);
+          currentButton.querySelector(".sidepeek-follow-text").textContent = author.following ? t("followingBtn") : t("followBtn");
+        }
+        const currentCount = hoverCardEl?.querySelector(".sidepeek-hovercard-followers-count");
+        if (currentCount) currentCount.textContent = formatProfileCount(author.followersCount);
+      }
     }
   }
 
@@ -3442,6 +3691,11 @@
   // Timeline Click Interceptor & Focal Tweet Show More
   // ==========================================================================
   async function fetchThread(tweetId) {
+    const generation = ++state.threadGeneration;
+    clearCommentNodes();
+    state.focalModel = null;
+    state.replies = [];
+    state.tree = null;
     state.loading = true;
     state.error = "";
     state.resetScrollOnRender = true;
@@ -3453,14 +3707,17 @@
 
     try {
       const json = await requestPage("READ_THREAD", { tweetId });
+      if (!state.open || state.focalTweetId !== tweetId || generation !== state.threadGeneration) return;
       const { focal, replies } = Core.parseTweetDetail(json, tweetId);
       state.focalModel = focal;
       state.replies = replies;
       state.tree = Core.buildConversationTree(replies, tweetId);
       state.loading = false;
+      state.resetScrollOnRender = true;
       renderDrawer();
       prefetchSubRepliesForRoots();
     } catch (err) {
+      if (!state.open || state.focalTweetId !== tweetId || generation !== state.threadGeneration) return;
       state.loading = false;
       state.error = err.message || "读取评论失败，请重试";
       renderDrawer();
@@ -3468,6 +3725,7 @@
   }
 
   async function fetchSubReplies(commentId, isSilent = false, expandOnSuccess = true) {
+    const generation = state.threadGeneration;
     if (!commentId) return;
     if (state.loadingThreadIds.has(commentId)) {
       if (expandOnSuccess) state.expandedThreadIds.add(commentId);
@@ -3481,7 +3739,7 @@
     try {
       const currentFocal = state.focalTweetId;
       const json = await requestPage("READ_THREAD", { tweetId: commentId });
-      if (!state.open || state.focalTweetId !== currentFocal) return;
+      if (!state.open || state.focalTweetId !== currentFocal || generation !== state.threadGeneration) return;
 
       const { focal, replies } = Core.parseTweetDetail(json, commentId);
 
@@ -3510,13 +3768,16 @@
         state.expandedThreadIds.add(commentId);
       }
     } catch (err) {
+      if (generation !== state.threadGeneration) return;
       console.warn("[SideX] 读取二级回复失败:", err);
       if (!isSilent) {
         showToast(t("loadRepliesFailed") || "加载回复失败");
       }
     } finally {
-      state.loadingThreadIds.delete(commentId);
-      renderDrawer();
+      if (generation === state.threadGeneration) {
+        state.loadingThreadIds.delete(commentId);
+        if (state.open) renderDrawer();
+      }
     }
   }
 
@@ -3566,11 +3827,10 @@
 
   function findDetailFocalArticle(tweetId) {
     if (!tweetId) return null;
-    // Look for tweet article that contains link to this status
-    const matching = document.querySelector(`article[data-testid="tweet"] a[href*="/status/${tweetId}"]`)?.closest('article[data-testid="tweet"]');
-    if (matching) return matching;
-    // Or the primary tweet article on the detail page
-    return document.querySelector('article[data-testid="tweet"]');
+    return [...document.querySelectorAll('article[data-testid="tweet"]')].find(article => {
+      const timeLink = [...article.querySelectorAll('time')].map(time => time.closest('a[href*="/status/"]')).find(Boolean);
+      return timeLink && Core.postIdFromUrl(timeLink.href) === String(tweetId);
+    }) || null;
   }
 
   function expandFocalShowMore(tweetId) {
@@ -3611,6 +3871,19 @@
       if (state.open && state.focalTweetId === tweetId) return;
 
       lastHandledDetailTweetId = tweetId;
+      const generation = ++state.threadGeneration;
+      if (state.open) {
+        clearCommentNodes();
+        state.focalTweetId = tweetId;
+        state.focalModel = null;
+        state.replies = [];
+        state.tree = null;
+        state.loading = true;
+        state.error = "";
+        state.replyTarget = null;
+        state.resetScrollOnRender = true;
+        renderDrawer();
+      }
 
       // 无论右侧是否出流，主栏长文都原位秒展开
       expandFocalShowMore(tweetId);
@@ -3618,6 +3891,7 @@
       // 静默拉取评论流：仅当确实存在下一级回复时才优雅滑出右侧栏，彻底杜绝零回复时的“弹出来又关闭”闪烁
       try {
         const json = await requestPage("READ_THREAD", { tweetId });
+        if (generation !== state.threadGeneration) return;
         // 确保异步返回时用户没有跳转到其他帖子
         if (Core.postIdFromUrl(location.href) !== tweetId) return;
         if (userClosedTweetId === tweetId) return;
@@ -3641,6 +3915,7 @@
         state.focalArticle?.classList.add("sidepeek-focal-active");
 
         state.open = true;
+        clearCommentNodes();
         state.focalTweetId = tweetId;
         state.focalModel = focal;
         state.replies = replies;
@@ -3656,7 +3931,11 @@
         renderDrawer();
         prefetchSubRepliesForRoots();
       } catch (err) {
-        // 静默处理，避免在详情页异常弹窗
+        if (generation === state.threadGeneration && state.open && state.focalTweetId === tweetId) {
+          state.loading = false;
+          state.error = err.message || t("loadRepliesFailed");
+          renderDrawer();
+        }
       }
     } else {
       // Navigated away from a detail page (e.g. back to /home, /explore)
@@ -3699,6 +3978,9 @@
   }
 
   function closeDrawer() {
+    state.threadGeneration++;
+    for (const observer of nativeActionObservers.values()) observer.disconnect();
+    nativeActionObservers.clear();
     closeRepostMenu();
     closeMoreMenu();
     closeShareMenu();
@@ -3822,6 +4104,7 @@
   function handleTimelineClick(event) {
     if (!isSideXEnabled) return;
     if (state.isResizing) return;
+    if (event.target.closest?.("#layers, #sidepeek-user-hovercard, .sidepeek-more-menu, .sidepeek-share-menu, .sidepeek-repost-menu")) return;
     if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
 
     // If clicked inside our drawer or lightbox, don't handle as timeline click
@@ -3870,10 +4153,29 @@
 
   document.addEventListener("click", handleTimelineClick, true);
 
+  // X may mount its own copy after the drawer data arrives, or recycle it while
+  // scrolling. Attach to that copy when it appears instead of keeping a snapshot.
+  let nativeSyncScheduled = false;
+  new MutationObserver(records => {
+    if (!state.open || nativeSyncScheduled || records.every(record => record.target.closest?.(`#${ROOT_ID}, #sidepeek-user-hovercard`))) return;
+    nativeSyncScheduled = true;
+    requestAnimationFrame(() => {
+      nativeSyncScheduled = false;
+      if (!state.open) return;
+      for (const [id, entry] of commentNodes) {
+        if (nativeActionArticles.get(id)?.isConnected) continue;
+        const article = findDetailFocalArticle(id);
+        if (article) watchNativeActions(entry.model, article);
+      }
+    });
+  }).observe(document.getElementById("react-root") || document.body, { childList: true, subtree: true });
+
   // ESC key to close (Lightbox first, then Menus, then Hover Card, then Drawer)
   document.addEventListener("keydown", (event) => {
     if (!isSideXEnabled) return;
     if (event.key === "Escape") {
+      if (nativeHoverCleanup) { hideUserHoverCard(); return; }
+      if (document.querySelector('#layers [role="dialog"], #layers [role="menu"]')) return;
       const lightbox = document.getElementById("sidepeek-lightbox");
       if (lightbox && lightbox.classList.contains("active")) {
         closeLightbox();

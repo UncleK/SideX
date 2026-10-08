@@ -76,33 +76,36 @@
 <body>
   <div class="container">
     <h1>Privacy Policy for SideX</h1>
-    <div class="date">Last updated: September 20, 2026</div>
+    <div class="date">Last updated: October 9, 2026</div>
 
     <p>Thank you for choosing <strong>SideX</strong> ("the Extension"). We respect your privacy and are committed to protecting it. This Privacy Policy explains our practices regarding user data and permissions.</p>
 
-    <h2>1. No Data Collection or Transmission</h2>
+    <h2>1. Browser Processing and Network Requests</h2>
     <p>SideX is an entirely client-side productivity extension:</p>
     <ul>
-      <li><strong>No Personal Data Collected:</strong> SideX does not collect, record, or track your personal information, browsing history, identity, IP address, or passwords.</li>
-      <li><strong>No External Servers:</strong> SideX does not operate remote servers, analytics, or telemetry services. All actions occur locally within your browser.</li>
+      <li><strong>Data Used for Features:</strong> SideX processes X posts and profiles you open, relationship information in profile cards, and text/media you submit as replies. It uses your current X session for authenticated requests. It does not build a browsing-history log, run analytics, or read your password.</li>
+      <li><strong>No SideX Servers:</strong> SideX does not operate remote servers, analytics, or telemetry services. Requests go directly to X, media hosts, and, when selected, Google Translation. These services receive network information required to serve a request.</li>
     </ul>
 
     <h2>2. Permissions and Their Use</h2>
     <p>SideX requests only the minimum permissions necessary for its functionality:</p>
     <ul>
-      <li><code>storage</code>: Used solely to store local UI preferences (e.g. customized sidebar width and settings) via <code>chrome.storage.local</code>. Data never leaves your device.</li>
-      <li><code>host_permissions</code> (<code>https://x.com/*</code>, <code>https://twitter.com/*</code>): Used strictly to inject the necessary scripts and styles into X (Twitter) web pages so that the side comment drawer can be displayed. It has no access to any other websites.</li>
+      <li><code>storage</code>: Saves UI and translation preferences using <code>chrome.storage.sync</code>, with local storage as a fallback. Your browser account may sync these preferences. Drawer width stays local; post text and translation results are not written to synced storage.</li>
+      <li><code>host_permissions</code>: Content scripts run on <code>x.com</code> and <code>twitter.com</code>. Upload hosts support reply attachments; <code>translate.googleapis.com</code> supports optional Google translation requests from the extension worker.</li>
     </ul>
 
     <h2>3. Account Security & Session</h2>
     <p>SideX operates directly within your active browser session:</p>
     <ul>
-      <li>It does not intercept, store, or transmit your login credentials or cookies.</li>
+      <li>It reads active X request headers and the CSRF cookie to make authenticated X requests. These values stay in page memory and are not sent to Google or a SideX server. SideX does not read your password.</li>
       <li>All interactions (e.g. liking, replying, loading threads) are performed directly through your own authenticated session with X.</li>
     </ul>
 
     <h2>4. Third-Party Services</h2>
     <p>SideX contains no third-party tracking scripts, ads, or analytics services.</p>
+    <p>X official translation is the default. If you select Google and click Translate, post text and the target language are sent directly to <code>translate.googleapis.com</code>, without X authentication headers or cookies. Results are cached temporarily in memory.</p>
+    <p>The existing-extension option leaves readable text in the page and hides SideX translation buttons. Other translators follow their own settings and privacy policies; SideX does not automatically invoke arbitrary extensions.</p>
+    <p>Displaying X media and bundled GIF choices requests assets from their hosts, including X media hosts and GIPHY. Reply attachments selected by you are uploaded to X.</p>
 
     <h2>5. Open Source & Transparency</h2>
     <p>SideX is fully open source. You can inspect the source code at any time on GitHub: <a href="https://github.com/UncleK/SideX" target="_blank" rel="noopener">https://github.com/UncleK/SideX</a>.</p>

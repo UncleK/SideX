@@ -1,15 +1,15 @@
 # Privacy Policy for SideX
 
-**Last updated:** September 20, 2026
+**Last updated:** October 9, 2026
 
 Thank you for choosing **SideX** ("the Extension"). We respect your privacy and are committed to protecting it. This Privacy Policy explains our practices regarding user data and permissions.
 
 ---
 
-### 1. No Data Collection or Transmission
+### 1. Browser Processing and Network Requests
 SideX is a completely client-side productivity extension:
-- **No Personal Data Collected:** SideX does not collect, record, or track your personal information, browsing history, identity, IP address, or passwords.
-- **No External Servers:** SideX does not operate any remote servers, analytics, or telemetry services. All actions occur entirely within your local browser.
+- **Data Used for Features:** SideX processes the X posts and profiles you open, relationship information shown in profile cards, and text/media you choose to submit as replies. It uses the current X session for authenticated requests. It does not build a browsing-history log, run analytics, or read your password.
+- **No SideX Servers:** SideX does not operate remote servers, analytics, or telemetry services. Requests go directly from the browser to X, media hosts, and, when selected, Google Translation. These services receive the network information required to serve a request.
 
 ---
 
@@ -18,24 +18,29 @@ SideX is a completely client-side productivity extension:
 SideX requests only the minimum permissions necessary for its functionality:
 
 - **`storage`**:
-  - **Purpose:** Used solely to save your local UI preferences (such as your customized sidebar width and display settings) via `chrome.storage.local`.
-  - **Data Location:** All preference data remains strictly on your local device.
+  - **Purpose:** Saves UI and translation preferences using `chrome.storage.sync`, with local storage as a fallback. Drawer width is stored locally.
+  - **Data Location:** Synced preferences may be synchronized by your browser account. Post text and translation results are not written to synced storage.
 
 - **Host Permissions (`https://x.com/*`, `https://twitter.com/*`)**:
   - **Purpose:** Used strictly to inject the necessary scripts and styles into X (Twitter) web pages so that the side comment drawer can be rendered beside the timeline and tweet details can be displayed.
-  - **Scope:** SideX only executes on `x.com` and `twitter.com`. It has no access to any other websites.
+  - **Scope:** Content scripts only execute on `x.com` and `twitter.com`. Upload host permissions support reply attachments; `translate.googleapis.com` allows the extension worker to request Google translations.
 
 ---
 
 ### 3. Account Security & Session
 SideX interacts with X directly within your active browser session:
-- It does not intercept, store, or transmit your login credentials or cookies.
+- It reads the active X session's request headers and CSRF cookie to make authenticated X requests. These values are kept in page memory and are not sent to Google or a SideX server. SideX does not read your password.
 - All actions (e.g., viewing comments, liking, or posting replies) are performed directly through your own browser session with X.
 
 ---
 
 ### 4. Third-Party Services
 SideX does not contain any third-party advertising, trackers, analytics, or remote scripts.
+
+- **X official translation (default):** Uses X's translation service within your current session.
+- **Google translation (optional):** When selected and you click Translate, the post text and target language are sent directly to `translate.googleapis.com`. Translation results are cached temporarily in memory. X authentication headers and cookies are not included.
+- **Existing translation extensions:** SideX leaves readable text in the page and hides its own translation controls. Other extensions operate under their own settings and privacy policies; SideX does not automatically invoke arbitrary extensions.
+- **Media:** Displaying X images/videos and browsing the bundled GIF choices requests assets from their hosts, including X media hosts and GIPHY. Reply attachments selected by you are uploaded to X.
 
 ---
 
