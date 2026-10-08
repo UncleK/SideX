@@ -12,6 +12,7 @@
   const ICONS = {
     reply: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M1.751 10c0-4.42 3.584-8 8.005-8h4.366c4.49 0 8.129 3.64 8.129 8.13 0 2.96-1.607 5.68-4.196 7.11l-8.054 4.46v-3.69h-.067c-4.49.1-8.183-3.51-8.183-8.01zm8.005-6c-3.317 0-6.005 2.69-6.005 6 0 3.37 2.77 6.08 6.138 6.01l.351-.01h1.761v2.3l5.087-2.81c1.951-1.08 3.163-3.13 3.163-5.36 0-3.39-2.744-6.13-6.129-6.13H9.756z"></path></g></svg>`,
     repost: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z"></path></g></svg>`,
+    quote: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M14.23 2.854c.98-1.008 2.607-1.026 3.615-.04l2.54 2.49c1.008.98 1.026 2.607.04 3.615L9.67 19.884c-.37.38-.85.63-1.37.72l-5.32 1.03c-.61.12-1.18-.34-1.22-.96-.01-.1-.01-.19 0-.29l1.03-5.32c.09-.52.34-1 .72-1.37l10.72-10.84zm.708 2.124L4.85 15.903c-.19.19-.32.44-.36.71l-.66 3.42 3.42-.66c.27-.04.52-.17.71-.36L18.89 7.933l-3.952-3.955z"></path></g></svg>`,
     like: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M12 21.638h-.014C9.403 21.59 1.95 14.856 1.95 8.478c0-3.064 2.525-5.754 5.403-5.754 2.29 0 3.83 1.58 4.646 2.73.814-1.148 2.354-2.73 4.645-2.73 2.88 0 5.404 2.69 5.404 5.755 0 6.376-7.454 13.11-10.037 13.157H12zM7.354 4.225c-2.08 0-3.903 1.988-3.903 4.255 0 5.74 7.034 11.596 8.55 11.658 1.518-.062 8.55-5.917 8.55-11.658 0-2.267-1.823-4.255-3.903-4.255-2.528 0-3.94 2.936-3.952 2.965-.23.562-1.156.562-1.387 0-.014-.03-1.425-2.965-3.954-2.965z"></path></g></svg>`,
     likeSolid: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M20.884 13.19c-1.351 2.48-4.001 5.12-8.379 7.67l-.505.3-.505-.3c-4.379-2.55-7.029-5.19-8.38-7.67-1.36-2.5-1.41-4.86-.514-6.67.887-1.79 2.647-2.91 4.601-3.01 1.651-.09 3.368.56 4.798 2.01 1.429-1.45 3.146-2.1 4.796-2.01 1.954.1 3.714 1.22 4.601 3.01.896 1.81.846 4.17-.514 6.67z"></path></g></svg>`,
     views: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M8.75 21V3h2v18h-2zM18 21V8.5h2V21h-2zM4 21l.004-10h2L6 21H4zm9.248 0v-7h2v7h-2z"></path></g></svg>`,
@@ -30,7 +31,12 @@
     emoji: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M8 9.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm8 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM12 18c-2.28 0-4.22-1.66-5-4h10c-.78 2.34-2.72 4-5 4zm-8-6c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8-8-3.589-8-8zm-2 0c0 5.523 4.477 10 10 10s10-4.477 10-10S17.523 2 12 2 2 6.477 2 12z"></path></g></svg>`,
     schedule: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M6 3V1.5a1 1 0 012 0V3h8V1.5a1 1 0 012 0V3h2.5A2.5 2.5 0 0123 5.5v13a2.5 2.5 0 01-2.5 2.5h-17A2.5 2.5 0 011 18.5v-13A2.5 2.5 0 013.5 3H6zm14.5 4.5h-17a.5.5 0 00-.5.5v10.5c0 .276.224.5.5.5h17c.276 0 .5-.224.5-.5V8a.5.5 0 00-.5-.5zM8 12.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm4 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm4 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm-8 4a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm4 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"></path></g></svg>`,
     location: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"></path></g></svg>`,
-    nativeReply: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3m-2 16H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2v7z"></path></g></svg>`
+    nativeReply: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3m-2 16H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2v7z"></path></g></svg>`,
+    more: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M3 12c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zm9 2c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm7 0c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"></path></g></svg>`,
+    copy: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"></path></g></svg>`,
+    mute: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M18 6.59V1.2L8.71 7H5.5C4.12 7 3 8.12 3 9.5v5C3 15.88 4.12 17 5.5 17h3.21L18 22.8v-5.39l-2-2V7.7l-4.71 2.95-.58-.9 6.29-3.94 1 .78zM16 13.59l-2-2V9.41l2-1.25v5.43zm5.71 8.7l-19-19 1.41-1.41 19 19-1.41 1.41z"></path></g></svg>`,
+    block: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 2c1.93 0 3.68.68 5.06 1.82L4.82 17.06C3.68 15.68 3 13.93 3 12c0-4.96 4.04-9 9-9zm0 16c-1.93 0-3.68-.68-5.06-1.82L19.18 6.94C20.32 8.32 21 10.07 21 12c0 4.96-4.04 9-9 9z"></path></g></svg>`,
+    webShare: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"></path></g></svg>`
   };
 
   const EMOJI_CATEGORIES = [
@@ -224,10 +230,39 @@
       replyToTag: "回复",
       replyAction: "回复",
       repostAction: "转发",
+      undoRepostAction: "撤销转发",
+      quoteAction: "引用",
+      quoteOpenedToast: "正在打开引用推文",
+      followBtn: "关注",
+      followingBtn: "正在关注",
+      unfollowBtn: "取消关注",
+      followsYou: "关注了你",
+      followingCountLabel: "正在关注",
+      followersCountLabel: "关注者",
+      opBadge: "作者",
+      opBadgeTitle: "原推文作者",
+      moreActionsTitle: "更多操作",
+      copyLink: "复制推文链接",
+      copyText: "复制正文文本",
+      textCopied: "文本已复制到剪贴板",
+      openOnXDirect: "在 X 官方打开",
+      muteUser: "静音 @{handle}",
+      unmuteUser: "取消静音 @{handle}",
+      userMuted: "已静音 @{handle}",
+      blockUser: "屏蔽 @{handle}",
+      unblockUser: "取消屏蔽 @{handle}",
+      userBlocked: "已屏蔽 @{handle}",
+      translateAction: "翻译推文",
+      translating: "翻译中...",
+      translatedBy: "由 X 翻译自 {lang}：",
+      hideTranslation: "隐藏翻译",
+      translateFailed: "翻译失败",
+      showMorePost: "显示更多",
       likeAction: "喜欢",
       viewsAction: "浏览量",
       bookmarkAction: "书签",
-      shareAction: "复制链接",
+      shareAction: "分享",
+      shareVia: "系统分享",
       linkCopied: "链接已复制到剪贴板",
       justNow: "刚刚",
       minutesAgo: "{m}分",
@@ -329,10 +364,39 @@
       replyToTag: "Replying to",
       replyAction: "Reply",
       repostAction: "Repost",
+      undoRepostAction: "Undo Repost",
+      quoteAction: "Quote",
+      quoteOpenedToast: "Opening quote tweet",
+      followBtn: "Follow",
+      followingBtn: "Following",
+      unfollowBtn: "Unfollow",
+      followsYou: "Follows you",
+      followingCountLabel: "Following",
+      followersCountLabel: "Followers",
+      opBadge: "Author",
+      opBadgeTitle: "Post author",
+      moreActionsTitle: "More",
+      copyLink: "Copy link to post",
+      copyText: "Copy post text",
+      textCopied: "Text copied to clipboard",
+      openOnXDirect: "Open on X",
+      muteUser: "Mute @{handle}",
+      unmuteUser: "Unmute @{handle}",
+      userMuted: "Muted @{handle}",
+      blockUser: "Block @{handle}",
+      unblockUser: "Unblock @{handle}",
+      userBlocked: "Blocked @{handle}",
+      translateAction: "Translate post",
+      translating: "Translating...",
+      translatedBy: "Translated from {lang} by X:",
+      hideTranslation: "Hide translation",
+      translateFailed: "Translation failed",
+      showMorePost: "Show more",
       likeAction: "Like",
       viewsAction: "Views",
       bookmarkAction: "Bookmark",
-      shareAction: "Copy link",
+      shareAction: "Share",
+      shareVia: "Share via...",
       linkCopied: "Link copied to clipboard",
       justNow: "just now",
       minutesAgo: "{m}m",
@@ -443,6 +507,25 @@
     } else {
       const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       return `${months[date.getMonth()]} ${date.getDate()}`;
+    }
+  }
+
+  function formatFullDateTime(dateString) {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "";
+    const locale = getLocale();
+    const hours = date.getHours();
+    const mins = String(date.getMinutes()).padStart(2, "0");
+    if (locale === "zh") {
+      const period = hours < 12 ? "上午" : "下午";
+      const h12 = hours % 12 || 12;
+      return `${period}${h12}:${mins} · ${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+    } else {
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const period = hours < 12 ? "AM" : "PM";
+      const h12 = hours % 12 || 12;
+      return `${h12}:${mins} ${period} · ${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
     }
   }
 
@@ -695,6 +778,10 @@
     }
 
     body.addEventListener("scroll", () => {
+      closeRepostMenu();
+      closeMoreMenu();
+      closeShareMenu();
+      hideUserHoverCard();
       if (!isDragging) {
         updateSlider();
         thumb.classList.add("scrolling");
@@ -1358,6 +1445,105 @@
     return escaped;
   }
 
+  function renderQuoteCard(quote) {
+    if (!quote || !quote.id) return "";
+    const quoteAuthorName = escapeHtml(quote.author?.name || quote.author?.handle || "");
+    const quoteAuthorHandle = escapeHtml(quote.author?.handle || "");
+    const quoteTime = formatTime(quote.createdAt);
+    const quoteFullTime = formatFullDateTime(quote.createdAt);
+    const quoteUrl = quote.url || (quoteAuthorHandle ? `https://x.com/${quoteAuthorHandle}/status/${quote.id}` : "");
+
+    const avatarHtml = quoteAuthorHandle
+      ? `<a class="sidepeek-quote-avatar-link" href="https://x.com/${quoteAuthorHandle}" target="_blank"><img class="sidepeek-quote-avatar" src="${quote.author?.avatar || ""}" alt="" /></a>`
+      : `<span class="sidepeek-quote-avatar-link"><img class="sidepeek-quote-avatar" src="${quote.author?.avatar || ""}" alt="" /></span>`;
+
+    const nameHtml = quoteAuthorHandle
+      ? `<a class="sidepeek-quote-name" href="https://x.com/${quoteAuthorHandle}" target="_blank">${quoteAuthorName}</a>`
+      : `<span class="sidepeek-quote-name">${quoteAuthorName}</span>`;
+
+    const timeHtml = quoteUrl
+      ? `<a class="sidepeek-quote-time" href="${quoteUrl}" target="_blank" title="${quoteFullTime}">${quoteTime}</a>`
+      : `<span class="sidepeek-quote-time" title="${quoteFullTime}">${quoteTime}</span>`;
+
+    return `
+      <div class="sidepeek-quote-card" data-id="${quote.id}" data-url="${escapeHtml(quoteUrl)}">
+        <div class="sidepeek-quote-header">
+          ${avatarHtml}
+          ${nameHtml}
+          ${renderVerifiedBadge(quote.author)}
+          <span class="sidepeek-quote-handle">@${quoteAuthorHandle}</span>
+          <span class="sidepeek-dot">·</span>
+          ${timeHtml}
+        </div>
+        ${quote.text ? `<div class="sidepeek-quote-text">${formatCommentText(quote)}</div>` : ""}
+        ${renderMediaBox(quote.media)}
+      </div>
+    `;
+  }
+
+  function renderLinkCard(card) {
+    if (!card || !card.url) return "";
+    const domain = card.domain || "";
+    const title = escapeHtml(card.title || "");
+    const desc = escapeHtml(card.description || "");
+    const image = card.image ? escapeHtml(card.image) : "";
+    const url = escapeHtml(card.url);
+
+    return `
+      <a href="${url}" target="_blank" rel="noopener noreferrer" class="sidepeek-link-card">
+        ${image ? `<div class="sidepeek-link-card-img-wrap"><img class="sidepeek-link-card-img" src="${image}" loading="lazy" alt="" /></div>` : ""}
+        <div class="sidepeek-link-card-info">
+          ${domain ? `<div class="sidepeek-link-card-domain">${escapeHtml(domain)}</div>` : ""}
+          ${title ? `<div class="sidepeek-link-card-title">${title}</div>` : ""}
+          ${desc ? `<div class="sidepeek-link-card-desc">${desc}</div>` : ""}
+        </div>
+      </a>
+    `;
+  }
+
+  function shouldShowTranslate(model) {
+    if (!model || !model.text) return false;
+    const clean = cleanCommentBody(model.text, model.inReplyToHandle).trim();
+    if (!clean) return false;
+
+    // Strip URLs, @mentions, #hashtags, and punctuation/whitespace/digits/emojis
+    const stripped = clean
+      .replace(/https?:\/\/[^\s]+/g, "")
+      .replace(/@[A-Za-z0-9_]+/g, "")
+      .replace(/#\S+/g, "")
+      .replace(/[\d\s\p{P}\p{S}]/gu, "");
+
+    // If text without noise is too short (e.g. pure emojis, symbols, numbers), don't show translate
+    if (stripped.length < 2) return false;
+
+    const currentLang = getLocale(); // "zh" or "en"
+    const tweetLang = String(model.lang || "").toLowerCase();
+
+    if (currentLang === "zh") {
+      // If Twitter detected it as Chinese
+      if (tweetLang.startsWith("zh")) return false;
+
+      // If text contains predominantly Chinese characters (>= 30% CJK)
+      const cjkChars = (stripped.match(/[\u4e00-\u9fa5]/g) || []).length;
+      if (cjkChars > 0 && cjkChars / stripped.length >= 0.3) {
+        return false;
+      }
+    } else if (currentLang === "en") {
+      // If Twitter detected it as English
+      if (tweetLang === "en") return false;
+
+      // If text is predominantly English ASCII words (>= 80%)
+      const asciiChars = (stripped.match(/[A-Za-z]/g) || []).length;
+      if (asciiChars > 0 && asciiChars / stripped.length >= 0.8) {
+        return false;
+      }
+    }
+
+    if (tweetLang && tweetLang === currentLang) return false;
+
+    return true;
+  }
+
   function renderCommentNode(model, hasThreadLine = false, isChild = false) {
     const item = document.createElement("article");
     item.className = `sidepeek-comment-item${isChild ? " sidepeek-child-comment" : ""}`;
@@ -1373,13 +1559,34 @@
       ? `<a class="sidepeek-name" href="https://x.com/${authorHandle}" target="_blank">${authorName}</a>`
       : `<span class="sidepeek-name">${authorName}</span>`;
 
+    const isOP = Boolean(
+      state.focalModel?.author?.handle &&
+      model.author?.handle &&
+      state.focalModel.author.handle.toLowerCase() === model.author.handle.toLowerCase()
+    );
+    const opBadgeHtml = isOP ? `<span class="sidepeek-author-badge" title="${t("opBadgeTitle")}">${t("opBadge")}</span>` : "";
+
+    const fullDateTime = formatFullDateTime(model.createdAt);
     const timeHtml = model.url
-      ? `<a class="sidepeek-time" href="${model.url}" target="_blank">${formatTime(model.createdAt)}</a>`
-      : `<span class="sidepeek-time">${formatTime(model.createdAt)}</span>`;
+      ? `<a class="sidepeek-time" href="${model.url}" target="_blank" title="${fullDateTime}">${formatTime(model.createdAt)}</a>`
+      : `<span class="sidepeek-time" title="${fullDateTime}">${formatTime(model.createdAt)}</span>`;
 
     const replyToHtml = model.inReplyToHandle
       ? `<div class="sidepeek-reply-to-tag">${t("replyToTag")} <a href="https://x.com/${escapeHtml(model.inReplyToHandle)}" target="_blank">@${escapeHtml(model.inReplyToHandle)}</a></div>`
       : "";
+
+    const isLongText = Boolean(model.text && (model.text.length > 280 || (model.text.match(/\n/g) || []).length > 4));
+    const textHtml = model.text
+      ? `<div class="sidepeek-text ${isLongText ? "sidepeek-text-clamp" : ""}">${formatCommentText(model)}</div>${isLongText ? `<button type="button" class="sidepeek-show-more-btn">${t("showMorePost")}</button>` : ""}`
+      : "";
+
+    const canTranslate = shouldShowTranslate(model);
+    const translateHtml = canTranslate
+      ? `<button type="button" class="sidepeek-translate-btn">${t("translateAction")}</button><div class="sidepeek-translation-box" style="display: none;"></div>`
+      : "";
+
+    const quoteHtml = model.quote ? renderQuoteCard(model.quote) : "";
+    const cardHtml = !model.quote && model.card ? renderLinkCard(model.card) : "";
 
     item.innerHTML = `
       <div class="sidepeek-avatar-col">
@@ -1390,13 +1597,22 @@
         <div class="sidepeek-author-row">
           ${nameHtml}
           ${renderVerifiedBadge(model.author)}
+          ${opBadgeHtml}
           <span class="sidepeek-handle">@${authorHandle}</span>
           <span class="sidepeek-dot">·</span>
           ${timeHtml}
+          <div class="sidepeek-more-col">
+            <button type="button" class="sidepeek-act-more" title="${t("moreActionsTitle")}">
+              ${ICONS.more}
+            </button>
+          </div>
         </div>
         ${replyToHtml}
-        <div class="sidepeek-text">${formatCommentText(model)}</div>
+        ${textHtml}
+        ${translateHtml}
         ${renderMediaBox(model.media)}
+        ${quoteHtml}
+        ${cardHtml}
         <div class="sidepeek-action-bar">
           <button type="button" class="sidepeek-action-btn sidepeek-act-reply" title="${t("replyAction")}">
             <span class="sidepeek-action-btn-surface">${ICONS.reply} <span>${formatCount(model.counts.replies)}</span></span>
@@ -1433,6 +1649,7 @@
     const actLike = item.querySelector(".sidepeek-act-like");
     const actBookmark = item.querySelector(".sidepeek-act-bookmark");
     const actShare = item.querySelector(".sidepeek-act-share");
+    const actMore = item.querySelector(".sidepeek-act-more");
 
     actReply?.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -1442,10 +1659,135 @@
         setReplyTarget(model);
       }
     });
-    actRepost?.addEventListener("click", () => handleToggleAction(model, "repost", actRepost));
+    actRepost?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openRepostMenu(model, actRepost);
+    });
     actLike?.addEventListener("click", () => handleToggleAction(model, "like", actLike));
     actBookmark?.addEventListener("click", () => handleToggleAction(model, "bookmark", actBookmark));
-    actShare?.addEventListener("click", () => handleShare(model));
+    actShare?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openShareMenu(model, actShare);
+    });
+    actMore?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openMoreMenu(model, actMore);
+    });
+
+    // Show more text toggle
+    const showMoreBtn = item.querySelector(".sidepeek-show-more-btn");
+    if (showMoreBtn) {
+      showMoreBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const textEl = item.querySelector(".sidepeek-text");
+        if (textEl) textEl.classList.remove("sidepeek-text-clamp");
+        showMoreBtn.remove();
+      });
+    }
+
+    // Translation toggle
+    const translateBtn = item.querySelector(".sidepeek-translate-btn");
+    const translationBox = item.querySelector(".sidepeek-translation-box");
+    if (translateBtn && translationBox) {
+      let isTranslated = false;
+      let isShowing = false;
+      translateBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (isTranslated) {
+          isShowing = !isShowing;
+          translationBox.style.display = isShowing ? "block" : "none";
+          translateBtn.textContent = isShowing ? t("hideTranslation") : t("translateAction");
+          return;
+        }
+
+        translateBtn.disabled = true;
+        translateBtn.textContent = t("translating");
+        try {
+          let res = null;
+          try {
+            res = await requestPage("TRANSLATE_TWEET", {
+              tweetId: model.id,
+              text: cleanCommentBody(model.text, model.inReplyToHandle),
+              destLang: getLocale()
+            });
+          } catch (bridgeErr) {
+            let bgRes = null;
+            try {
+              bgRes = await new Promise((resolve) => {
+                if (!chrome.runtime?.sendMessage) return resolve(null);
+                chrome.runtime.sendMessage(
+                  {
+                    type: "TRANSLATE_TEXT",
+                    text: cleanCommentBody(model.text, model.inReplyToHandle),
+                    destLang: getLocale()
+                  },
+                  (response) => {
+                    if (chrome.runtime.lastError || !response?.ok) resolve(null);
+                    else resolve(response.payload);
+                  }
+                );
+              });
+            } catch {
+              bgRes = null;
+            }
+            if (bgRes) res = bgRes;
+            else throw bridgeErr;
+          }
+
+          if (res && res.translation) {
+            isTranslated = true;
+            isShowing = true;
+            translationBox.innerHTML = `
+              <div class="sidepeek-translation-header">
+                <span>${t("translatedBy", { lang: res.sourceLanguage || "原语言" })}</span>
+              </div>
+              <div class="sidepeek-translation-text">${escapeHtml(res.translation)}</div>
+            `;
+            translationBox.style.display = "block";
+            translateBtn.disabled = false;
+            translateBtn.textContent = t("hideTranslation");
+          } else {
+            throw new Error();
+          }
+        } catch {
+          translateBtn.disabled = false;
+          translateBtn.textContent = t("translateAction");
+          showToast(t("translateFailed"));
+        }
+      });
+    }
+
+    // Quote card click & author hover
+    const quoteCard = item.querySelector(".sidepeek-quote-card");
+    if (quoteCard) {
+      quoteCard.addEventListener("click", (e) => {
+        if (e.target.closest("a") || e.target.closest("button") || e.target.closest("video") || e.target.closest(".sidepeek-zoomable-img")) return;
+        e.stopPropagation();
+        const quoteUrl = quoteCard.dataset.url;
+        if (quoteUrl) window.open(quoteUrl, "_blank");
+      });
+      if (model.quote?.author) {
+        const qAvatar = quoteCard.querySelector(".sidepeek-quote-avatar-link");
+        const qName = quoteCard.querySelector(".sidepeek-quote-name");
+        if (qAvatar) attachUserHoverEvents(qAvatar, model.quote.author);
+        if (qName) attachUserHoverEvents(qName, model.quote.author);
+      }
+    }
+
+    // GIF video toggle play/pause
+    item.querySelectorAll(".sidepeek-gif-video").forEach((vid) => {
+      vid.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (vid.paused) vid.play();
+        else vid.pause();
+      });
+    });
+
+    // Avatar & Author Hover Card listeners
+    const avatarLink = item.querySelector(".sidepeek-avatar-link") || item.querySelector(".sidepeek-avatar");
+    const nameEl = item.querySelector(".sidepeek-name");
+    if (avatarLink) attachUserHoverEvents(avatarLink, model.author);
+    if (nameEl) attachUserHoverEvents(nameEl, model.author);
 
     // Image zoom / lightbox click
     item.querySelectorAll(".sidepeek-zoomable-img").forEach((img) => {
@@ -1475,7 +1817,16 @@
       return `<div class="sidepeek-media-grid grid-${count}">${itemsHtml}</div>`;
     }
 
-    const video = mediaList.find((m) => m.type === "video" || m.type === "animated_gif");
+    const gif = mediaList.find((m) => m.type === "animated_gif");
+    if (gif) {
+      return `
+        <div class="sidepeek-gif-media-box">
+          <video class="sidepeek-gif-video" src="${gif.videoUrl}" autoplay loop muted playsinline preload="auto"></video>
+          <span class="sidepeek-gif-badge">GIF</span>
+        </div>`;
+    }
+
+    const video = mediaList.find((m) => m.type === "video");
     if (video) {
       return `<div class="sidepeek-media-box"><video src="${video.videoUrl}" controls playsinline preload="metadata"></video></div>`;
     }
@@ -2425,7 +2776,7 @@
   }
 
   // ==========================================================================
-  // Action Handlers (Like, Repost, Bookmark, Share)
+  // Action Handlers (Like, Repost, Bookmark, Share, More)
   // ==========================================================================
   async function handleToggleAction(model, action, btnElement) {
     const flag = action === "like" ? "liked" : action === "repost" ? "reposted" : "bookmarked";
@@ -2440,6 +2791,12 @@
     const iconSpan = btnElement.querySelector(".sidepeek-action-btn-surface");
     if (action === "like") {
       iconSpan.innerHTML = `${model.flags.liked ? ICONS.likeSolid : ICONS.like} <span>${formatCount(model.counts.likes)}</span>`;
+      if (model.flags.liked) {
+        btnElement.classList.add("sidepeek-like-anim");
+        setTimeout(() => {
+          btnElement.classList.remove("sidepeek-like-anim");
+        }, 400);
+      }
     } else if (action === "repost") {
       iconSpan.innerHTML = `${ICONS.repost} <span>${formatCount(model.counts.reposts)}</span>`;
     } else if (action === "bookmark") {
@@ -2450,7 +2807,7 @@
       await requestPage("TOGGLE_ACTION", {
         tweetId: model.id,
         action,
-        active: wasActive
+        active: !wasActive
       });
     } catch {
       // Revert on failure
@@ -2460,13 +2817,599 @@
     }
   }
 
-  function handleShare(model) {
-    if (!model.url) return;
-    navigator.clipboard.writeText(model.url).then(() => {
-      showToast(t("linkCopied"));
-    }).catch(() => {
-      showToast(getLocale() === "zh" ? "复制链接失败" : "Failed to copy link");
+  // ==========================================================================
+  // More Actions Menu (··· 更多操作菜单)
+  // ==========================================================================
+  let activeMoreMenu = null;
+  let activeMoreBtn = null;
+
+  function closeMoreMenu() {
+    if (activeMoreMenu) {
+      activeMoreMenu.remove();
+      activeMoreMenu = null;
+      activeMoreBtn = null;
+    }
+  }
+
+  function openMoreMenu(model, actMore) {
+    if (activeMoreBtn === actMore) {
+      closeMoreMenu();
+      return;
+    }
+    closeMoreMenu();
+    closeShareMenu();
+    closeRepostMenu();
+
+    const menu = document.createElement("div");
+    menu.className = `sidepeek-more-menu ${currentThemeClass()}`;
+
+    const handle = model.author?.handle || "";
+
+    menu.innerHTML = `
+      <button type="button" class="sidepeek-menu-item sidepeek-menu-copy-link">
+        <span class="sidepeek-menu-item-icon">${ICONS.copy}</span>
+        <span>${t("copyLink")}</span>
+      </button>
+      <button type="button" class="sidepeek-menu-item sidepeek-menu-copy-text">
+        <span class="sidepeek-menu-item-icon">${ICONS.copy}</span>
+        <span>${t("copyText")}</span>
+      </button>
+      <button type="button" class="sidepeek-menu-item sidepeek-menu-open-x">
+        <span class="sidepeek-menu-item-icon">${ICONS.external}</span>
+        <span>${t("openOnXDirect")}</span>
+      </button>
+      ${handle ? `
+      <button type="button" class="sidepeek-menu-item sidepeek-menu-mute">
+        <span class="sidepeek-menu-item-icon">${ICONS.mute}</span>
+        <span>${t("muteUser", { handle })}</span>
+      </button>
+      <button type="button" class="sidepeek-menu-item danger sidepeek-menu-block">
+        <span class="sidepeek-menu-item-icon">${ICONS.block}</span>
+        <span>${t("blockUser", { handle })}</span>
+      </button>
+      ` : ""}
+    `;
+
+    // Position menu near button
+    const rect = actMore.getBoundingClientRect();
+    const menuWidth = 190;
+    const menuHeight = handle ? 210 : 130;
+
+    let top = rect.bottom + 4;
+    if (top + menuHeight > window.innerHeight - 8) {
+      top = rect.top - menuHeight - 4;
+    }
+    let left = rect.right - menuWidth;
+    if (left < 8) left = 8;
+    if (left + menuWidth > window.innerWidth - 8) {
+      left = window.innerWidth - menuWidth - 8;
+    }
+
+    menu.style.top = `${Math.round(top)}px`;
+    menu.style.left = `${Math.round(left)}px`;
+
+    menu.querySelector(".sidepeek-menu-copy-link")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeMoreMenu();
+      if (model.url) {
+        navigator.clipboard?.writeText(model.url).then(() => {
+          showToast(t("linkCopied"));
+        });
+      }
     });
+
+    menu.querySelector(".sidepeek-menu-copy-text")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeMoreMenu();
+      const rawText = cleanCommentBody(model.text, model.inReplyToHandle);
+      if (rawText) {
+        navigator.clipboard?.writeText(rawText).then(() => {
+          showToast(t("textCopied"));
+        });
+      }
+    });
+
+    menu.querySelector(".sidepeek-menu-open-x")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeMoreMenu();
+      if (model.url) window.open(model.url, "_blank");
+    });
+
+    menu.querySelector(".sidepeek-menu-mute")?.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      closeMoreMenu();
+      try {
+        await requestPage("TOGGLE_MUTE", { screenName: handle, active: false });
+        showToast(t("userMuted", { handle }));
+      } catch (err) {
+        showToast(err.message || "Failed");
+      }
+    });
+
+    menu.querySelector(".sidepeek-menu-block")?.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      closeMoreMenu();
+      try {
+        await requestPage("TOGGLE_BLOCK", { screenName: handle, active: false });
+        showToast(t("userBlocked", { handle }));
+      } catch (err) {
+        showToast(err.message || "Failed");
+      }
+    });
+
+    document.body.appendChild(menu);
+    activeMoreMenu = menu;
+    activeMoreBtn = actMore;
+  }
+
+  // ==========================================================================
+  // Share Menu (分享菜单)
+  // ==========================================================================
+  let activeShareMenu = null;
+  let activeShareBtn = null;
+
+  function closeShareMenu() {
+    if (activeShareMenu) {
+      activeShareMenu.remove();
+      activeShareMenu = null;
+      activeShareBtn = null;
+    }
+  }
+
+  function openShareMenu(model, actShare) {
+    if (activeShareBtn === actShare) {
+      closeShareMenu();
+      return;
+    }
+    closeShareMenu();
+    closeMoreMenu();
+    closeRepostMenu();
+
+    const menu = document.createElement("div");
+    menu.className = `sidepeek-share-menu ${currentThemeClass()}`;
+
+    const hasNavShare = Boolean(navigator.share);
+
+    menu.innerHTML = `
+      <button type="button" class="sidepeek-menu-item sidepeek-menu-copy-link">
+        <span class="sidepeek-menu-item-icon">${ICONS.copy}</span>
+        <span>${t("copyLink")}</span>
+      </button>
+      <button type="button" class="sidepeek-menu-item sidepeek-menu-copy-text">
+        <span class="sidepeek-menu-item-icon">${ICONS.copy}</span>
+        <span>${t("copyText")}</span>
+      </button>
+      <button type="button" class="sidepeek-menu-item sidepeek-menu-open-x">
+        <span class="sidepeek-menu-item-icon">${ICONS.external}</span>
+        <span>${t("openOnXDirect")}</span>
+      </button>
+      ${hasNavShare ? `
+      <button type="button" class="sidepeek-menu-item sidepeek-menu-nav-share">
+        <span class="sidepeek-menu-item-icon">${ICONS.webShare}</span>
+        <span>${t("shareVia")}</span>
+      </button>
+      ` : ""}
+    `;
+
+    // Position menu near button
+    const rect = actShare.getBoundingClientRect();
+    const menuWidth = 180;
+    const menuHeight = hasNavShare ? 175 : 130;
+
+    let top = rect.bottom + 6;
+    if (top + menuHeight > window.innerHeight - 8) {
+      top = rect.top - menuHeight - 6;
+    }
+    let left = rect.left - 20;
+    if (left + menuWidth > window.innerWidth - 8) {
+      left = window.innerWidth - menuWidth - 8;
+    }
+    if (left < 8) left = 8;
+
+    menu.style.top = `${Math.round(top)}px`;
+    menu.style.left = `${Math.round(left)}px`;
+
+    menu.querySelector(".sidepeek-menu-copy-link")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeShareMenu();
+      if (model.url) {
+        navigator.clipboard?.writeText(model.url).then(() => {
+          showToast(t("linkCopied"));
+        });
+      }
+    });
+
+    menu.querySelector(".sidepeek-menu-copy-text")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeShareMenu();
+      const rawText = cleanCommentBody(model.text, model.inReplyToHandle);
+      if (rawText) {
+        navigator.clipboard?.writeText(rawText).then(() => {
+          showToast(t("textCopied"));
+        });
+      }
+    });
+
+    menu.querySelector(".sidepeek-menu-open-x")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeShareMenu();
+      if (model.url) window.open(model.url, "_blank");
+    });
+
+    menu.querySelector(".sidepeek-menu-nav-share")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeShareMenu();
+      if (navigator.share) {
+        navigator.share({
+          title: model.author?.name ? `${model.author.name} on X` : "X",
+          text: cleanCommentBody(model.text, model.inReplyToHandle),
+          url: model.url
+        }).catch(() => {});
+      }
+    });
+
+    document.body.appendChild(menu);
+    activeShareMenu = menu;
+    activeShareBtn = actShare;
+  }
+
+  // ==========================================================================
+  // Repost & Quote Popover Menu
+  // ==========================================================================
+  let activeRepostMenu = null;
+  let activeRepostBtn = null;
+
+  function closeRepostMenu() {
+    if (activeRepostMenu) {
+      activeRepostMenu.remove();
+      activeRepostMenu = null;
+      activeRepostBtn = null;
+    }
+  }
+
+  function openRepostMenu(model, actRepost) {
+    if (activeRepostBtn === actRepost) {
+      closeRepostMenu();
+      return;
+    }
+    closeRepostMenu();
+    closeMoreMenu();
+    closeShareMenu();
+
+    const menu = document.createElement("div");
+    menu.className = `sidepeek-repost-menu ${currentThemeClass()}`;
+
+    const isReposted = Boolean(model.flags.reposted);
+
+    menu.innerHTML = `
+      <button type="button" class="sidepeek-repost-menu-item sidepeek-menu-act-repost ${isReposted ? "active" : ""}">
+        <span class="sidepeek-menu-item-icon">${ICONS.repost}</span>
+        <span class="sidepeek-menu-item-text">${isReposted ? t("undoRepostAction") : t("repostAction")}</span>
+      </button>
+      <button type="button" class="sidepeek-repost-menu-item sidepeek-menu-act-quote">
+        <span class="sidepeek-menu-item-icon">${ICONS.quote}</span>
+        <span class="sidepeek-menu-item-text">${t("quoteAction")}</span>
+      </button>
+    `;
+
+    // Position menu near button
+    const rect = actRepost.getBoundingClientRect();
+    const menuWidth = 150;
+    const menuHeight = 90;
+
+    let top = rect.bottom + 6;
+    if (top + menuHeight > window.innerHeight - 8) {
+      top = rect.top - menuHeight - 6;
+    }
+    let left = rect.left - 16;
+    if (left + menuWidth > window.innerWidth - 8) {
+      left = window.innerWidth - menuWidth - 8;
+    }
+    if (left < 8) left = 8;
+
+    menu.style.top = `${Math.round(top)}px`;
+    menu.style.left = `${Math.round(left)}px`;
+
+    // Click handlers
+    const repostItem = menu.querySelector(".sidepeek-menu-act-repost");
+    const quoteItem = menu.querySelector(".sidepeek-menu-act-quote");
+
+    repostItem?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeRepostMenu();
+      handleToggleAction(model, "repost", actRepost);
+    });
+
+    quoteItem?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeRepostMenu();
+      handleQuoteAction(model);
+    });
+
+    document.body.appendChild(menu);
+    activeRepostMenu = menu;
+    activeRepostBtn = actRepost;
+  }
+
+  function handleQuoteAction(model) {
+    const targetId = model.id;
+    const handle = model.author?.handle || "i";
+    const tweetUrl = model.url || `https://x.com/${handle}/status/${targetId}`;
+
+    // 1. Try finding native tweet article on timeline
+    let article = document.querySelector(`article[data-testid="tweet"] a[href*="/status/${targetId}"]`)?.closest('article[data-testid="tweet"]');
+    if (!article && state.focalTweetId === targetId) {
+      article = findDetailFocalArticle(targetId);
+    }
+
+    if (article) {
+      const nativeRepostBtn = article.querySelector('[data-testid="retweet"]') || article.querySelector('[data-testid="unretweet"]');
+      if (nativeRepostBtn) {
+        nativeRepostBtn.click();
+        setTimeout(() => {
+          const menuItems = document.querySelectorAll('[role="menu"] [role="menuitem"], [data-testid="Dropdown"] [role="menuitem"], [data-testid="Dropdown"] a[href*="/compose/post"]');
+          let quoteMenuItem = null;
+          for (const item of menuItems) {
+            const text = item.textContent || "";
+            if (item.getAttribute("href")?.includes("/compose/post") || /引用|Quote/i.test(text)) {
+              quoteMenuItem = item;
+              break;
+            }
+          }
+          if (quoteMenuItem) {
+            quoteMenuItem.click();
+            showToast(t("quoteOpenedToast"));
+            return;
+          }
+          openQuoteIntent(tweetUrl);
+        }, 70);
+        return;
+      }
+    }
+
+    // 2. Fallback to Twitter Web Intent
+    openQuoteIntent(tweetUrl);
+  }
+
+  function openQuoteIntent(tweetUrl) {
+    const intentUrl = `https://x.com/intent/tweet?url=${encodeURIComponent(tweetUrl)}`;
+    const popupWidth = 600;
+    const popupHeight = 520;
+    const left = Math.max(0, Math.round((window.screen.width - popupWidth) / 2));
+    const top = Math.max(0, Math.round((window.screen.height - popupHeight) / 2));
+    window.open(intentUrl, "_blank", `width=${popupWidth},height=${popupHeight},left=${left},top=${top},scrollbars=yes,resizable=yes`);
+    showToast(t("quoteOpenedToast"));
+  }
+
+  // ==========================================================================
+  // User Profile Hover Card (Avatar / Author Detailed Info Popover)
+  // ==========================================================================
+  let hoverCardEl = null;
+  let hoverCardTimer = null;
+  let hoverCardHideTimer = null;
+  let activeHoverAuthor = null;
+  const userProfileCache = new Map();
+
+  function ensureHoverCardElement() {
+    if (hoverCardEl) return hoverCardEl;
+    hoverCardEl = document.createElement("div");
+    hoverCardEl.id = "sidepeek-user-hovercard";
+    hoverCardEl.className = "sidepeek-user-hovercard";
+    hoverCardEl.style.display = "none";
+
+    hoverCardEl.addEventListener("mouseenter", () => {
+      clearTimeout(hoverCardHideTimer);
+    });
+    hoverCardEl.addEventListener("mouseleave", () => {
+      hoverCardHideTimer = setTimeout(() => {
+        hideUserHoverCard();
+      }, 250);
+    });
+
+    document.body.appendChild(hoverCardEl);
+    return hoverCardEl;
+  }
+
+  function hideUserHoverCard() {
+    clearTimeout(hoverCardTimer);
+    if (!hoverCardEl) return;
+    hoverCardEl.classList.remove("visible");
+    setTimeout(() => {
+      if (!hoverCardEl.classList.contains("visible")) {
+        hoverCardEl.style.display = "none";
+        activeHoverAuthor = null;
+      }
+    }, 180);
+  }
+
+  function positionHoverCard(triggerEl, card) {
+    const rect = triggerEl.getBoundingClientRect();
+    const cardWidth = 310;
+    const cardHeight = card.offsetHeight || 240;
+
+    let left = rect.left - 10;
+    if (left + cardWidth > window.innerWidth - 12) {
+      left = window.innerWidth - cardWidth - 12;
+    }
+    if (left < 12) left = 12;
+
+    let top = rect.bottom + 6;
+    if (top + cardHeight > window.innerHeight - 12) {
+      top = rect.top - cardHeight - 6;
+      if (top < 12) top = 12;
+    }
+
+    card.style.left = `${Math.round(left)}px`;
+    card.style.top = `${Math.round(top)}px`;
+  }
+
+  function formatBioText(text) {
+    if (!text) return "";
+    let safe = escapeHtml(text);
+    safe = safe.replace(/(^|[^\w@])@([A-Za-z0-9_]{1,30})\b/g, (match, prefix, handle) => {
+      return `${prefix}<a href="https://x.com/${handle}" target="_blank" class="sidepeek-bio-link">@${handle}</a>`;
+    });
+    safe = safe.replace(/(^|[^\w#])#([A-Za-z0-9_\u0080-\uffff]+)/g, (match, prefix, tag) => {
+      return `${prefix}<a href="https://x.com/hashtag/${encodeURIComponent(tag)}" target="_blank" class="sidepeek-bio-link">#${tag}</a>`;
+    });
+    safe = safe.replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="sidepeek-bio-link">${url}</a>`;
+    });
+    return safe;
+  }
+
+  async function showUserHoverCard(author, triggerEl) {
+    if (!author || !author.handle) return;
+    activeHoverAuthor = author.handle;
+
+    // Check memory cache
+    const cached = userProfileCache.get(author.handle);
+    if (cached) {
+      Object.assign(author, cached);
+    }
+
+    const card = ensureHoverCardElement();
+    card.className = `sidepeek-user-hovercard ${currentThemeClass()}${author.banner ? " has-banner" : ""}`;
+
+    const authorName = escapeHtml(author.name || author.handle);
+    const authorHandle = escapeHtml(author.handle);
+    const hasBanner = Boolean(author.banner);
+    const bannerHtml = hasBanner
+      ? `<div class="sidepeek-hovercard-banner" style="background-image: url('${author.banner}');"></div>`
+      : "";
+
+    const verifiedHtml = renderVerifiedBadge(author);
+    const followsYouHtml = author.followedBy
+      ? `<span class="sidepeek-hovercard-pill">${t("followsYou")}</span>`
+      : "";
+
+    const bioHtml = author.bio
+      ? `<div class="sidepeek-hovercard-bio">${formatBioText(author.bio)}</div>`
+      : "";
+
+    const followingCountStr = author.followingCount > 0 ? formatCount(author.followingCount) : (author.followingCount === 0 ? "0" : "--");
+    const followersCountStr = author.followersCount > 0 ? formatCount(author.followersCount) : (author.followersCount === 0 ? "0" : "--");
+
+    const currentUser = getCurrentUserInfo();
+    const isSelf = Boolean(
+      currentUser?.handle &&
+      author.handle &&
+      currentUser.handle.toLowerCase() === author.handle.toLowerCase()
+    );
+
+    const followBtnHtml = isSelf ? "" : `
+      <button type="button" class="sidepeek-hovercard-follow-btn ${author.following ? "following" : ""}">
+        <span class="sidepeek-follow-text">${author.following ? t("followingBtn") : t("followBtn")}</span>
+        <span class="sidepeek-unfollow-text">${t("unfollowBtn")}</span>
+      </button>
+    `;
+
+    card.innerHTML = `
+      ${bannerHtml}
+      <div class="sidepeek-hovercard-content">
+        <div class="sidepeek-hovercard-top">
+          <a href="https://x.com/${authorHandle}" target="_blank" class="sidepeek-hovercard-avatar-wrap">
+            <img class="sidepeek-hovercard-avatar" src="${author.avatar}" alt="${authorName}" />
+          </a>
+          ${followBtnHtml}
+        </div>
+        <div class="sidepeek-hovercard-names">
+          <a href="https://x.com/${authorHandle}" target="_blank" class="sidepeek-hovercard-name">
+            <span>${authorName}</span>
+            ${verifiedHtml}
+          </a>
+          <div class="sidepeek-hovercard-handle-row">
+            <a href="https://x.com/${authorHandle}" target="_blank" class="sidepeek-hovercard-handle">@${authorHandle}</a>
+            ${followsYouHtml}
+          </div>
+        </div>
+        ${bioHtml}
+        <div class="sidepeek-hovercard-stats">
+          <a href="https://x.com/${authorHandle}/following" target="_blank" class="sidepeek-hovercard-stat">
+            <span class="sidepeek-hovercard-count sidepeek-hovercard-following-count">${followingCountStr}</span>
+            <span class="sidepeek-hovercard-label">${t("followingCountLabel")}</span>
+          </a>
+          <a href="https://x.com/${authorHandle}/verified_followers" target="_blank" class="sidepeek-hovercard-stat">
+            <span class="sidepeek-hovercard-count sidepeek-hovercard-followers-count">${followersCountStr}</span>
+            <span class="sidepeek-hovercard-label">${t("followersCountLabel")}</span>
+          </a>
+        </div>
+      </div>
+    `;
+
+    // Follow button click
+    const followBtn = card.querySelector(".sidepeek-hovercard-follow-btn");
+    followBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      handleToggleFollow(author, followBtn);
+    });
+
+    card.style.display = "block";
+    positionHoverCard(triggerEl, card);
+    requestAnimationFrame(() => {
+      card.classList.add("visible");
+    });
+
+    // If bio or followers count is not populated, fetch profile from page-bridge asynchronously
+    if ((!author.bio && author.followersCount === 0) || author.followersCount === undefined) {
+      try {
+        const profile = await requestPage("FETCH_USER_PROFILE", { screenName: author.handle });
+        if (profile && activeHoverAuthor === author.handle) {
+          Object.assign(author, profile);
+          userProfileCache.set(author.handle, profile);
+          showUserHoverCard(author, triggerEl);
+        }
+      } catch {}
+    }
+  }
+
+  function attachUserHoverEvents(triggerEl, author) {
+    if (!triggerEl || !author || !author.handle) return;
+
+    triggerEl.addEventListener("mouseenter", () => {
+      clearTimeout(hoverCardHideTimer);
+      hoverCardTimer = setTimeout(() => {
+        showUserHoverCard(author, triggerEl);
+      }, 350);
+    });
+
+    triggerEl.addEventListener("mouseleave", () => {
+      clearTimeout(hoverCardTimer);
+      hoverCardHideTimer = setTimeout(() => {
+        hideUserHoverCard();
+      }, 250);
+    });
+  }
+
+  async function handleToggleFollow(author, btn) {
+    if (!author || !author.handle) return;
+    const wasFollowing = Boolean(author.following);
+    // Optimistic UI
+    author.following = !wasFollowing;
+    author.followersCount = Math.max(0, (author.followersCount || 0) + (wasFollowing ? -1 : 1));
+    btn.classList.toggle("following", author.following);
+    const followText = btn.querySelector(".sidepeek-follow-text");
+    if (followText) followText.textContent = author.following ? t("followingBtn") : t("followBtn");
+    const countEl = document.querySelector("#sidepeek-user-hovercard .sidepeek-hovercard-followers-count");
+    if (countEl) countEl.textContent = author.followersCount > 0 ? formatCount(author.followersCount) : "0";
+    userProfileCache.set(author.handle, { ...author });
+
+    try {
+      await requestPage("TOGGLE_FOLLOW", {
+        userId: author.id,
+        screenName: author.handle,
+        active: wasFollowing
+      });
+    } catch (err) {
+      // Revert on failure
+      author.following = wasFollowing;
+      author.followersCount = Math.max(0, (author.followersCount || 0) + (wasFollowing ? 1 : -1));
+      btn.classList.toggle("following", wasFollowing);
+      if (followText) followText.textContent = wasFollowing ? t("followingBtn") : t("followBtn");
+      if (countEl) countEl.textContent = author.followersCount > 0 ? formatCount(author.followersCount) : "0";
+      userProfileCache.set(author.handle, { ...author });
+      showToast(err instanceof Error ? err.message : (getLocale() === "zh" ? "操作失败" : "Action failed"));
+    }
   }
 
   function showToast(text) {
@@ -2756,6 +3699,10 @@
   }
 
   function closeDrawer() {
+    closeRepostMenu();
+    closeMoreMenu();
+    closeShareMenu();
+    hideUserHoverCard();
     state.open = false;
     state.replyTarget = null;
     state.resetScrollOnRender = true;
@@ -2923,7 +3870,7 @@
 
   document.addEventListener("click", handleTimelineClick, true);
 
-  // ESC key to close (Lightbox first, then Drawer)
+  // ESC key to close (Lightbox first, then Menus, then Hover Card, then Drawer)
   document.addEventListener("keydown", (event) => {
     if (!isSideXEnabled) return;
     if (event.key === "Escape") {
@@ -2932,10 +3879,47 @@
         closeLightbox();
         return;
       }
+      if (activeMoreMenu) {
+        closeMoreMenu();
+        return;
+      }
+      if (activeShareMenu) {
+        closeShareMenu();
+        return;
+      }
+      if (activeRepostMenu) {
+        closeRepostMenu();
+        return;
+      }
+      if (hoverCardEl && hoverCardEl.classList.contains("visible")) {
+        hideUserHoverCard();
+        return;
+      }
       if (state.open) {
         closeDrawer();
       }
     }
+  });
+
+  // Global click outside to dismiss Repost, More, and Share menus
+  document.addEventListener("click", (e) => {
+    if (activeRepostMenu && !activeRepostMenu.contains(e.target) && (!activeRepostBtn || !activeRepostBtn.contains(e.target))) {
+      closeRepostMenu();
+    }
+    if (activeMoreMenu && !activeMoreMenu.contains(e.target) && (!activeMoreBtn || !activeMoreBtn.contains(e.target))) {
+      closeMoreMenu();
+    }
+    if (activeShareMenu && !activeShareMenu.contains(e.target) && (!activeShareBtn || !activeShareBtn.contains(e.target))) {
+      closeShareMenu();
+    }
+  }, true);
+
+  // Window resize to close Repost menu, More menu, Share menu, and hovercard
+  window.addEventListener("resize", () => {
+    closeRepostMenu();
+    closeMoreMenu();
+    closeShareMenu();
+    hideUserHoverCard();
   });
 
   // URL Watcher: detect SPA transitions, Back/Forward navigation, and auto-open on detail pages

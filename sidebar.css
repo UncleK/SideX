@@ -1820,3 +1820,671 @@ article[data-testid="tweet"].sidepeek-focal-active {
   }
 }
 
+/* ==========================================================================
+   Repost & Quote Popover Menu
+   ========================================================================== */
+.sidepeek-repost-menu {
+  position: fixed;
+  z-index: 2147483645;
+  background: var(--sp-bg);
+  border: 1px solid var(--sp-border);
+  border-radius: 16px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.12);
+  padding: 6px 0;
+  min-width: 150px;
+  overflow: hidden;
+  animation: sidepeek-menu-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes sidepeek-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.sidepeek-repost-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 16px;
+  background: transparent;
+  border: 0;
+  color: var(--sp-fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14.5px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.sidepeek-repost-menu-item:hover {
+  background: var(--sp-soft);
+}
+
+.sidepeek-repost-menu-item .sidepeek-menu-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: inherit;
+  flex-shrink: 0;
+}
+
+.sidepeek-repost-menu-item .sidepeek-menu-item-icon svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  fill: currentColor;
+}
+
+.sidepeek-menu-act-repost.active,
+.sidepeek-menu-act-repost:hover {
+  color: var(--sp-repost);
+}
+
+.sidepeek-menu-act-quote:hover {
+  color: var(--sp-accent);
+}
+
+/* ==========================================================================
+   User Profile Hover Card (Avatar Hover Popover)
+   ========================================================================== */
+.sidepeek-user-hovercard {
+  position: fixed;
+  z-index: 2147483646;
+  width: 310px;
+  max-width: calc(100vw - 24px);
+  background: var(--sp-bg);
+  border: 1px solid var(--sp-border);
+  border-radius: 16px;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.32), 0 2px 10px rgba(0, 0, 0, 0.12);
+  color: var(--sp-fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  overflow: hidden;
+  opacity: 0;
+  transform: scale(0.96) translateY(4px);
+  transition: opacity 0.16s cubic-bezier(0.16, 1, 0.3, 1), transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.sidepeek-user-hovercard.visible {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  pointer-events: auto;
+}
+
+.sidepeek-hovercard-banner {
+  width: 100%;
+  height: 64px;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--sp-soft);
+}
+
+.sidepeek-hovercard-content {
+  padding: 12px 16px 16px 16px;
+}
+
+.sidepeek-hovercard-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.sidepeek-hovercard-avatar-wrap {
+  display: block;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid var(--sp-bg);
+  background: var(--sp-soft);
+  margin-top: -30px;
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.sidepeek-hovercard-avatar-wrap:hover {
+  opacity: 0.9;
+}
+
+.sidepeek-hovercard-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sidepeek-user-hovercard:not(.has-banner) .sidepeek-hovercard-avatar-wrap {
+  margin-top: 0;
+}
+
+.sidepeek-hovercard-follow-btn {
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 6px 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+  line-height: 1.25;
+  outline: none;
+  font-family: inherit;
+}
+
+.sidepeek-hovercard-follow-btn:not(.following) {
+  background: var(--sp-fg);
+  color: var(--sp-bg);
+}
+
+.sidepeek-hovercard-follow-btn:not(.following):hover {
+  opacity: 0.88;
+}
+
+.sidepeek-hovercard-follow-btn .sidepeek-unfollow-text {
+  display: none !important;
+}
+
+.sidepeek-hovercard-follow-btn.following {
+  background: transparent;
+  border-color: var(--sp-border);
+  color: var(--sp-fg);
+}
+
+.sidepeek-hovercard-follow-btn.following:hover {
+  border-color: rgba(244, 33, 46, 0.4);
+  color: #f4212e;
+  background: rgba(244, 33, 46, 0.1);
+}
+
+.sidepeek-hovercard-follow-btn.following:hover .sidepeek-follow-text {
+  display: none !important;
+}
+
+.sidepeek-hovercard-follow-btn.following:hover .sidepeek-unfollow-text {
+  display: inline !important;
+}
+
+.sidepeek-hovercard-names {
+  margin-bottom: 8px;
+}
+
+.sidepeek-hovercard-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--sp-fg);
+  text-decoration: none;
+  line-height: 1.3;
+}
+
+.sidepeek-hovercard-name:hover {
+  text-decoration: underline;
+}
+
+.sidepeek-hovercard-name .sidepeek-verified-badge {
+  margin-left: 2px;
+}
+
+.sidepeek-hovercard-handle-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.sidepeek-hovercard-handle {
+  font-size: 14px;
+  color: var(--sp-muted);
+  text-decoration: none;
+}
+
+.sidepeek-hovercard-pill {
+  background: var(--sp-soft);
+  color: var(--sp-muted);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.sidepeek-hovercard-bio {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--sp-fg);
+  margin-bottom: 12px;
+  word-break: break-word;
+}
+
+.sidepeek-bio-link {
+  color: var(--sp-accent);
+  text-decoration: none;
+}
+
+.sidepeek-bio-link:hover {
+  text-decoration: underline;
+}
+
+.sidepeek-hovercard-stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 14px;
+  color: var(--sp-muted);
+}
+
+.sidepeek-hovercard-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.sidepeek-hovercard-stat:hover {
+  text-decoration: underline;
+}
+
+.sidepeek-hovercard-count {
+  font-weight: 700;
+  color: var(--sp-fg);
+}
+
+.sidepeek-hovercard-label {
+  color: var(--sp-muted);
+}
+
+/* ==========================================================================
+   1. Quoted Tweet Card (引用推文卡片)
+   ========================================================================== */
+.sidepeek-quote-card {
+  margin-top: 10px;
+  border: 1px solid var(--sp-border);
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  background: var(--sp-bg);
+}
+
+.sidepeek-quote-card:hover {
+  background: var(--sp-soft);
+  border-color: var(--sp-muted);
+}
+
+.sidepeek-quote-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 12px 4px 12px;
+  font-size: 13.5px;
+  line-height: 1.3;
+}
+
+.sidepeek-quote-avatar-link {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.sidepeek-quote-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sidepeek-quote-name {
+  font-weight: 700;
+  color: var(--sp-fg);
+  text-decoration: none;
+}
+
+.sidepeek-quote-name:hover {
+  text-decoration: underline;
+}
+
+.sidepeek-quote-handle {
+  color: var(--sp-muted);
+  font-size: 13px;
+}
+
+.sidepeek-quote-time {
+  color: var(--sp-muted);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.sidepeek-quote-time:hover {
+  text-decoration: underline;
+}
+
+.sidepeek-quote-text {
+  padding: 0 12px 10px 12px;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--sp-fg);
+  word-break: break-word;
+}
+
+.sidepeek-quote-card .sidepeek-media-grid {
+  border-radius: 0;
+  border-top: 1px solid var(--sp-border);
+}
+
+/* ==========================================================================
+   2. Author / OP Badge (楼主 / 作者标识)
+   ========================================================================== */
+.sidepeek-author-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(29, 155, 240, 0.12);
+  color: var(--sp-accent);
+  line-height: 1.25;
+  margin-left: 2px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+/* ==========================================================================
+   3. Link Card Preview (网页外链卡片)
+   ========================================================================== */
+.sidepeek-link-card {
+  display: block;
+  margin-top: 10px;
+  border: 1px solid var(--sp-border);
+  border-radius: 14px;
+  overflow: hidden;
+  text-decoration: none;
+  background: var(--sp-bg);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.sidepeek-link-card:hover {
+  background: var(--sp-soft);
+  border-color: var(--sp-muted);
+}
+
+.sidepeek-link-card-img-wrap {
+  width: 100%;
+  max-height: 200px;
+  overflow: hidden;
+  background: var(--sp-soft);
+}
+
+.sidepeek-link-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sidepeek-link-card-info {
+  padding: 10px 12px;
+}
+
+.sidepeek-link-card-domain {
+  font-size: 12px;
+  color: var(--sp-muted);
+  text-transform: lowercase;
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidepeek-link-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--sp-fg);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sidepeek-link-card-desc {
+  font-size: 12.5px;
+  color: var(--sp-muted);
+  line-height: 1.35;
+  margin-top: 3px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   4. More Actions Menu (··· 更多操作菜单) & Share Menu
+   ========================================================================== */
+.sidepeek-author-row {
+  position: relative;
+}
+
+.sidepeek-more-col {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.sidepeek-act-more {
+  background: transparent;
+  border: 0;
+  color: var(--sp-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidepeek-act-more:hover {
+  background: rgba(29, 155, 240, 0.1);
+  color: var(--sp-accent);
+}
+
+.sidepeek-more-menu,
+.sidepeek-share-menu {
+  position: fixed;
+  z-index: 2147483645;
+  background: var(--sp-bg);
+  border: 1px solid var(--sp-border);
+  border-radius: 16px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.12);
+  padding: 6px 0;
+  min-width: 175px;
+  overflow: hidden;
+  animation: sidepeek-menu-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidepeek-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 16px;
+  background: transparent;
+  border: 0;
+  color: var(--sp-fg);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.sidepeek-menu-item:hover {
+  background: var(--sp-soft);
+}
+
+.sidepeek-menu-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: inherit;
+  flex-shrink: 0;
+}
+
+.sidepeek-menu-item-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.sidepeek-menu-item.danger:hover {
+  color: #f4212e;
+}
+
+/* ==========================================================================
+   5. Translate Post (翻译推文)
+   ========================================================================== */
+.sidepeek-translate-btn {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--sp-accent);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: opacity 0.15s;
+}
+
+.sidepeek-translate-btn:hover {
+  text-decoration: underline;
+}
+
+.sidepeek-translate-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.sidepeek-translation-box {
+  margin-top: 6px;
+  padding: 8px 12px;
+  background: var(--sp-soft);
+  border-left: 3px solid var(--sp-accent);
+  border-radius: 4px;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--sp-fg);
+}
+
+.sidepeek-translation-header {
+  font-size: 11.5px;
+  color: var(--sp-muted);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ==========================================================================
+   6. Native GIF Experience (GIF 原生播放)
+   ========================================================================== */
+.sidepeek-gif-media-box {
+  position: relative;
+  display: inline-block;
+  border-radius: 14px;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.sidepeek-gif-video {
+  width: 100%;
+  display: block;
+  border-radius: 14px;
+}
+
+.sidepeek-gif-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   7. Like Heart Burst Animation (点赞微动效)
+   ========================================================================== */
+@keyframes sidepeek-heart-burst {
+  0% { transform: scale(1); }
+  25% { transform: scale(0.7); }
+  50% { transform: scale(1.35); }
+  75% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+.sidepeek-act-like.sidepeek-like-anim svg {
+  animation: sidepeek-heart-burst 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* ==========================================================================
+   8. Long Post Clamp & Show More (长推文折叠展开)
+   ========================================================================== */
+.sidepeek-text.sidepeek-text-clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sidepeek-show-more-btn {
+  background: transparent;
+  border: 0;
+  padding: 2px 0;
+  margin-top: 2px;
+  font-size: 13.5px;
+  color: var(--sp-accent);
+  cursor: pointer;
+  display: inline-block;
+}
+
+.sidepeek-show-more-btn:hover {
+  text-decoration: underline;
+}
+
+
+

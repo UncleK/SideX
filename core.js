@@ -107,6 +107,27 @@
     }).filter((item) => item.url || item.videoUrl);
   }
 
+  function extractCard(tweet, legacy) {
+    const card = tweet?.card || tweet?.unified_card;
+    if (!card) return null;
+    const legacyCard = card.legacy || card;
+    const values = Object.create(null);
+    for (const b of (legacyCard.binding_values || [])) {
+      if (b && b.key && b.value) {
+        values[b.key] = b.value.string_value || b.value.image_value?.url || b.value.boolean_value || "";
+      }
+    }
+    const title = values.title || "";
+    const description = values.description || "";
+    const domain = values.vanity_url || values.domain || "";
+    const image = values.summary_photo_image_large || values.photo_image_full_size || values.thumbnail_image || values.player_image || "";
+    const url = values.card_url || legacy?.entities?.urls?.[0]?.expanded_url || "";
+    if (title || domain || image) {
+      return { title, description, domain, image, url };
+    }
+    return null;
+  }
+
   function tweetModel(value, depth = 0) {
     const tweet = unwrapResult(value);
     if (!tweet) return null;
@@ -210,6 +231,14 @@
         name: userLegacy.name || userCore.name || handle || "X 用户",
         handle,
         avatar: String(userLegacy.profile_image_url_https || user?.avatar?.image_url || "").replace("_normal.", "_200x200."),
+        banner: userLegacy.profile_banner_url || user?.profile_banner_url || "",
+        bio: userLegacy.description || userCore.description || user?.description || "",
+        followersCount: numberValue(userLegacy.followers_count ?? user?.followers_count),
+        followingCount: numberValue(userLegacy.friends_count ?? user?.friends_count ?? user?.following_count),
+        following: Boolean(userLegacy.following || user?.following),
+        followedBy: Boolean(userLegacy.followed_by || user?.followed_by),
+        location: userLegacy.location || "",
+        url: userLegacy.entities?.url?.urls?.[0]?.expanded_url || userLegacy.url || "",
         verified: Boolean(user?.is_blue_verified || userLegacy.verified || user?.verification?.verified),
         verifiedType: user?.verification?.verified_type || user?.verified_type || (user?.is_blue_verified ? "Blue" : userLegacy.verified ? "Blue" : "")
       },
@@ -230,7 +259,9 @@
         bookmarked: Boolean(legacy.bookmarked)
       },
       media: mediaItems(legacy, tweet),
-      quote: quoted
+      quote: quoted,
+      card: extractCard(tweet, legacy),
+      lang: String(legacy.lang || "").toLowerCase()
     };
   }
 

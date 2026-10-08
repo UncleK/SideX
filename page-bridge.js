@@ -489,6 +489,170 @@
     return graphql("CreateTweet", variables);
   }
 
+  async function fetchUserProfile(screenName) {
+    const handle = String(screenName || "").trim();
+    if (!handle) throw new Error("用户名不能为空");
+    const variables = { screen_name: handle, withSafetyModeUserFields: true };
+    const res = await graphql("UserByScreenName", variables, "GET");
+    const userResult = res?.data?.user?.result;
+    if (!userResult) throw new Error("未找到用户信息");
+    const legacy = userResult.legacy || {};
+    const core = userResult.core || {};
+    return {
+      id: String(userResult.rest_id || legacy.id_str || ""),
+      name: legacy.name || core.name || handle,
+      handle: legacy.screen_name || handle,
+      avatar: String(legacy.profile_image_url_https || userResult.avatar?.image_url || "").replace("_normal.", "_200x200."),
+      banner: legacy.profile_banner_url || "",
+      bio: legacy.description || "",
+      followersCount: Number(legacy.followers_count || 0),
+      followingCount: Number(legacy.friends_count || 0),
+      following: Boolean(legacy.following),
+      followedBy: Boolean(legacy.followed_by),
+      location: legacy.location || "",
+      url: legacy.entities?.url?.urls?.[0]?.expanded_url || legacy.url || "",
+      verified: Boolean(userResult.is_blue_verified || legacy.verified)
+    };
+  }
+
+  async function toggleFollow(userId, screenName, active) {
+    const isCurrentlyFollowing = Boolean(active);
+    const endpoint = isCurrentlyFollowing
+      ? "/1.1/friendships/destroy.json"
+      : "/1.1/friendships/create.json";
+    const path = `/1.1/friendships/${isCurrentlyFollowing ? "destroy" : "create"}.json`;
+    const headers = await requestHeaders(path, "POST", true);
+    headers["content-type"] = "application/x-www-form-urlencoded";
+    const params = new URLSearchParams();
+    if (userId && /^\d+$/.test(String(userId))) {
+      params.set("user_id", String(userId));
+    }
+    if (screenName) {
+      params.set("screen_name", String(screenName));
+    }
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: params.toString()
+    });
+    const json = await response.json().catch(() => null);
+    if (!response.ok) {
+      const errMsg = json?.errors?.[0]?.message || `操作失败 (${response.status})`;
+      throw new Error(errMsg);
+    }
+    return json;
+  }
+
+  async function translateTweet(tweetId, text, destLang = "zh") {
+    const targetLang = destLang === "zh" ? "zh-CN" : destLang || "zh-CN";
+    const twitterLang = destLang === "zh" ? "zh" : destLang || "zh";
+
+    // 1. Try Twitter native Strato translation service
+    if (tweetId) {
+      const candidates = [
+        `/i/api/1.1/strato/column/None/tweetId=${tweetId},destinationLanguage=${twitterLang},translationSource=Some(Google)/translation/service/translateTweet`,
+        `/i/api/1.1/strato/column/None/tweetId=${tweetId},destinationLanguage=${twitterLang}/translation/service/translateTweet`,
+        `/i/api/1.1/strato/column/None/translation/service/translateTweet?id=${tweetId}&dest=${twitterLang}`
+      ];
+
+      for (const path of candidates) {
+        try {
+          const url = new URL(path, location.origin);
+          const headers = await requestHeaders(url.pathname, "GET", false);
+          delete headers["content-type"]; // Never send Content-Type on GET requests
+          const res = await fetch(url.toString(), {
+            method: "GET",
+            headers,
+            credentials: "include"
+          });
+          if (res.ok) {
+            const json = await res.json().catch(() => null);
+            const translation = json?.translation || json?.data?.translation || json?.text;
+            if (translation) {
+              return {
+                translation,
+                sourceLanguage: json.localizedSourceLanguage || json.sourceLanguage || "原语言",
+                provider: "X"
+              };
+            }
+          }
+        } catch {
+          // Continue to next candidate or fallback
+        }
+      }
+    }
+
+    // 2. Fallback: Google Translate GTX endpoint (100% reliable)
+    if (text) {
+      try {
+        const cleanText = String(text).replace(/https?:\/\/[^\s]+/g, "").trim();
+        const gUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(targetLang)}&dt=t&q=${encodeURIComponent(cleanText || text)}`;
+        const gRes = await fetch(gUrl);
+        if (gRes.ok) {
+          const gJson = await gRes.json();
+          if (Array.isArray(gJson) && Array.isArray(gJson[0])) {
+            const translation = gJson[0].map((item) => item[0]).filter(Boolean).join("");
+            const srcLang = gJson[2] || "原语言";
+            if (translation) {
+              return {
+                translation,
+                sourceLanguage: srcLang,
+                provider: "Google"
+              };
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("[SideX] Translation fallback failed:", err);
+      }
+    }
+
+    throw new Error("翻译服务暂时不可用，请稍后重试");
+  }
+
+  async function toggleMute(screenName, active) {
+    const endpoint = active
+      ? "/1.1/mutes/users/destroy.json"
+      : "/1.1/mutes/users/create.json";
+    const path = `/1.1/mutes/users/${active ? "destroy" : "create"}.json`;
+    const headers = await requestHeaders(path, "POST", true);
+    headers["content-type"] = "application/x-www-form-urlencoded";
+    const params = new URLSearchParams({ screen_name: String(screenName) });
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: params.toString()
+    });
+    const json = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(json?.errors?.[0]?.message || `静音操作失败 (${response.status})`);
+    }
+    return json;
+  }
+
+  async function toggleBlock(screenName, active) {
+    const endpoint = active
+      ? "/1.1/blocks/destroy.json"
+      : "/1.1/blocks/create.json";
+    const path = `/1.1/blocks/${active ? "destroy" : "create"}.json`;
+    const headers = await requestHeaders(path, "POST", true);
+    headers["content-type"] = "application/x-www-form-urlencoded";
+    const params = new URLSearchParams({ screen_name: String(screenName) });
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: params.toString()
+    });
+    const json = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(json?.errors?.[0]?.message || `屏蔽操作失败 (${response.status})`);
+    }
+    return json;
+  }
+
   function respond(requestId, ok, payload) {
     window.postMessage({ source: PAGE_SOURCE, requestId, ok, ...(ok ? { payload } : { error: payload }) }, location.origin);
   }
@@ -504,6 +668,56 @@
         respond(message.requestId, true, { mediaId });
       } catch (error) {
         respond(message.requestId, false, error instanceof Error ? error.message : "图片上传失败");
+      }
+      return;
+    }
+
+    if (message.type === "FETCH_USER_PROFILE") {
+      try {
+        const payload = await fetchUserProfile(message.screenName);
+        respond(message.requestId, true, payload);
+      } catch (error) {
+        respond(message.requestId, false, error instanceof Error ? error.message : "获取用户信息失败");
+      }
+      return;
+    }
+
+    if (message.type === "TOGGLE_FOLLOW") {
+      try {
+        const payload = await toggleFollow(message.userId, message.screenName, message.active);
+        respond(message.requestId, true, payload);
+      } catch (error) {
+        respond(message.requestId, false, error instanceof Error ? error.message : "关注操作失败");
+      }
+      return;
+    }
+
+    if (message.type === "TRANSLATE_TWEET") {
+      try {
+        const payload = await translateTweet(message.tweetId, message.text, message.destLang);
+        respond(message.requestId, true, payload);
+      } catch (error) {
+        respond(message.requestId, false, error instanceof Error ? error.message : "翻译失败");
+      }
+      return;
+    }
+
+    if (message.type === "TOGGLE_MUTE") {
+      try {
+        const payload = await toggleMute(message.screenName, message.active);
+        respond(message.requestId, true, payload);
+      } catch (error) {
+        respond(message.requestId, false, error instanceof Error ? error.message : "静音操作失败");
+      }
+      return;
+    }
+
+    if (message.type === "TOGGLE_BLOCK") {
+      try {
+        const payload = await toggleBlock(message.screenName, message.active);
+        respond(message.requestId, true, payload);
+      } catch (error) {
+        respond(message.requestId, false, error instanceof Error ? error.message : "屏蔽操作失败");
       }
       return;
     }

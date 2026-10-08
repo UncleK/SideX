@@ -9,8 +9,12 @@
     "https://x.com/*",
     "https://twitter.com/*",
     "https://upload.x.com/*",
-    "https://upload.twitter.com/*"
+    "https://upload.twitter.com/*",
+    "https://translate.googleapis.com/*"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_title": "SideX",
     "default_popup": "popup.html",
