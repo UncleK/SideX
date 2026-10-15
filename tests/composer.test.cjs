@@ -19,7 +19,9 @@ test('quick reply keeps drafts separate by post, reply target and reply mode', a
   p.query('.sidepeek-act-reply').click(); input(p, 'Child draft');
   p.query('.sidepeek-cancel-reply-target').click();
   assert.equal(p.query('.sidepeek-footer-textarea').value, 'Root draft');
+  p.query('.sidepeek-btn-close').click();
   p.clickPost(1); await tick(); input(p, 'Other post');
+  p.query('.sidepeek-btn-close').click();
   p.clickPost(0); await tick();
   assert.equal(p.query('.sidepeek-footer-textarea').value, 'Root draft');
   p.change({ sidex_reply_mode: { newValue: 'native' } });
@@ -51,10 +53,12 @@ test('an old send cannot clear a newer draft or insert into a different conversa
   t.after(() => p.w.close());
   await tick(); p.clickPost(0); await tick(); input(p, 'Sending on A');
   p.query('.sidepeek-footer-submit-btn').click(); await tick();
+  p.query('.sidepeek-btn-close').click();
   p.clickPost(1); await tick(); input(p, 'Draft on B');
   finish(created()); await tick();
   assert.equal(p.query('.sidepeek-footer-textarea').value, 'Draft on B');
   assert.equal(p.query('.sidepeek-comment-item[data-id="999"]'), null);
+  p.query('.sidepeek-btn-close').click();
   p.clickPost(0); await tick();
   assert.equal(p.query('.sidepeek-footer-textarea').value, '');
 });
@@ -207,7 +211,9 @@ test('picker navigation preserves the thread, scroll and quick footer while keep
   layers.replaceChildren();
   p.w.history.pushState({}, '', '/explore');
   p.w.dispatchEvent(new p.w.PopStateEvent('popstate')); await tick();
-  assert.equal(drawer.classList.contains('sidepeek-open'), false, 'real navigation still closes the drawer');
+  assert.equal(drawer.classList.contains('sidepeek-open'), true, 'reply editing keeps the drawer open across navigation');
+  p.query('.sidepeek-btn-close').click();
+  assert.equal(drawer.classList.contains('sidepeek-open'), false, 'the close button dismisses the drawer');
   assert.equal(newHost.hasAttribute('data-sidex-native-composer'), false);
   assert.equal(layers.hasAttribute('popover'), false);
   assert.equal(layers.hasAttribute('data-sidex-native-layers'), false);
@@ -266,10 +272,12 @@ test('a native confirmation arriving after dialog dismissal cannot clear another
   const p = nativePage(); t.after(() => p.w.close());
   await tick(); p.clickPost(0); await tick(); input(p, 'Transferred A');
   p.query('.sidepeek-tool-disclosure').click(); await tick(50);
-  p.query('#layers').replaceChildren(); p.clickPost(1); await tick(); input(p, 'Draft B');
+  p.query('#layers').replaceChildren(); p.query('.sidepeek-btn-close').click();
+  p.clickPost(1); await tick(); input(p, 'Draft B');
   p.w.dispatchEvent(new p.w.MessageEvent('message', { source: p.w, origin: p.w.location.origin,
     data: { source: 'sidepeek-page', type: 'REPLY_CREATED', payload: created('998', '100', 'Transferred A') } }));
   assert.equal(p.query('.sidepeek-footer-textarea').value, 'Draft B');
+  p.query('.sidepeek-btn-close').click();
   p.clickPost(0); await tick();
   assert.equal(p.query('.sidepeek-footer-textarea').value, '');
 });

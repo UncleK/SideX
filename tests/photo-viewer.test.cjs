@@ -56,6 +56,7 @@ test('an explicit official photo preference is preserved and the real settings p
   assert.equal(drawer.parentElement, photo.panel);
   assert.equal(p.query('.sidepeek-footer-textarea').value, 'Keep my photo reply');
 
+  p.query('.sidepeek-btn-close').click();
   photo.dialog.remove();
   p.w.history.pushState({}, '', '/home'); p.w.dispatchEvent(new p.w.PopStateEvent('popstate')); await tick(70);
   assert.equal(drawer.isConnected, true);

@@ -109,6 +109,7 @@
     resetScrollOnRender: false,
     activeView: "root", // "root" or { type: "drilldown", parentId: string }
     replyTarget: null, // Comment model being replied to, or null for focal tweet
+    replyEditing: false,
     loading: false,
     error: "",
     isResizing: false,
@@ -249,6 +250,7 @@
       }
       if (changes.sidex_reply_mode !== undefined) {
         state.replyMode = changes.sidex_reply_mode.newValue === "native" ? "native" : "drawer";
+        if (state.replyMode === "native") state.replyEditing = false;
         if (state.open) renderDrawer(true);
       }
       if (changes.sidex_sub_reply_limit !== undefined) {
@@ -736,6 +738,13 @@
   function syncPhotoViewer() {
     if (!isSideXEnabled) return false;
     const match = location.pathname.match(/\/status\/(\d+)\/photo\/\d+\/?$/);
+    if (state.open && state.replyEditing && match?.[1] !== state.focalTweetId) {
+      if (dockedPhotoPanel) {
+        releasePhotoPanel();
+        updateDrawerPosition();
+      }
+      return Boolean(match);
+    }
     if (match) {
       const swipe = document.querySelector('#layers [data-testid="swipe-to-dismiss"]');
       const viewer = swipe?.closest('[role="dialog"]');
@@ -2198,6 +2207,7 @@
 
     const textarea = footer.querySelector(".sidepeek-footer-textarea");
     const previewArea = footer.querySelector(".sidepeek-footer-preview-area");
+    textarea?.addEventListener("focus", () => { state.replyEditing = true; });
     const submitBtn = footer.querySelector(".sidepeek-footer-submit-btn");
     const fileInput = footer.querySelector(".sidepeek-media-file-input");
 
@@ -2314,7 +2324,10 @@
       }
     }
 
-    textarea?.addEventListener("input", updateComposerState);
+    textarea?.addEventListener("input", () => {
+      state.replyEditing = true;
+      updateComposerState();
+    });
 
     // Popover toggle management
     function closeAllPopovers() {
@@ -2569,6 +2582,9 @@
           acceptCreatedReply(created);
         }
         showToast(t("replySent"));
+        if (active && draft === ownerDraft && state.open && state.focalTweetId === focalId && state.threadGeneration === generation) {
+          state.replyEditing = false;
+        }
       } catch (err) {
         showToast(err.message || t("replyFailed"));
       } finally {
@@ -3685,6 +3701,7 @@
   }
 
   async function checkDetailPageAutoOpen() {
+    if (state.open && state.replyEditing) return;
     if (syncPhotoViewer()) return;
     // Pickers such as GIF search temporarily use /i/foundmedia/search. They
     // are overlays on the current post, not navigation away from its thread.
@@ -3729,6 +3746,7 @@
       try {
         const json = await requestPage("READ_THREAD", { tweetId });
         if (generation !== state.threadGeneration) return;
+        if (state.open && state.replyEditing) return;
         // 确保异步返回时用户没有跳转到其他帖子
         if (Core.postIdFromUrl(location.href) !== tweetId) return;
         if (userClosedTweetId === tweetId) return;
@@ -3818,6 +3836,10 @@
   }
 
   function closeDrawer() {
+    const wasReplyEditing = state.replyEditing;
+    if (wasReplyEditing && document.getElementById(ROOT_ID)?.contains(document.activeElement)) {
+      document.activeElement.blur();
+    }
     if (photoViewer && dockedPhotoPanel) {
       dismissedPhotoId = photoViewer.tweetId;
       releasePhotoPanel();
@@ -3831,9 +3853,11 @@
     closeShareMenu();
     hideUserHoverCard();
     state.open = false;
+    state.replyEditing = false;
     state.replyTarget = null;
     state.resetScrollOnRender = true;
     userClosedTweetId = state.focalTweetId;
+    if (wasReplyEditing) lastCheckedUrl = location.href;
     if (state.focalArticle) {
       state.focalArticle.classList.remove("sidepeek-focal-active");
       state.focalArticle = null;
@@ -3960,6 +3984,8 @@
     const lightbox = document.getElementById("sidepeek-lightbox");
     if (lightbox && lightbox.contains(event.target)) return;
 
+    if (state.open && state.replyEditing) return;
+
     const article = event.target.closest?.('article[data-testid="tweet"]');
     if (!article) {
       // Clicked blank space outside drawer -> close drawer
@@ -4048,6 +4074,7 @@
         return;
       }
       if (state.open) {
+        if (state.replyEditing) return;
         closeDrawer();
       }
     }
