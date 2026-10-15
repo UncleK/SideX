@@ -56,6 +56,129 @@ test('a late response cannot replace the newer post or reopen a closed drawer', 
   assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), false);
 });
 
+test('an active reply stays with its post through outside clicks, Escape and X navigation', async t => {
+  const p = createPage(); t.after(() => p.w.close());
+  await tick(); p.clickPost(0); await tick();
+  const textarea = p.query('.sidepeek-footer-textarea');
+  textarea.focus();
+  textarea.value = 'Draft for post A';
+  textarea.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+
+  p.w.document.querySelector('main').click();
+  p.w.document.dispatchEvent(new p.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  p.clickPost(1); await tick();
+  p.w.history.pushState({}, '', '/reader/status/200');
+  p.w.dispatchEvent(new p.w.PopStateEvent('popstate')); await tick();
+  p.w.history.pushState({}, '', '/reader/status/200/photo/1');
+  p.w.dispatchEvent(new p.w.PopStateEvent('popstate')); await tick();
+  p.w.history.pushState({}, '', '/home');
+  p.w.dispatchEvent(new p.w.PopStateEvent('popstate')); await tick();
+
+  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), true);
+  assert.equal(p.query('.sidepeek-comment-item').dataset.id, '101');
+  assert.equal(textarea.value, 'Draft for post A');
+  assert.equal(p.calls.some(m => m.type === 'READ_THREAD' && m.tweetId === '200'), false);
+});
+
+test('focusing an empty reply box starts protection until explicit close', async t => {
+  const p = createPage(); t.after(() => p.w.close());
+  await tick(); p.clickPost(0); await tick();
+  p.query('.sidepeek-footer-textarea').focus();
+  p.w.document.querySelector('main').click();
+  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), true);
+  p.query('.sidepeek-btn-close').click();
+  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), false);
+});
+
+test('a failed reply keeps the editing guard and draft', async t => {
+  const p = createPage({ request: m => m.type === 'CREATE_REPLY' ? Promise.reject(new Error('Rejected')) : thread(m.tweetId) });
+  t.after(() => p.w.close());
+  await tick(); p.clickPost(0); await tick();
+  const textarea = p.query('.sidepeek-footer-textarea');
+  textarea.focus();
+  textarea.value = 'Please keep this draft';
+  textarea.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+  p.query('.sidepeek-footer-submit-btn').click(); await tick();
+  p.w.document.querySelector('main').click();
+  p.w.document.dispatchEvent(new p.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), true);
+  assert.equal(textarea.value, 'Please keep this draft');
+});
+
+test('a successful reply restores outside-click dismissal', async t => {
+  const created = { data: { create_tweet: { tweet_results: { result: tweet('999', '100', 'Sent reply') } } } };
+  const p = createPage({ request: m => m.type === 'CREATE_REPLY' ? created : thread(m.tweetId) });
+  t.after(() => p.w.close());
+  p.w.HTMLElement.prototype.scrollTo = function () {};
+  await tick(); p.clickPost(0); await tick();
+  const textarea = p.query('.sidepeek-footer-textarea');
+  textarea.focus();
+  textarea.value = 'Sent reply';
+  textarea.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+  p.query('.sidepeek-footer-submit-btn').click(); await tick();
+  assert.equal(p.calls.some(m => m.type === 'CREATE_REPLY'), true);
+  p.w.document.querySelector('main').click();
+  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), false);
+});
+
+test('focusing a second reply after sending starts a new editing session', async t => {
+  const created = { data: { create_tweet: { tweet_results: { result: tweet('999', '100', 'Sent reply') } } } };
+  const p = createPage({ request: m => m.type === 'CREATE_REPLY' ? created : thread(m.tweetId) });
+  t.after(() => p.w.close());
+  p.w.HTMLElement.prototype.scrollTo = function () {};
+  await tick(); p.clickPost(0); await tick();
+  const textarea = p.query('.sidepeek-footer-textarea');
+  textarea.focus();
+  textarea.value = 'First reply';
+  textarea.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+  p.query('.sidepeek-footer-submit-btn').click(); await tick();
+  textarea.blur();
+  textarea.focus();
+  textarea.value = 'Second draft';
+  textarea.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+  p.w.document.querySelector('main').click();
+  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), true);
+  assert.equal(textarea.value, 'Second draft');
+});
+
+test('the close button ends reply protection without losing the same-page draft', async t => {
+  const p = createPage(); t.after(() => p.w.close());
+  await tick(); p.clickPost(0); await tick();
+  const textarea = p.query('.sidepeek-footer-textarea');
+  textarea.focus();
+  textarea.value = 'Saved on this page';
+  textarea.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+  p.w.history.pushState({}, '', '/reader/status/200');
+  p.w.dispatchEvent(new p.w.PopStateEvent('popstate')); await tick();
+  p.query('.sidepeek-btn-close').click(); await tick(350);
+  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), false);
+  p.w.history.pushState({}, '', '/home');
+  p.w.dispatchEvent(new p.w.PopStateEvent('popstate')); await tick();
+  p.clickPost(0); await tick();
+  assert.equal(p.query('.sidepeek-footer-textarea').value, 'Saved on this page');
+  p.query('.sidepeek-footer-textarea').focus();
+  p.w.document.querySelector('main').click();
+  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), true);
+});
+
+test('starting a reply while detail comments load accepts the matching response across navigation', async t => {
+  let finish;
+  const p = createPage({ request: m => m.tweetId === '200' ? new Promise(resolve => { finish = resolve; }) : thread(m.tweetId) });
+  t.after(() => p.w.close());
+  await tick(); p.clickPost(0); await tick();
+  p.w.history.pushState({}, '', '/reader/status/200');
+  p.w.dispatchEvent(new p.w.PopStateEvent('popstate')); await tick();
+  const textarea = p.query('.sidepeek-footer-textarea');
+  textarea.focus(); textarea.value = 'Draft while loading';
+  textarea.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+  p.w.history.pushState({}, '', '/explore');
+  p.w.dispatchEvent(new p.w.PopStateEvent('popstate'));
+  finish(thread('200')); await tick();
+  assert.ok(p.query('.sidepeek-comment-item[data-id="201"]'));
+  assert.equal(p.query('.sidepeek-footer-textarea').value, 'Draft while loading');
+  assert.equal(p.query('.sidepeek-loading-box'), null);
+});
+
 test('quoted text expands in place without opening a window, keeps its links and expanded state, and can collapse again', async t => {
   const quoteText = 'Some words about the photograph. '.repeat(40) + ' https://example.com/source';
   const p = createPage({ request: m => {

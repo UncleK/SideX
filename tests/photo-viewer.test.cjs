@@ -56,6 +56,7 @@ test('an explicit official photo preference is preserved and the real settings p
   assert.equal(drawer.parentElement, photo.panel);
   assert.equal(p.query('.sidepeek-footer-textarea').value, 'Keep my photo reply');
 
+  p.query('.sidepeek-btn-close').click();
   photo.dialog.remove();
   p.w.history.pushState({}, '', '/home'); p.w.dispatchEvent(new p.w.PopStateEvent('popstate')); await tick(70);
   assert.equal(drawer.isConnected, true);
@@ -136,6 +137,81 @@ test('the SideX collapse button delegates to the native viewer and expanding kee
   assert.equal(scroll.scrollTop, 392);
   assert.equal(textarea.value, 'Draft beside photo');
   assert.equal(p.calls.filter(m => m.type === 'READ_THREAD').length, reads);
+});
+
+test('leaving a photo while editing restores a working close button and clears viewer layout', async t => {
+  const p = createPage(); t.after(() => p.w.close()); await tick();
+  const photo = mountPhoto(p); await tick(70);
+  const toggle = p.w.document.createElement('button');
+  toggle.innerHTML = '<svg><path d="M11.59 12L3.54 3.96l1.42-1.42L14.41 12l-9.45 9.46-1.42-1.42L11.59 12zm7 0l-8.05-8.04 1.42-1.42L21.41 12l-9.45 9.46-1.42-1.42L18.59 12z"></path></svg>';
+  photo.dialog.prepend(toggle); p.change({ sidex_lang: { newValue: 'zh' } });
+  assert.equal(p.query('.sidepeek-btn-close').style.display, 'none');
+  const textarea = p.query('.sidepeek-footer-textarea');
+  textarea.focus(); textarea.value = 'Keep the photo draft';
+  textarea.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+  photo.dialog.remove();
+  p.w.history.pushState({}, '', '/home'); p.w.dispatchEvent(new p.w.PopStateEvent('popstate')); await tick(70);
+  const drawer = p.query('#sidepeek-drawer-root');
+  assert.equal(drawer.isConnected, true);
+  assert.equal(drawer.classList.contains('sidepeek-open'), true);
+  assert.equal(p.w.document.documentElement.hasAttribute('data-sidex-photo-view'), false);
+  assert.equal(p.query('.sidepeek-btn-close').style.display, 'inline-flex');
+  assert.equal(p.query('.sidepeek-btn-photo-collapse').style.display, 'none');
+  assert.equal(p.query('.sidepeek-footer-textarea').value, 'Keep the photo draft');
+  p.query('.sidepeek-btn-close').click();
+  assert.equal(drawer.classList.contains('sidepeek-open'), false);
+});
+
+test('a protected photo reply offers an explicit close button alongside the native collapse control', async t => {
+  const p = createPage(); t.after(() => p.w.close()); await tick();
+  const photo = mountPhoto(p); await tick(70);
+  const toggle = p.w.document.createElement('button');
+  toggle.innerHTML = '<svg><path d="M11.59 12L3.54 3.96l1.42-1.42L14.41 12l-9.45 9.46-1.42-1.42L11.59 12zm7 0l-8.05-8.04 1.42-1.42L21.41 12l-9.45 9.46-1.42-1.42L18.59 12z"></path></svg>';
+  photo.dialog.prepend(toggle); p.change({ sidex_lang: { newValue: 'zh' } });
+  p.query('.sidepeek-footer-textarea').focus();
+  assert.equal(p.query('.sidepeek-btn-close').style.display, 'inline-flex');
+  assert.equal(p.query('.sidepeek-btn-photo-collapse').style.display, 'inline-flex');
+  p.query('.sidepeek-btn-close').click();
+  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), false);
+  assert.equal(photo.panel.hasAttribute('data-sidex-photo-panel'), false);
+  assert.equal(photo.dialog.isConnected, true);
+});
+
+test('editing keeps the same conversation docked when navigating to another photo post', async t => {
+  const p = createPage(); t.after(() => p.w.close()); await tick();
+  const photo = mountPhoto(p); await tick(70);
+  const drawer = p.query('#sidepeek-drawer-root');
+  const textarea = p.query('.sidepeek-footer-textarea');
+  textarea.focus(); textarea.value = 'Reply to photo 300';
+  textarea.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+  photo.dialog.remove();
+  const next = mountPhoto(p, '400'); await tick(70);
+  assert.equal(drawer.parentElement, next.panel);
+  assert.ok(p.query('.sidepeek-photo-focal[data-id="300"]'));
+  assert.equal(p.query('.sidepeek-footer-textarea').value, 'Reply to photo 300');
+  assert.equal(p.calls.some(m => m.type === 'READ_THREAD' && m.tweetId === '400'), false);
+});
+
+test('opening an official quick tool keeps the active photo reply docked in its viewer', async t => {
+  let p;
+  p = createPage({ request: m => {
+    if (m.type !== 'OPEN_NATIVE_REPLY') return thread(m.tweetId);
+    const dialog = p.w.document.createElement('div'); dialog.setAttribute('role', 'dialog');
+    dialog.innerHTML = '<div contenteditable="true" tabindex="0" data-testid="tweetTextarea_0"></div><button data-testid="gifSearchButton">GIF</button>';
+    p.query('#layers').append(dialog); p.w.history.pushState({}, '', '/compose/post');
+    p.w.dispatchEvent(new p.w.PopStateEvent('popstate'));
+    return { opened: true };
+  } });
+  t.after(() => p.w.close());
+  p.w.document.execCommand = (_, __, text) => { p.w.document.activeElement.textContent = text; return true; };
+  await tick(); const photo = mountPhoto(p); await tick(70);
+  const textarea = p.query('.sidepeek-footer-textarea');
+  textarea.focus(); textarea.value = 'Photo reply with GIF';
+  textarea.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+  p.query('.sidepeek-tool-gif').click(); await tick(70);
+  assert.equal(p.query('#sidepeek-drawer-root').parentElement, photo.panel);
+  assert.equal(photo.panel.hasAttribute('data-sidex-photo-panel'), true);
+  assert.equal(p.query('.sidepeek-footer-textarea').value, 'Photo reply with GIF');
 });
 
 test('home image links keep native navigation while post text still opens SideX in place under either photo preference', async t => {
