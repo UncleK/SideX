@@ -161,6 +161,24 @@ test('the close button ends reply protection without losing the same-page draft'
   assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), true);
 });
 
+test('starting a reply while detail comments load accepts the matching response across navigation', async t => {
+  let finish;
+  const p = createPage({ request: m => m.tweetId === '200' ? new Promise(resolve => { finish = resolve; }) : thread(m.tweetId) });
+  t.after(() => p.w.close());
+  await tick(); p.clickPost(0); await tick();
+  p.w.history.pushState({}, '', '/reader/status/200');
+  p.w.dispatchEvent(new p.w.PopStateEvent('popstate')); await tick();
+  const textarea = p.query('.sidepeek-footer-textarea');
+  textarea.focus(); textarea.value = 'Draft while loading';
+  textarea.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+  p.w.history.pushState({}, '', '/explore');
+  p.w.dispatchEvent(new p.w.PopStateEvent('popstate'));
+  finish(thread('200')); await tick();
+  assert.ok(p.query('.sidepeek-comment-item[data-id="201"]'));
+  assert.equal(p.query('.sidepeek-footer-textarea').value, 'Draft while loading');
+  assert.equal(p.query('.sidepeek-loading-box'), null);
+});
+
 test('quoted text expands in place without opening a window, keeps its links and expanded state, and can collapse again', async t => {
   const quoteText = 'Some words about the photograph. '.repeat(40) + ' https://example.com/source';
   const p = createPage({ request: m => {

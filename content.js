@@ -109,7 +109,7 @@
     resetScrollOnRender: false,
     activeView: "root", // "root" or { type: "drilldown", parentId: string }
     replyTarget: null, // Comment model being replied to, or null for focal tweet
-    replyEditing: false,
+    replyEditing: null, // Draft protected from automatic dismissal or replacement.
     loading: false,
     error: "",
     isResizing: false,
@@ -167,6 +167,10 @@
             const textarea = document.querySelector(".sidepeek-footer-textarea");
             if (textarea) textarea.value = "";
             document.querySelector(".sidepeek-footer-composer")?._sidepeekComposer?.refresh();
+            if (state.threadGeneration === intent.generation && state.replyEditing === intent.draft) {
+              state.replyEditing = null;
+              syncPhotoHeader(drawerRoot);
+            }
           }
           state.nativeReplyTransfer = null;
         }
@@ -250,7 +254,7 @@
       }
       if (changes.sidex_reply_mode !== undefined) {
         state.replyMode = changes.sidex_reply_mode.newValue === "native" ? "native" : "drawer";
-        if (state.replyMode === "native") state.replyEditing = false;
+        if (state.replyMode === "native") state.replyEditing = null;
         if (state.open) renderDrawer(true);
       }
       if (changes.sidex_sub_reply_limit !== undefined) {
@@ -727,24 +731,17 @@
 
   function syncPhotoHeader(root) {
     const canCollapse = Boolean(dockedPhotoPanel && findPhotoCollapseButton());
-    const collapse = root.querySelector('.sidepeek-btn-photo-collapse');
-    const close = root.querySelector('.sidepeek-btn-close');
-    const reset = root.querySelector('.sidepeek-btn-reset-width');
+    const collapse = root?.querySelector('.sidepeek-btn-photo-collapse');
+    const close = root?.querySelector('.sidepeek-btn-close');
+    const reset = root?.querySelector('.sidepeek-btn-reset-width');
     if (collapse) collapse.style.display = canCollapse ? "inline-flex" : "none";
-    if (close) close.style.display = canCollapse ? "none" : "inline-flex";
+    if (close) close.style.display = canCollapse && !state.replyEditing ? "none" : "inline-flex";
     if (reset) reset.style.display = dockedPhotoPanel ? "none" : "inline-flex";
   }
 
   function syncPhotoViewer() {
     if (!isSideXEnabled) return false;
     const match = location.pathname.match(/\/status\/(\d+)\/photo\/\d+\/?$/);
-    if (state.open && state.replyEditing && match?.[1] !== state.focalTweetId) {
-      if (dockedPhotoPanel) {
-        releasePhotoPanel();
-        updateDrawerPosition();
-      }
-      return Boolean(match);
-    }
     if (match) {
       const swipe = document.querySelector('#layers [data-testid="swipe-to-dismiss"]');
       const viewer = swipe?.closest('[role="dialog"]');
@@ -770,12 +767,12 @@
         }
         if (root.parentElement !== panel) panel.appendChild(root);
         document.documentElement.setAttribute("data-sidex-photo-view", "sidex");
-        if (!state.open || state.focalTweetId !== tweetId) openDrawerForTweet(tweetId, findDetailFocalArticle(tweetId));
+        if ((!state.open || state.focalTweetId !== tweetId) && !state.replyEditing) openDrawerForTweet(tweetId, findDetailFocalArticle(tweetId));
         else {
           updateDrawerPosition();
           if (remounting) {
             const body = root.querySelector('.sidepeek-body');
-            if (body) body.scrollTop = photoScrollPositions.get(tweetId) || 0;
+            if (body) body.scrollTop = photoScrollPositions.get(state.focalTweetId) || 0;
           }
         }
         syncPhotoHeader(root);
@@ -785,7 +782,7 @@
       return true;
     }
     // The reply dialog and its pickers can temporarily cover a photo viewer.
-    if (photoViewer && (nativeReplyOpening || document.querySelector('#layers [role="dialog"]'))) return true;
+    if (photoViewer?.viewer.isConnected && (nativeReplyOpening || document.querySelector('#layers [role="dialog"]'))) return true;
     if (photoViewer || dockedPhotoPanel) {
       const wasDocked = Boolean(dockedPhotoPanel);
       releasePhotoPanel();
@@ -2145,7 +2142,7 @@
         input.files = transfer.files;
         input.dispatchEvent(new Event("change", { bubbles: true }));
       }
-      state.nativeReplyTransfer = { focalId, targetId, draft: composerDrafts.get(`${focalId}:${targetId}`), text: draftText };
+      state.nativeReplyTransfer = { focalId, targetId, draft: composerDrafts.get(`${focalId}:${targetId}`), text: draftText, generation: state.threadGeneration };
       nativeLayers?.sync(document.getElementById(ROOT_ID));
       if (tool) {
         const button = dialog.querySelector(`[data-testid="${tool}"]`);
@@ -2185,6 +2182,11 @@
     }
   }
 
+  function protectReplyDraft(draft) {
+    state.replyEditing = draft;
+    syncPhotoHeader(drawerRoot);
+  }
+
   function initFooterComposer(root, isDrillDown, drillDownParent) {
     const footer = root.querySelector(".sidepeek-footer-composer");
     if (!footer) return;
@@ -2207,7 +2209,7 @@
 
     const textarea = footer.querySelector(".sidepeek-footer-textarea");
     const previewArea = footer.querySelector(".sidepeek-footer-preview-area");
-    textarea?.addEventListener("focus", () => { state.replyEditing = true; });
+    textarea?.addEventListener("focus", () => protectReplyDraft(draft));
     const submitBtn = footer.querySelector(".sidepeek-footer-submit-btn");
     const fileInput = footer.querySelector(".sidepeek-media-file-input");
 
@@ -2235,6 +2237,7 @@
     let draftKey = getDraftKey();
     let draft = getDraft(draftKey);
     textarea.value = draft.text;
+    if (draft.sending) protectReplyDraft(draft);
 
     // Use the official text parser for URLs, Unicode weights and emoji groups.
     const calculateTweetLength = Core.tweetLength;
@@ -2325,7 +2328,7 @@
     }
 
     textarea?.addEventListener("input", () => {
-      state.replyEditing = true;
+      protectReplyDraft(draft);
       updateComposerState();
     });
 
@@ -2476,6 +2479,7 @@
       const files = Array.from(fileList || []).filter((f) => f && /^image\/(?:jpeg|png|webp)$/.test(f.type || ""));
       if (files.length !== Array.from(fileList || []).length) showToast(t("quickMediaFormats"));
       if (!files.length) return;
+      protectReplyDraft(draft);
 
       const remaining = MAX_MEDIA - draft.media.length;
       if (remaining <= 0) {
@@ -2543,6 +2547,7 @@
       footer.querySelector(`.sidepeek-tool-${name}`)?.addEventListener("click", e => {
         e.stopPropagation();
         if (draft.sending || draft.media.some(item => item.isUploading)) return;
+        protectReplyDraft(draft);
         openNativeReplyDialog(getTargetId(), textarea?.value || "", draft.media.map(item => item.file).filter(Boolean), { tool });
       });
     }
@@ -2562,6 +2567,7 @@
       const targetId = getTargetId();
       const focalId = state.focalTweetId;
       const generation = state.threadGeneration;
+      protectReplyDraft(ownerDraft);
       ownerDraft.sending = true;
       ownerDraft.text = textarea.value;
       updateComposerState();
@@ -2582,15 +2588,16 @@
           acceptCreatedReply(created);
         }
         showToast(t("replySent"));
-        if (active && draft === ownerDraft && state.open && state.focalTweetId === focalId && state.threadGeneration === generation) {
-          state.replyEditing = false;
+        if (state.replyEditing === ownerDraft && state.open && state.focalTweetId === focalId && state.threadGeneration === generation) {
+          state.replyEditing = null;
+          syncPhotoHeader(drawerRoot);
         }
       } catch (err) {
         showToast(err.message || t("replyFailed"));
       } finally {
         ownerDraft.sending = false;
         if (active) updateComposerState();
-        else document.querySelector(".sidepeek-footer-composer")?._sidepeekComposer?.refresh();
+        else document.querySelector(".sidepeek-footer-composer")?._sidepeekComposer?.refresh(ownerDraft);
       }
     }
 
@@ -2610,11 +2617,15 @@
         draftKey = nextKey;
         draft = getDraft(nextKey);
         textarea.value = draft.text;
+        if (state.replyEditing || draft.sending) protectReplyDraft(draft);
         closeAllPopovers();
         renderMediaPreviews();
         updateComposerState();
       },
-      refresh() { renderMediaPreviews(); updateComposerState(); },
+      refresh(changedDraft) {
+        if (draft === changedDraft) textarea.value = draft.text;
+        renderMediaPreviews(); updateComposerState();
+      },
       dispose() {
         draft.text = textarea.value;
         active = false;
@@ -3701,8 +3712,8 @@
   }
 
   async function checkDetailPageAutoOpen() {
-    if (state.open && state.replyEditing) return;
     if (syncPhotoViewer()) return;
+    if (state.open && state.replyEditing) return;
     // Pickers such as GIF search temporarily use /i/foundmedia/search. They
     // are overlays on the current post, not navigation away from its thread.
     if (nativeReplyOpening || document.querySelector('#layers [role="dialog"]')) return;
@@ -3746,9 +3757,8 @@
       try {
         const json = await requestPage("READ_THREAD", { tweetId });
         if (generation !== state.threadGeneration) return;
-        if (state.open && state.replyEditing) return;
-        // 确保异步返回时用户没有跳转到其他帖子
-        if (Core.postIdFromUrl(location.href) !== tweetId) return;
+        // A protected reply stays on its original thread even when X navigates.
+        if (Core.postIdFromUrl(location.href) !== tweetId && !(state.open && state.replyEditing && state.focalTweetId === tweetId)) return;
         if (userClosedTweetId === tweetId) return;
 
         const { focal, replies, cursor } = Core.parseTweetDetail(json, tweetId);
@@ -3853,7 +3863,7 @@
     closeShareMenu();
     hideUserHoverCard();
     state.open = false;
-    state.replyEditing = false;
+    state.replyEditing = null;
     state.replyTarget = null;
     state.resetScrollOnRender = true;
     userClosedTweetId = state.focalTweetId;
