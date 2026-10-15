@@ -48,6 +48,7 @@ function createPage({ request, settings = {} } = {}) {
         data: { source: 'sidepeek-page', requestId: message.requestId, ok: false, error: error.message } }))
     );
   };
+  w.eval(source('vendor/twitter-text.js'));
   w.eval(source('core.js'));
   w.eval(source('content.js'));
   return { dom, w, calls, change: changes => changeListener(changes),

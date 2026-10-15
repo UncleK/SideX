@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { JSDOM } = require('jsdom');
-const { source, tick, user, thread, createPage } = require('./helpers.cjs');
+const { source, tick, user, tweet, thread, createPage } = require('./helpers.cjs');
 
 test('current and legacy profile shapes preserve zero and unknown values', () => {
   const dom = new JSDOM('', { runScripts: 'outside-only' });
@@ -54,6 +54,40 @@ test('a late response cannot replace the newer post or reopen a closed drawer', 
   p.query('.sidepeek-btn-close').click();
   pending.get('100')(thread('100')); await tick();
   assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), false);
+});
+
+test('quoted text expands in place without opening a window, keeps its links and expanded state, and can collapse again', async t => {
+  const quoteText = 'Some words about the photograph. '.repeat(40) + ' https://example.com/source';
+  const p = createPage({ request: m => {
+    const json = thread(m.tweetId);
+    const result = json.data.find(entry => entry.tweet_results.result.rest_id === '101')?.tweet_results.result;
+    if (result) result.quoted_status_result = { result: tweet('500', '', quoteText) };
+    return json;
+  } });
+  t.after(() => p.w.close()); await tick(); p.clickPost(0); await tick();
+  const card = p.query('.sidepeek-quote-card');
+  const text = card.querySelector('.sidepeek-quote-text');
+  const toggle = card.querySelector('.sidepeek-quote-toggle');
+  Object.defineProperty(text, 'clientHeight', { get: () => 57 });
+  Object.defineProperty(text, 'scrollHeight', { get: () => 900 });
+  const opened = []; p.w.open = (...args) => opened.push(args);
+  p.change({ sidex_lang: { newValue: 'zh' } });
+  assert.equal(toggle.hidden, false);
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+  toggle.click();
+  assert.equal(text.classList.contains('sidepeek-quote-text-expanded'), true);
+  assert.equal(opened.length, 0);
+  assert.match(text.textContent, /example.com\/source/);
+  assert.ok(text.querySelector('a[href="https://example.com/source"]'));
+  assert.equal(toggle.getAttribute('aria-controls'), text.id);
+  p.change({ sidex_reply_mode: { newValue: 'native' } });
+  assert.equal(p.query('.sidepeek-quote-card'), card);
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+  toggle.click();
+  assert.equal(text.classList.contains('sidepeek-quote-text-expanded'), false);
+  assert.equal(opened.length, 0);
+  card.click();
+  assert.equal(opened[0][0], 'https://x.com/reader/status/500');
 });
 
 test('failed actions restore count, icon and pressed state; duplicate clicks send one request', async t => {
@@ -140,8 +174,12 @@ test('an absent native reply never clicks an unrelated post containing its quote
   const quote = p.w.document.createElement('a'); quote.href = '/reader/status/101'; quote.textContent = 'Quoted post'; article.append(quote);
   const button = p.w.document.createElement('button'); button.dataset.testid = 'reply'; article.append(button);
   let wrongReplies = 0; button.addEventListener('click', () => wrongReplies++);
-  let opened; p.w.open = url => { opened = url; };
+  let opened; p.w.open = () => assert.fail('Official reply must stay in the current window');
+  p.w.document.addEventListener('click', event => {
+    if (event.target.matches('[data-sidex-native-reply-link]')) { opened = event.target.href; event.preventDefault(); }
+  });
   await tick(); p.clickPost(0); await tick(); p.query('.sidepeek-act-reply').click();
+  await tick();
   assert.equal(wrongReplies, 0);
   assert.match(opened, /in_reply_to=101/);
 });

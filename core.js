@@ -49,6 +49,11 @@
     return Number.isFinite(number) ? number : 0;
   }
 
+  function tweetLength(text) {
+    if (!text) return 0;
+    return root.SidePeekTwitterText.parseTweet(String(text)).weightedLength;
+  }
+
   function unwrapResult(value) {
     let current = objectValue(value);
     for (let index = 0; current && index < 6; index += 1) {
@@ -176,34 +181,23 @@
     const quoted = depth < 1 ? tweetModel(tweet.quoted_status_result, depth + 1) : null;
     const media = mediaItems(legacy, tweet);
 
-    // 清理正文中被 X 附带在末尾的媒体 t.co 短链接
+    // Apply offsets before modifying text. A leading @mention inside the
+    // display range is authored content, even when this tweet is a reply.
+    const range = legacy.display_text_range;
+    if (typeof note?.text !== "string" && Array.isArray(range) &&
+        Number.isInteger(range[0]) && range[0] > 0 && range[0] <= text.length) {
+      text = text.slice(range[0]);
+    }
+
+    // Remove only links identified as attachments. A photo/video reply can
+    // also end with a real source link; its t.co hostname proves nothing.
     const mediaEntities = [
       ...(legacy.extended_entities?.media || []),
       ...(legacy.entities?.media || []),
       ...(note?.entity_set?.media || [])
     ];
-    for (const m of mediaEntities) {
-      if (m.url) {
-        text = text.replace(m.url, "").trim();
-      }
-    }
-    if (media.length > 0) {
-      text = text.replace(/\s*https:\/\/t\.co\/[A-Za-z0-9]+$/, "").trim();
-    }
-
-    // 清理回复推文中由 X 自动附加在开头的 @用户名 前缀（因顶部已渲染「回复 @xxx」标签）
-    const inReplyToHandle = String(legacy.in_reply_to_screen_name || "");
-    const inReplyToId = String(legacy.in_reply_to_status_id_str || "");
-    if (inReplyToHandle || inReplyToId) {
-      const range = legacy.display_text_range;
-      if (Array.isArray(range) && range.length === 2 && typeof range[0] === "number" && range[0] > 0 && typeof note?.text !== "string") {
-        text = text.slice(range[0]).trim();
-      } else {
-        text = text.replace(/^(?:@[A-Za-z0-9_]+\s*)+/, "").trim();
-      }
-    }
-
     const mediaUrls = new Set(mediaEntities.map((m) => m.url).filter(Boolean));
+    text = text.replace(/https?:\/\/t\.co\/[A-Za-z0-9]+/g, url => mediaUrls.has(url) ? "" : url).trim();
     const rawUrls = [
       ...(legacy.entities?.urls || []),
       ...(note?.entity_set?.urls || [])
@@ -277,7 +271,7 @@
         reposted: Boolean(legacy.retweeted || legacy.current_user_retweet?.id_str),
         bookmarked: Boolean(legacy.bookmarked)
       },
-      media: mediaItems(legacy, tweet),
+      media,
       quote: quoted,
       card: extractCard(tweet, legacy),
       lang: String(legacy.lang || "").toLowerCase()
@@ -292,6 +286,7 @@
     function visit(node) {
       if (!node || typeof node !== "object" || seenNodes.has(node)) return;
       seenNodes.add(node);
+      if (node.promotedMetadata || node.promoted_metadata) return;
       const result = node.tweet_results?.result || node.tweetResult?.result;
       if (result) {
         const model = tweetModel(result);
@@ -314,28 +309,34 @@
 
   function bottomCursor(value) {
     let cursor = null;
+    let fallback = null;
     const seen = new Set();
     function visit(node) {
       if (cursor || !node || typeof node !== "object" || seen.has(node)) return;
       seen.add(node);
+      if (node.promotedMetadata || node.promoted_metadata || node.tweet_results || node.tweetResult) return;
+      // Module cursors belong to inline subthreads, not the current page.
+      if (node.entryType === "TimelineTimelineModule" || node.__typename === "TimelineTimelineModule" ||
+          /^conversationthread-/i.test(String(node.entryId || ""))) return;
       if (/^Bottom$/i.test(String(node.cursorType || "")) && typeof node.value === "string") {
         cursor = node.value;
         return;
       }
-      if (/^(?:ShowMoreThreads|ShowMoreThread)$/i.test(String(node.cursorType || "")) && typeof node.value === "string" && !cursor) {
-        cursor = node.value;
+      if (/^(?:ShowMoreThreads|ShowMoreThread)$/i.test(String(node.cursorType || "")) && typeof node.value === "string" && !fallback) {
+        fallback = node.value;
       }
       if (Array.isArray(node)) node.forEach(visit);
       else for (const child of Object.values(node)) visit(child);
     }
     visit(value);
-    return cursor;
+    return cursor || fallback;
   }
 
-  function parseTweetDetail(json, focalTweetId) {
+  function parseTweetDetail(json, focalTweetId, knownModels = []) {
     const focalId = String(focalTweetId || "");
     const models = collectTweetModels(json?.data || json);
-    const byId = new Map(models.map((model) => [model.id, model]));
+    // Cursor pages may omit the focal tweet and intermediate parents.
+    const byId = new Map([...knownModels, ...models].filter(Boolean).map((model) => [model.id, model]));
     const focal = byId.get(focalId) || null;
 
     if (!focal) return { focal: null, replies: [], cursor: null };
@@ -360,10 +361,8 @@
         visited.add(parentId);
         parentId = byId.get(parentId)?.inReplyToId || "";
       }
-      // 如果推特返回了当前 focalId 会话中的其他子回复，即使中间父节点未完整返回，只要属于同一个会话且不是祖先，也作为回复纳入
-      if (focal.conversationId && model.conversationId && model.conversationId === focal.conversationId) {
-        return true;
-      }
+      // Sharing a conversation with a nested focal does not make a sibling
+      // its child. Only the conversation root can admit orphaned branches.
       return false;
     }
 
@@ -433,6 +432,7 @@
     isPostDetailUrl,
     selectOwnPostUrl,
     userModel,
+    tweetLength,
     tweetModel,
     collectTweetModels,
     parseTweetDetail,

@@ -14,7 +14,7 @@
         <img src="icons/icon-32.png" alt="SideX Logo" class="sidex-popup-logo" />
         <div class="sidex-popup-title-group">
           <span class="sidex-popup-title">SideX</span>
-          <span class="sidex-popup-badge" id="sidex-version-badge">v1.1.10</span>
+          <span class="sidex-popup-badge" id="sidex-version-badge">v1.1.18</span>
         </div>
       </div>
       <!-- Language Switcher in Header -->
@@ -41,10 +41,20 @@
       <div class="sidex-action-row">
         <div class="sidex-action-label" id="txt-reply-mode-label">回复模式</div>
         <div class="sidex-pill-group" id="sidex-reply-mode-group">
-          <button type="button" class="sidex-pill-btn active" data-mode="drawer" id="btn-mode-drawer">侧栏</button>
-          <button type="button" class="sidex-pill-btn" data-mode="native" id="btn-mode-native">官方</button>
+          <button type="button" class="sidex-pill-btn active" data-mode="drawer" id="btn-mode-drawer">快捷回复</button>
+          <button type="button" class="sidex-pill-btn" data-mode="native" id="btn-mode-native">官方弹窗</button>
         </div>
       </div>
+      <p class="sidex-setting-hint" id="txt-reply-mode-hint"></p>
+      <div class="sidex-card-divider"></div>
+      <div class="sidex-action-row">
+        <div class="sidex-action-label" id="txt-photo-mode-label">图片评论区</div>
+        <div class="sidex-pill-group" id="sidex-photo-mode-group">
+          <button type="button" class="sidex-pill-btn" data-photo-mode="native" id="btn-photo-native">官方样式</button>
+          <button type="button" class="sidex-pill-btn active" data-photo-mode="sidex" id="btn-photo-sidex">SideX 样式</button>
+        </div>
+      </div>
+      <p class="sidex-setting-hint" id="txt-photo-mode-hint"></p>
       <div class="sidex-card-divider"></div>
       <div class="sidex-action-row">
         <label class="sidex-action-label" id="txt-translation-label" for="sidex-translation-provider">翻译方式</label>

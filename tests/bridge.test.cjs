@@ -16,6 +16,7 @@ function bridge(fetchResult) {
     requests.push(request);
     return fetchResult?.(request) || { ok: true, json: async () => ({ data: { success: true } }) };
   };
+  w.eval(source('vendor/twitter-text.js'));
   w.eval(source('page-bridge.js'));
   let id = 0;
   const send = data => new Promise((resolve, reject) => {
@@ -73,6 +74,119 @@ test('captured official feature switches stay false when X disabled them', async
   await b.w.fetch(url.href);
   await assert.rejects(b.send({ type: 'FETCH_USER_PROFILE', screenName: 'reader' }));
   assert.deepEqual(JSON.parse(b.requests.at(-1).url.searchParams.get('features')), { enabled: true, disabled: false });
+});
+
+test('comment pagination forwards the focal ID and opaque cursor to TweetDetail', async t => {
+  const b = bridge(); t.after(() => b.w.close());
+  await b.w.fetch('/i/api/graphql/observed/TweetDetail?variables=%7B%7D');
+  await b.send({ type: 'READ_THREAD', tweetId: '123', cursor: 'opaque+/cursor==' });
+  const variables = JSON.parse(b.requests.at(-1).url.searchParams.get('variables'));
+  assert.equal(variables.focalTweetId, '123');
+  assert.equal(variables.cursor, 'opaque+/cursor==');
+});
+
+test('native replies use X router state for the exact target without navigation, publication or another window', async t => {
+  const b = bridge(); t.after(() => b.w.close());
+  const link = b.w.document.createElement('a'); link.href = '/compose/post'; b.w.document.body.append(link);
+  const routed = [];
+  link.__reactFiber$test = { return: { memoizedProps: { history: { push: (...args) => routed.push(args) } } } };
+  b.w.open = () => assert.fail('No new windows');
+  assert.equal((await b.send({ type: 'OPEN_NATIVE_REPLY', tweetId: '123' })).opened, true);
+  assert.equal(routed[0][0], '/compose/post');
+  assert.equal(routed[0][1].inReplyToStatusId, '123');
+  assert.equal(routed[0][1].previousPath, '/home');
+  assert.equal(b.requests.length, 0);
+  const modal = b.w.document.createElement('div'); modal.id = 'layers';
+  modal.innerHTML = '<div role="dialog"><div data-testid="tweetTextarea_0">Other draft</div></div>'; b.w.document.body.append(modal);
+  await assert.rejects(b.send({ type: 'OPEN_NATIVE_REPLY', tweetId: '456' }), /NATIVE_DRAFT_ALREADY_OPEN/);
+  assert.equal(routed.length, 1);
+  assert.equal(modal.textContent, 'Other draft');
+});
+
+test('an ambiguous long-post failure never retries through another publication operation', async t => {
+  const b = bridge(() => ({ ok: false, status: 503, json: async () => ({ errors: [{ message: 'Temporary failure' }] }) }));
+  t.after(() => b.w.close());
+  await b.w.fetch('/i/api/graphql/note/CreateNoteTweet', { method: 'POST', body: '{}' });
+  await assert.rejects(b.send({ type: 'CREATE_REPLY', tweetId: '100', text: 'x'.repeat(300) }), /Temporary failure/);
+  assert.equal(b.requests.length, 2);
+  assert.equal(b.requests.some(r => r.url.pathname.endsWith('/CreateTweet')), false);
+});
+
+test('Escape from a quick tool returns directly to its starting entry, including a photo viewer, and leaves official replies alone', async t => {
+  for (const path of ['/home', '/reader/status/123/photo/1']) {
+    const b = bridge(); t.after(() => b.w.close());
+    b.w.history.replaceState({}, '', path);
+    const link = b.w.document.createElement('a'); link.href = '/compose/post'; b.w.document.body.append(link);
+    const layers = b.w.document.createElement('div'); layers.id = 'layers'; b.w.document.body.append(layers);
+    const router = { _currentLocationIndex: 5,
+      push(url) { this._currentLocationIndex++; b.w.history.pushState({}, '', url); },
+      go(delta) {
+        assert.equal(delta, -2, 'skip both the picker and intermediate composer');
+        this._currentLocationIndex += delta; layers.replaceChildren();
+        b.w.history.replaceState({}, '', path);
+      } };
+    link.__reactFiber$test = { memoizedProps: { history: router } };
+    let nativeEsc = 0;
+    b.w.addEventListener('keydown', () => nativeEsc++, true);
+    assert.equal((await b.send({ type: 'OPEN_NATIVE_REPLY', tweetId: '123', quickTool: true })).opened, true);
+    layers.innerHTML = '<div role="dialog"><input aria-label="Search for GIFs"></div>';
+    router.push('/i/foundmedia/search');
+    const event = new b.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    b.w.document.dispatchEvent(event);
+    assert.equal(event.defaultPrevented, true);
+    assert.equal(nativeEsc, 0);
+    assert.equal(b.w.location.pathname, path);
+    assert.equal(layers.children.length, 0);
+    assert.equal((await b.send({ type: 'OPEN_NATIVE_REPLY', tweetId: '123' })).opened, true);
+    layers.innerHTML = '<div role="dialog"><div data-testid="tweetTextarea_0"></div></div>';
+    b.w.document.dispatchEvent(new b.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    assert.equal(nativeEsc, 1, 'explicit official replies retain the official handler');
+    assert.equal(b.requests.length, 0);
+  }
+});
+
+test('quick tools require a tracked return entry, while photo inline editors are not mistaken for unrelated reply dialogs', async t => {
+  const b = bridge(); t.after(() => b.w.close());
+  const link = b.w.document.createElement('a'); link.href = '/compose/post'; b.w.document.body.append(link);
+  let opened = 0;
+  link.__reactFiber$test = { memoizedProps: { history: { push() { opened++; } } } };
+  assert.equal((await b.send({ type: 'OPEN_NATIVE_REPLY', tweetId: '123', quickTool: true })).opened, false);
+  assert.equal(opened, 0);
+  const layers = b.w.document.createElement('div'); layers.id = 'layers';
+  layers.innerHTML = '<div role="dialog"><div data-testid="swipe-to-dismiss"></div><section role="region"><div data-testid="tweetTextarea_0">Photo inline draft</div></section></div>';
+  b.w.document.body.append(layers);
+  assert.equal((await b.send({ type: 'OPEN_NATIVE_REPLY', tweetId: '123' })).opened, true);
+  assert.equal(opened, 1);
+  assert.equal(layers.textContent, 'Photo inline draft');
+});
+
+test('native creation responses notify the sidebar without consuming the response body', async t => {
+  const payload = { data: { create_tweet: { tweet_results: { result: { rest_id: '999' } } } } };
+  let clones = 0;
+  const b = bridge(() => ({ ok: true, clone() { clones++; return { json: async () => payload }; }, json: async () => payload }));
+  t.after(() => b.w.close());
+  const event = new Promise(resolve => b.w.addEventListener('message', message => {
+    if (message.data?.type === 'REPLY_CREATED') resolve(message.data);
+  }));
+  const response = await b.w.fetch('/i/api/graphql/create/CreateTweet', { method: 'POST', body: '{}' });
+  assert.equal((await event).payload.data.create_tweet.tweet_results.result.rest_id, '999');
+  assert.equal(clones, 1);
+  assert.deepEqual(await response.json(), payload);
+});
+
+test('a long raw URL is still a standard tweet after official URL weighting', async t => {
+  const b = bridge(); t.after(() => b.w.close());
+  await b.w.fetch('/i/api/graphql/create/CreateTweet', { method: 'POST', body: '{}' });
+  await b.send({ type: 'CREATE_REPLY', tweetId: '100', text: 'https://example.com/' + 'a'.repeat(350) });
+  assert.equal(b.requests.length, 2);
+  assert.ok(b.requests.at(-1).url.pathname.endsWith('/CreateTweet'));
+});
+
+test('a failed upload INIT is rejected even when its error payload contains a media ID', async t => {
+  const b = bridge(() => ({ ok: false, status: 400, json: async () => ({ media_id_string: '77' }) }));
+  t.after(() => b.w.close());
+  await assert.rejects(b.send({ type: 'UPLOAD_MEDIA', base64: 'aGVsbG8=', mimeType: 'image/png', size: 5 }), /400/);
+  assert.equal(b.requests.length, 1);
 });
 
 test('Google chunks preserve the complete Unicode text, links and whitespace; requests are deduplicated', async () => {

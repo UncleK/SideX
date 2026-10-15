@@ -99,6 +99,13 @@
     XMLHttpRequest.prototype.send = function sidePeekSend(body) {
       const request = requests.get(this);
       if (request) rememberRequest(request.url, request.method, request.headers, body);
+      if (request && /\/(?:CreateTweet|CreateNoteTweet)(?:[?#]|$)/.test(request.url)) {
+        this.addEventListener("load", () => {
+          if (this.status < 200 || this.status >= 300) return;
+          try { observeCreatedReply(request.url, this.responseType === "json" ? this.response : JSON.parse(this.responseText)); }
+          catch { /* Observing must never affect X's own request. */ }
+        }, { once: true });
+      }
       return Reflect.apply(originalSend, this, [body ?? null]);
     };
   }
@@ -114,8 +121,26 @@
       } catch {
         // Safe fallback
       }
-      return Reflect.apply(originalFetch, this, [input, init]);
+      const result = Reflect.apply(originalFetch, this, [input, init]);
+      const url = input instanceof Request ? input.url : String(input);
+      if (/\/(?:CreateTweet|CreateNoteTweet)(?:[?#]|$)/.test(url)) {
+        result.then(response => {
+          try {
+            if (response.ok && typeof response.clone === "function") {
+              response.clone().json().then(json => observeCreatedReply(url, json)).catch(() => {});
+            }
+          } catch { /* Never affect the native response reader. */ }
+        }, () => {});
+      }
+      return result;
     };
+  }
+
+  function observeCreatedReply(urlValue, json) {
+    let url;
+    try { url = new URL(urlValue, location.origin); } catch { return; }
+    if (!/^(?:api\.)?(?:x|twitter)\.com$/.test(url.hostname) || !json?.data || json.errors?.length) return;
+    window.postMessage({ source: PAGE_SOURCE, type: "REPLY_CREATED", payload: json }, location.origin);
   }
 
   function getWebpackRuntime() {
@@ -417,7 +442,7 @@
     });
     const initJson = await initRes.json().catch(() => null);
     const mediaId = initJson?.media_id_string || String(initJson?.media_id || "");
-    if (!mediaId) {
+    if (!initRes.ok || !mediaId) {
       const errMsg = initJson?.errors?.[0]?.message || `初始化图片上传失败 (${initRes.status})`;
       throw new Error(errMsg);
     }
@@ -479,24 +504,18 @@
       reply: { in_reply_to_tweet_id: tweetId, exclude_reply_user_ids: [] }
     };
 
-    // Calculate length (ASCII=1, Unicode/CJK=2)
-    const textLen = [...replyText].reduce((acc, ch) => acc + (ch.codePointAt(0) <= 127 ? 1 : 2), 0);
+    const textLen = globalThis.SidePeekTwitterText.parseTweet(replyText).weightedLength;
 
     // If text exceeds standard 280 characters, use CreateNoteTweet for Premium members
     if (textLen > 280) {
       try {
         return await graphql("CreateNoteTweet", variables);
       } catch (noteErr) {
-        console.warn("[SideX] CreateNoteTweet 异常，尝试 CreateTweet 回退:", noteErr);
-        try {
-          return await graphql("CreateTweet", variables);
-        } catch {
-          const errMsg = noteErr?.message || "";
-          if (errMsg.toLowerCase().includes("premium") || errMsg.toLowerCase().includes("subscriber") || errMsg.includes("会员") || errMsg.includes("shorter")) {
-            throw new Error("发布长文失败：该功能需 X Premium (会员) 权限，非会员请精简至 280 字内或在官方回复框中操作");
-          }
-          throw noteErr;
+        const errMsg = noteErr?.message || "";
+        if (errMsg.toLowerCase().includes("premium") || errMsg.toLowerCase().includes("subscriber") || errMsg.includes("会员") || errMsg.includes("shorter")) {
+          throw new Error("发布长文失败：该功能需 X Premium (会员) 权限，非会员请精简至 280 字内或在官方回复框中操作");
         }
+        throw noteErr;
       }
     }
 
@@ -638,6 +657,51 @@
     window.postMessage({ source: PAGE_SOURCE, requestId, ok, ...(ok ? { payload } : { error: payload }) }, location.origin);
   }
 
+  let quickToolSession = null;
+  // Installed at document_start, before X's own Escape handler. A quick tool
+  // owns the whole modal stack it opened, rather than just its last picker.
+  window.addEventListener("keydown", event => {
+    const session = quickToolSession;
+    if (event.key !== "Escape" || !session || !document.querySelector('#layers [role="dialog"]')) return;
+    quickToolSession = null;
+    try {
+      const index = session.router._currentLocationIndex;
+      if (Number.isInteger(session.index) && Number.isInteger(index) && index > session.index && typeof session.router.go === "function") {
+        // Returning to the captured entry also preserves an underlying photo
+        // viewer; close-all would otherwise close that viewer as well.
+        session.router.go(session.index - index);
+      } else return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    } catch {}
+  }, true);
+
+  function clearFinishedToolSession() {
+    if (quickToolSession && location.pathname + location.search === quickToolSession.path) quickToolSession = null;
+  }
+  window.addEventListener("popstate", clearFinishedToolSession);
+
+  function openNativeReply(tweetId, quickTool = false) {
+    if ([...document.querySelectorAll('#layers [role="dialog"] [data-testid="tweetTextarea_0"]')]
+      .some(editor => !editor.closest('[role="dialog"]')?.querySelector('[data-testid="swipe-to-dismiss"]'))) throw new Error("NATIVE_DRAFT_ALREADY_OPEN");
+    // Use X's own router so a full reply editor opens without replacing the
+    // reading page. Avoid fixed webpack IDs and do not mutate React props.
+    for (const link of document.querySelectorAll('a[href="/compose/post"], a[href="/compose/tweet"]')) {
+      const key = Object.keys(link).find(name => name.startsWith("__reactFiber$"));
+      for (let fiber = key && link[key], depth = 0; fiber && depth < 100; fiber = fiber.return, depth++) {
+        const router = fiber.memoizedProps?.history;
+        if (typeof router?.push !== "function") continue;
+        if (quickTool && (typeof router.go !== "function" || !Number.isInteger(router._currentLocationIndex) || router._currentLocationIndex < 0)) continue;
+        const path = location.pathname + location.search;
+        quickToolSession = quickTool ? { router, path, index: router._currentLocationIndex } : null;
+        router.push("/compose/post", { fromApp: true, inReplyToStatusId: tweetId,
+          isSelfThreadReply: false, previousPath: path });
+        return { opened: true };
+      }
+    }
+    return { opened: false };
+  }
+
   window.addEventListener("message", async (event) => {
     if (event.source !== window || event.origin !== location.origin) return;
     const message = event.data;
@@ -714,7 +778,8 @@
 
     try {
       let payload;
-      if (message.type === "READ_THREAD") payload = await readThread(tweetId, message.cursor);
+      if (message.type === "OPEN_NATIVE_REPLY") payload = openNativeReply(tweetId, message.quickTool === true);
+      else if (message.type === "READ_THREAD") payload = await readThread(tweetId, message.cursor);
       else if (message.type === "TOGGLE_ACTION") payload = await toggleAction(message.action, tweetId, Boolean(message.active));
       else if (message.type === "CREATE_REPLY") payload = await createReply(tweetId, message.text, message.mediaIds);
       else throw new Error("未知请求类型");
@@ -729,6 +794,7 @@
     const origReplace = history.replaceState;
     history.pushState = function sidePeekPushState(...args) {
       const result = Reflect.apply(origPush, this, args);
+      clearFinishedToolSession();
       try {
         window.postMessage({ source: PAGE_SOURCE, type: "URL_CHANGED", url: location.href }, location.origin);
       } catch {}
@@ -736,6 +802,7 @@
     };
     history.replaceState = function sidePeekReplaceState(...args) {
       const result = Reflect.apply(origReplace, this, args);
+      clearFinishedToolSession();
       try {
         window.postMessage({ source: PAGE_SOURCE, type: "URL_CHANGED", url: location.href }, location.origin);
       } catch {}

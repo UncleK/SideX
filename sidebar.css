@@ -71,6 +71,35 @@ article[data-testid="tweet"].sidepeek-focal-active {
   pointer-events: auto;
 }
 
+/* The native viewer reserves its own right column. Replace that column in
+   place, inside the dialog, so image sizing and modal focus keep working. */
+html[data-sidex-photo-view="native"] #sidepeek-drawer-root {
+  display: none !important;
+}
+
+[data-sidex-photo-panel] > :not(#sidepeek-drawer-root) {
+  display: none !important;
+}
+
+[data-sidex-photo-panel] > #sidepeek-drawer-root {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  box-shadow: none;
+  border-right: 0;
+  transform: none;
+  transition: none;
+}
+
+[data-sidex-photo-panel] .sidepeek-resize-handle {
+  display: none;
+}
+
+.sidepeek-photo-focal > .sidepeek-content-col > .sidepeek-media-grid,
+.sidepeek-photo-focal > .sidepeek-content-col > .sidepeek-media-box {
+  display: none;
+}
+
 /* Official menus and dialogs must remain above the docked comments. */
 body:has(#sidepeek-drawer-root.sidepeek-open) #layers {
   position: relative;
@@ -782,6 +811,37 @@ body:has(#sidepeek-drawer-root.sidepeek-open) #layers {
   text-decoration: none;
 }
 
+.sidepeek-pagination {
+  display: flex;
+  justify-content: center;
+  padding: 12px 16px;
+}
+
+#layers[data-sidex-native-layers]:popover-open {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  max-width: none !important;
+  height: 100dvh !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+  border: 0 !important;
+  background: transparent !important;
+  pointer-events: none !important;
+}
+
+#layers[data-sidex-native-layers] > * {
+  pointer-events: auto;
+}
+
+#layers[data-sidex-native-layers]::backdrop {
+  background: transparent;
+  pointer-events: none;
+}
+
 .sidepeek-collapse-btn {
   display: inline-flex;
   align-items: center;
@@ -1113,69 +1173,6 @@ body:has(#sidepeek-drawer-root.sidepeek-open) #layers {
   z-index: 10;
 }
 
-.sidepeek-footer-native-mode {
-  padding: 12px 14px 14px;
-}
-
-.sidepeek-native-mode-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 7px;
-  width: 100%;
-}
-
-.sidepeek-native-reply-big-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 18px;
-  background: var(--sp-accent);
-  color: #ffffff;
-  border: none;
-  border-radius: 9999px;
-  font-size: 13.5px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
-  box-shadow: 0 2px 8px rgba(29, 155, 240, 0.25);
-}
-
-.sidepeek-native-reply-big-btn:hover {
-  background: var(--sp-accent-hover);
-  box-shadow: 0 4px 12px rgba(29, 155, 240, 0.35);
-}
-
-.sidepeek-native-reply-big-btn:active {
-  transform: scale(0.98);
-}
-
-.sidepeek-native-reply-big-btn svg {
-  width: 18px;
-  height: 18px;
-  fill: currentColor;
-  flex-shrink: 0;
-}
-
-.sidepeek-native-mode-hint {
-  font-size: 11px;
-  color: var(--sp-text-muted);
-  text-align: center;
-  line-height: 1.4;
-}
-
-.sidepeek-switch-mode-link {
-  color: var(--sp-accent);
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.sidepeek-switch-mode-link:hover {
-  text-decoration: underline;
-}
-
 .sidepeek-footer-inner {
   display: flex;
   gap: 10px;
@@ -1287,6 +1284,8 @@ body:has(#sidepeek-drawer-root.sidepeek-open) #layers {
 
 .sidepeek-footer-toolbar {
   display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
   align-items: center;
   justify-content: space-between;
   padding-top: 4px;
@@ -1294,12 +1293,15 @@ body:has(#sidepeek-drawer-root.sidepeek-open) #layers {
 
 .sidepeek-footer-tools {
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
   align-items: center;
   gap: 2px;
 }
 
 .sidepeek-tool-btn {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   width: 32px;
@@ -1330,6 +1332,8 @@ body:has(#sidepeek-drawer-root.sidepeek-open) #layers {
 /* Character Ring & Actions */
 .sidepeek-footer-actions {
   display: flex;
+  flex-shrink: 0;
+  margin-left: auto;
   align-items: center;
   gap: 8px;
 }
@@ -1402,6 +1406,7 @@ body:has(#sidepeek-drawer-root.sidepeek-open) #layers {
 }
 
 .sidepeek-footer-submit-btn {
+  white-space: nowrap;
   padding: 6px 16px;
   border: none;
   border-radius: 9999px;
@@ -2249,12 +2254,39 @@ a.sidepeek-handle:hover { text-decoration: underline; }
   text-decoration: underline;
 }
 
-.sidepeek-quote-text {
+.sidepeek-quote-body {
   padding: 0 12px 10px 12px;
+}
+
+.sidepeek-quote-text {
   font-size: 13.5px;
   line-height: 1.4;
   color: var(--sp-fg);
   word-break: break-word;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.sidepeek-quote-text-expanded {
+  display: block;
+  -webkit-line-clamp: unset;
+}
+
+.sidepeek-quote-toggle {
+  padding: 4px 0 0;
+  border: 0;
+  background: transparent;
+  color: var(--sp-accent);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.sidepeek-quote-toggle:hover {
+  text-decoration: underline;
 }
 
 .sidepeek-quote-card .sidepeek-media-grid {

@@ -6,6 +6,7 @@
   const switchDesc = document.getElementById("txt-switch-desc");
   const replyModeLabel = document.getElementById("txt-reply-mode-label");
   const replyModeGroup = document.getElementById("sidex-reply-mode-group");
+  const photoModeGroup = document.getElementById("sidex-photo-mode-group");
   const subReplyLimitLabel = document.getElementById("txt-subreply-limit-label");
   const limitGroup = document.getElementById("sidex-limit-group");
   const resetLabel = document.getElementById("txt-reset-label");
@@ -31,8 +32,13 @@
       disabledTitle: "插件已停用",
       disabledDesc: "已恢复 X 原生跳转与浏览行为",
       replyModeLabel: "回复模式",
-      replyModeDrawer: "侧栏",
-      replyModeNative: "官方",
+      replyModeDrawer: "快捷回复",
+      replyModeNative: "官方弹窗",
+      photoModeLabel: "图片评论区",
+      photoModeNative: "官方样式",
+      photoModeSideX: "SideX 样式",
+      photoModeHint: "打开图片时，选择右侧使用官方评论区或 SideX。切换立即生效。",
+      replyModeHints: { drawer: "点击评论的回复图标，在侧栏底部快捷回复。", native: "点击评论的回复图标，直接打开当前页的 X 官方回复框。" },
       translationLabel: "翻译方式",
       translationNative: "X 官方",
       translationExternal: "已有翻译插件",
@@ -53,8 +59,13 @@
       disabledTitle: "Extension Paused",
       disabledDesc: "Native X navigation restored",
       replyModeLabel: "Reply Mode",
-      replyModeDrawer: "Drawer",
-      replyModeNative: "Native",
+      replyModeDrawer: "Quick reply",
+      replyModeNative: "Official",
+      photoModeLabel: "Photo comments",
+      photoModeNative: "Official",
+      photoModeSideX: "SideX",
+      photoModeHint: "Choose the official or SideX comments on the right of the photo viewer. Changes apply immediately.",
+      replyModeHints: { drawer: "Comment reply icons focus the quick composer in the sidebar.", native: "Comment reply icons open X's official reply dialog in this page." },
       translationLabel: "Translation",
       translationNative: "X official",
       translationExternal: "Your extension",
@@ -75,6 +86,7 @@
   let isEnabled = true;
   let currentSubReplyLimit = 1;
   let currentReplyMode = "drawer";
+  let currentPhotoMode = "sidex";
   let translationProvider = "x";
 
   function getSystemLang() {
@@ -98,6 +110,12 @@
     const btnNative = document.getElementById("btn-mode-native");
     if (btnDrawer) btnDrawer.textContent = s.replyModeDrawer;
     if (btnNative) btnNative.textContent = s.replyModeNative;
+    updateReplyModeButtons(currentReplyMode);
+    document.getElementById("txt-photo-mode-label").textContent = s.photoModeLabel;
+    document.getElementById("btn-photo-native").textContent = s.photoModeNative;
+    document.getElementById("btn-photo-sidex").textContent = s.photoModeSideX;
+    document.getElementById("txt-photo-mode-hint").textContent = s.photoModeHint;
+    updatePhotoModeButtons();
 
     if (subReplyLimitLabel) subReplyLimitLabel.textContent = s.subReplyLimitLabel;
     resetLabel.textContent = s.resetLabel;
@@ -126,7 +144,10 @@
     if (!replyModeGroup) return;
     replyModeGroup.querySelectorAll(".sidex-pill-btn").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.mode === mode);
+      btn.setAttribute("aria-pressed", String(btn.dataset.mode === mode));
     });
+    const hint = document.getElementById("txt-reply-mode-hint");
+    if (hint) hint.textContent = (STRINGS[currentLang] || STRINGS.zh).replyModeHints[mode];
   }
 
   function updateBadge(enabled) {
@@ -139,14 +160,31 @@
     }
   }
 
+  function updatePhotoModeButtons() {
+    photoModeGroup.querySelectorAll(".sidex-pill-btn").forEach(btn => {
+      const selected = btn.dataset.photoMode === currentPhotoMode;
+      btn.classList.toggle("active", selected);
+      btn.setAttribute("aria-pressed", String(selected));
+    });
+  }
+
+  photoModeGroup.addEventListener("click", event => {
+    const mode = event.target.closest("[data-photo-mode]")?.dataset.photoMode;
+    if (!["native", "sidex"].includes(mode) || mode === currentPhotoMode) return;
+    currentPhotoMode = mode;
+    storage?.set({ sidex_photo_mode: mode });
+    updatePhotoModeButtons();
+  });
+
   // Load saved settings
   const storage = chrome?.storage?.sync || chrome?.storage?.local;
   if (storage) {
-    storage.get({ sidex_enabled: true, sidex_lang: null, sidex_sub_reply_limit: 1, sidex_reply_mode: "drawer", sidex_translation_provider: "x" }, (res) => {
+    storage.get({ sidex_enabled: true, sidex_lang: null, sidex_sub_reply_limit: 1, sidex_reply_mode: "drawer", sidex_photo_mode: "sidex", sidex_translation_provider: "x" }, (res) => {
       isEnabled = res.sidex_enabled !== false;
       currentLang = res.sidex_lang || getSystemLang();
       currentSubReplyLimit = Number(res.sidex_sub_reply_limit) || 1;
       currentReplyMode = res.sidex_reply_mode === "native" ? "native" : "drawer";
+      currentPhotoMode = res.sidex_photo_mode === "native" ? "native" : "sidex";
       translationProvider = ["x", "google", "external"].includes(res.sidex_translation_provider) ? res.sidex_translation_provider : "x";
       toggleInput.checked = isEnabled;
       updateTexts();

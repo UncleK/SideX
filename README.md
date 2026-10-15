@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-Available-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.10-00b4f8?style=flat-square" alt="Version 1.1.10" />
+    <img src="https://img.shields.io/badge/Version-1.1.18-00b4f8?style=flat-square" alt="Version 1.1.18" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -42,7 +42,7 @@
 * 🚀 **In-Place Drawer**: Click any tweet to dock its replies directly in the 3rd column—zero page redirects or reload.
 * 📖 **Auto-Unroll Long Posts**: Automatically expands "Show more" on focal posts.
 * 🧵 **Conversation Tree & Drill-down**: Reconstructs nested replies with clean thread lines; configurable sub-reply previews (1, 2, 3, 5) with zero-jump smooth in-place expansion.
-* 💬 **Inline Reply & Multi-Attachments**: Reply to any comment in-place with up to 4 images/GIFs (`Ctrl+V` pasting, file picker), X Premium long post support (up to 25,000 characters), and one-click native reply fallback.
+* 💬 **Quick replies and official dialogs**: The compact quick toolbar has seven entries: images, GIFs, polls, emoji, scheduling, location and content disclosure (flag). Send text, emoji and up to four JPG/PNG/WebP images directly. Advanced tools open X's actual dialogs above the sidebar. In Official mode, clicking a comment's reply icon opens the official reply dialog in the current page without another browser window.
 * 🔄 **Native interactions first**: Reuse native like, bookmark, and menu controls when the same post is rendered on the page; other comments use X session requests.
 * 🌐 **Translation options**: Use X official translation by default, choose Google, or hide SideX translation controls and use your existing translator's selection/page translation.
 * 👤 **Profile hover cards**: Reuse the actual X card next to the sidebar when a matching native profile link exists; otherwise show a fallback with biography, relationship counts, and followers you know.
@@ -95,7 +95,7 @@ SideX is an independent open-source productivity extension and is **not affiliat
 
 ## Development and verification
 
-No build is required. Reload SideX in `chrome://extensions` after editing, then refresh X.
+The committed source and `vendor/twitter-text.js` need no build for normal edits. Run `npm run build:text` when updating the text library; this also generates bundled license notices. Reload SideX in `chrome://extensions` after editing, then refresh X.
 
 ```bash
 npm ci --ignore-scripts
@@ -103,6 +103,14 @@ npm test
 ```
 
 Tests use synthetic X responses and DOM fixtures without performing real account actions. They cover profile parsing, translation requests, long-text chunking, native controls, rollback, retained reading state, scroll reset, and stale responses. X internals and third-party translation extensions may change. Without a matching native profile link, SideX renders a fallback with a full-profile link rather than simulating Grok's Profile Summary button; comments without native nodes are still rendered by SideX.
+
+Version 1.1.18 adds a Photo comments setting, defaulting to SideX. SideX replaces only the native photo viewer's right column, keeping image navigation and native collapse/expand. The SideX header also offers collapse; expanding retains comment position and drafts. Timeline image links still open the native viewer, while text and blank areas open the in-place comments. Photo styling and reply mode are independent settings. Official reply mode has no bottom composer. Escape from a quick tool returns directly to its starting history entry, preserving an underlying photo viewer.
+
+Quoted text previews use at most three lines. Overflowing quotes can expand and collapse in place, retaining links, media and the original-post action. Photo comments default to SideX while preserving an explicitly saved Official choice.
+
+Previous fixes preserve body links and authored mentions, exclude sibling branches, and support paginated loading with retry, deduplication and stale-response isolation. The public fields in `tests/fixtures/google-source-comment.json` reproduce the source-link regression.
+
+The quick composer keeps its compact layout and is never replaced by a moved official editor. X's editors and pickers retain their original React parents; SideX promotes the existing dialog portal to the browser top layer so the sidebar cannot cover them. The flag opens X's actual content disclosure panel for paid partnerships and AI content. Advanced editing, attachments and publication continue in the official reply dialog. Quick drafts are backed up and cleared only on matching publication confirmation. If the native router is unavailable, drafts are retained with an explicit message; Official mode can fall back to X's reply intent in the current tab. Tests cover both mode selections, native tools, draft transfer, picker navigation, stale confirmations and official text counting without publishing real account actions.
 
 ## 📄 License
 

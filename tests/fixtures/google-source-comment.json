@@ -1,0 +1,42 @@
+{
+  "rest_id": "2110525638322876674",
+  "core": {
+    "user_results": {
+      "result": {
+        "__typename": "User",
+        "rest_id": "20536157",
+        "core": { "name": "Google", "screen_name": "Google" },
+        "avatar": { "image_url": "https://pbs.twimg.com/profile_images/2042749771337564160/AgOFPEL3_normal.jpg" },
+        "verification": { "verified": true, "verified_type": "Business" }
+      }
+    }
+  },
+  "legacy": {
+    "full_text": "View the source code → https://t.co/bUGtrCJiIO https://t.co/4iaIwCN93o",
+    "display_text_range": [0, 46],
+    "in_reply_to_status_id_str": "2110525636884259180",
+    "in_reply_to_screen_name": "Google",
+    "conversation_id_str": "2110525636884259180",
+    "created_at": "Thu Oct 15 00:18:18 +0000 2026",
+    "lang": "en",
+    "reply_count": 2,
+    "favorite_count": 17,
+    "retweet_count": 1,
+    "entities": {
+      "urls": [{
+        "url": "https://t.co/bUGtrCJiIO",
+        "expanded_url": "https://goo.gle/4jYmj8R",
+        "display_url": "goo.gle/4jYmj8R",
+        "indices": [23, 46]
+      }],
+      "media": [{
+        "type": "photo",
+        "url": "https://t.co/4iaIwCN93o",
+        "expanded_url": "https://x.com/Google/status/2110525638322876674/photo/1",
+        "media_url_https": "https://pbs.twimg.com/media/HUoXtjxXwAEVQhu.jpg",
+        "indices": [47, 70],
+        "original_info": { "width": 1600, "height": 1200 }
+      }]
+    }
+  }
+}

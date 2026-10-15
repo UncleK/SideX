@@ -1,3 +1,40 @@
+(function installNativeLayerHost() {
+  "use strict";
+
+  // X owns the dialogs and editors. Promote their existing portal to the top
+  // layer instead of moving an editor into the quick-reply footer.
+  function createHost({ document }) {
+    let session = null;
+    const restore = (node, name, value) => value == null ? node.removeAttribute(name) : node.setAttribute(name, value);
+    function release() {
+      if (!session) return;
+      const current = session;
+      session = null;
+      try { current.node.hidePopover(); } catch {}
+      restore(current.node, "popover", current.popover);
+      current.node.removeAttribute("data-sidex-native-layers");
+    }
+    function sync(root) {
+      const layers = document.getElementById("layers");
+      const needsOverlay = root?.classList.contains("sidepeek-open") &&
+        layers?.querySelector('[role="dialog"], [role="menu"], [role="listbox"], [data-testid="Dropdown"]');
+      if (!needsOverlay || !layers.showPopover) { release(); return false; }
+      if (session?.node === layers) return true;
+      release();
+      // An existing native popover already has top-layer precedence.
+      if (layers.hasAttribute("popover")) return true;
+      session = { node: layers, popover: layers.getAttribute("popover") };
+      layers.setAttribute("data-sidex-native-layers", "");
+      layers.setAttribute("popover", "manual");
+      try { layers.showPopover(); return true; }
+      catch { release(); return false; }
+    }
+    return { sync, release, get active() { return Boolean(session); } };
+  }
+  globalThis.SidePeekNativeLayers = Object.freeze({ createHost });
+})();
+
+
 (function initSidePeek() {
   "use strict";
 
@@ -7,6 +44,7 @@
   const ROOT_ID = "sidepeek-drawer-root";
   const CONTENT_SOURCE = "sidepeek-content";
   const PAGE_SOURCE = "sidepeek-page";
+  const PHOTO_COLLAPSE_PATH = "M11.59 12L3.54 3.96l1.42-1.42L14.41 12l-9.45 9.46-1.42-1.42L11.59 12zm7 0l-8.05-8.04 1.42-1.42L21.41 12l-9.45 9.46-1.42-1.42L18.59 12z";
 
   // SVG Icons (Official Twitter/X SVGs matching web client)
   const ICONS = {
@@ -31,7 +69,7 @@
     emoji: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M8 9.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm8 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM12 18c-2.28 0-4.22-1.66-5-4h10c-.78 2.34-2.72 4-5 4zm-8-6c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8-8-3.589-8-8zm-2 0c0 5.523 4.477 10 10 10s10-4.477 10-10S17.523 2 12 2 2 6.477 2 12z"></path></g></svg>`,
     schedule: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M6 3V1.5a1 1 0 012 0V3h8V1.5a1 1 0 012 0V3h2.5A2.5 2.5 0 0123 5.5v13a2.5 2.5 0 01-2.5 2.5h-17A2.5 2.5 0 011 18.5v-13A2.5 2.5 0 013.5 3H6zm14.5 4.5h-17a.5.5 0 00-.5.5v10.5c0 .276.224.5.5.5h17c.276 0 .5-.224.5-.5V8a.5.5 0 00-.5-.5zM8 12.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm4 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm4 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm-8 4a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm4 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"></path></g></svg>`,
     location: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"></path></g></svg>`,
-    nativeReply: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3m-2 16H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2v7z"></path></g></svg>`,
+    disclosure: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M3 2h18.61l-3.5 7 3.5 7H5v6H3V2zm2 12h13.38l-2.5-5 2.5-5H5v10z"></path></g></svg>`,
     more: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M3 12c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zm9 2c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm7 0c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"></path></g></svg>`,
     copy: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"></path></g></svg>`,
     mute: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M18 6.59V1.2L8.71 7H5.5C4.12 7 3 8.12 3 9.5v5C3 15.88 4.12 17 5.5 17h3.21L18 22.8v-5.39l-2-2V7.7l-4.71 2.95-.58-.9 6.29-3.94 1 .78zM16 13.59l-2-2V9.41l2-1.25v5.43zm5.71 8.7l-19-19 1.41-1.41 19 19-1.41 1.41z"></path></g></svg>`,
@@ -54,24 +92,6 @@
     }
   ];
 
-  const REACTION_GIFS = [
-    { tag: "哈哈", title: "大笑", url: "https://media.giphy.com/media/26n6Gx9moCgs1qxxt/giphy.gif" },
-    { tag: "哈哈", title: "狂笑", url: "https://media.giphy.com/media/10JhviFuU2gWD6/giphy.gif" },
-    { tag: "点赞", title: "赞", url: "https://media.giphy.com/media/111ebonMs90YLu/giphy.gif" },
-    { tag: "点赞", title: "干得漂亮", url: "https://media.giphy.com/media/mgqefOvJJToHrp2qt8/giphy.gif" },
-    { tag: "鼓掌", title: "海豹鼓掌", url: "https://media.giphy.com/media/g9582DNuQppxC/giphy.gif" },
-    { tag: "鼓掌", title: "全场起立", url: "https://media.giphy.com/media/nbvFVPiEiJH6JOGIok/giphy.gif" },
-    { tag: "吃瓜", title: "爆米花", url: "https://media.giphy.com/media/tyqcJoNjNv0Fq/giphy.gif" },
-    { tag: "吃瓜", title: "吃瓜中", url: "https://media.giphy.com/media/gl0mkIZOW6Nwc/giphy.gif" },
-    { tag: "比心", title: "心动", url: "https://media.giphy.com/media/R6gVNROjZa40JYg3u8/giphy.gif" },
-    { tag: "比心", title: "飞吻", url: "https://media.giphy.com/media/uw0KqTWZSm8gg/giphy.gif" },
-    { tag: "震惊", title: "张大嘴", url: "https://media.giphy.com/media/5VKbvrjxpVJCM/giphy.gif" },
-    { tag: "震惊", title: "不可思议", url: "https://media.giphy.com/media/tfUW8mhiFk8NlRezUS/giphy.gif" },
-    { tag: "无语", title: "扶额", url: "https://media.giphy.com/media/3oEjI67Egb8G9jqs3m/giphy.gif" },
-    { tag: "无语", title: "白眼", url: "https://media.giphy.com/media/6yRVg0HWzgS88/giphy.gif" },
-    { tag: "哭泣", title: "大哭", url: "https://media.giphy.com/media/L95W4wvNFOM4LBWP68/giphy.gif" },
-    { tag: "哭泣", title: "抹眼泪", url: "https://media.giphy.com/media/OPU6wzx8JrHna/giphy.gif" }
-  ];
 
   const state = {
     open: false,
@@ -83,6 +103,8 @@
     expandedThreadIds: new Set(),
     loadedThreadIds: new Set(),
     loadingThreadIds: new Set(),
+    threadCursors: new Map(),
+    consumedCursors: new Map(),
     anchorCommentId: null,
     resetScrollOnRender: false,
     activeView: "root", // "root" or { type: "drilldown", parentId: string }
@@ -92,6 +114,8 @@
     isResizing: false,
     subReplyLimit: 1,
     replyMode: "drawer",
+    photoMode: "sidex",
+    nativeReplyTransfer: null,
     translationProvider: "x",
     threadGeneration: 0
   };
@@ -101,9 +125,17 @@
   const commentNodes = new Map();
   const translations = new Map();
   const expandedTexts = new Set();
+  const expandedQuotes = new Set();
+  const composerDrafts = new Map();
   const pendingActions = new Set();
   const nativeActionObservers = new Map();
   const nativeActionArticles = new Map();
+  const nativeLayers = globalThis.SidePeekNativeLayers?.createHost({ document });
+  let drawerRoot = null;
+  let photoViewer = null;
+  let dockedPhotoPanel = null;
+  let dismissedPhotoId = null;
+  const photoScrollPositions = new Map();
 
   function requestPage(type, payload, timeoutMs = 18000) {
     const requestId = ++requestSequence;
@@ -121,6 +153,24 @@
     if (event.source !== window || event.origin !== location.origin || event.data?.source !== PAGE_SOURCE) return;
     if (event.data?.type === "URL_CHANGED") {
       checkDetailPageAutoOpen();
+      return;
+    }
+    if (event.data?.type === "REPLY_CREATED") {
+      for (const model of Core.collectTweetModels(event.data.payload)) {
+        const intent = state.nativeReplyTransfer;
+        if (intent?.targetId === model.inReplyToId && intent.draft?.text === intent.text) {
+          intent.draft.text = "";
+          intent.draft.media.length = 0;
+          const currentTarget = state.replyTarget?.id || (state.activeView?.type === "drilldown" ? state.activeView.parentId : state.focalTweetId);
+          if (state.focalTweetId === intent.focalId && currentTarget === intent.targetId) {
+            const textarea = document.querySelector(".sidepeek-footer-textarea");
+            if (textarea) textarea.value = "";
+            document.querySelector(".sidepeek-footer-composer")?._sidepeekComposer?.refresh();
+          }
+          state.nativeReplyTransfer = null;
+        }
+        acceptCreatedReply(model);
+      }
       return;
     }
     const request = pendingRequests.get(event.data.requestId);
@@ -152,9 +202,10 @@
 
   const storage = chrome?.storage?.sync || chrome?.storage?.local;
   if (storage) {
-    storage.get({ sidex_enabled: true, sidex_lang: null, sidex_sub_reply_limit: 1, sidex_reply_mode: "drawer", sidex_translation_provider: "x" }, (res) => {
+    storage.get({ sidex_enabled: true, sidex_lang: null, sidex_sub_reply_limit: 1, sidex_reply_mode: "drawer", sidex_photo_mode: "sidex", sidex_translation_provider: "x" }, (res) => {
       isSideXEnabled = res.sidex_enabled !== false;
       state.translationProvider = ["x", "google", "external"].includes(res.sidex_translation_provider) ? res.sidex_translation_provider : "x";
+      state.photoMode = res.sidex_photo_mode === "native" ? "native" : "sidex";
       if (res.sidex_lang) overrideLocale = res.sidex_lang;
       if (res.sidex_sub_reply_limit !== undefined) {
         state.subReplyLimit = Math.max(1, Number(res.sidex_sub_reply_limit) || 1);
@@ -174,11 +225,19 @@
         isSideXEnabled = changes.sidex_enabled.newValue !== false;
         const root = document.getElementById(ROOT_ID);
         if (!isSideXEnabled) {
+          releasePhotoPanel();
+          document.documentElement.removeAttribute("data-sidex-photo-view");
           closeDrawer();
           if (root) root.style.display = "none";
         } else {
           if (root) root.style.display = "";
+          checkDetailPageAutoOpen();
         }
+      }
+      if (changes.sidex_photo_mode !== undefined) {
+        state.photoMode = changes.sidex_photo_mode.newValue === "native" ? "native" : "sidex";
+        dismissedPhotoId = null;
+        syncPhotoViewer();
       }
       if (changes.sidex_lang !== undefined) {
         overrideLocale = changes.sidex_lang.newValue;
@@ -231,10 +290,13 @@
       gifUploadFailed: "GIF 上传失败",
       replyFailed: "回复发送失败，请重试",
       replySent: "回复已发布",
+      replyStatusUnknown: "X 未返回已发布的回复，草稿已保留。请先在 X 确认发布状态。",
       overCharLimit: "字数超出限制",
       emptyReplies: "暂无评论，快来抢沙发吧~",
       noMoreReplies: "暂无更多子回复",
       loadingReplies: "正在加载评论...",
+      loadMoreComments: "加载更多评论",
+      loadMoreThreadReplies: "加载更多子回复",
       retryBtn: "重试",
       showReplies: "展开 {count} 条回复",
       showMoreReplies: "展开另外 {count} 条回复",
@@ -281,6 +343,8 @@
       hideTranslation: "隐藏翻译",
       translateFailed: "翻译失败",
       showMorePost: "显示更多",
+      expandQuote: "展开引用",
+      collapseQuote: "收起引用",
       likeAction: "喜欢",
       viewsAction: "浏览量",
       bookmarkAction: "书签",
@@ -290,22 +354,24 @@
       justNow: "刚刚",
       minutesAgo: "{m}分",
       hoursAgo: "{h}小时",
-      mediaToolTitle: "添加媒体 (最多4张图片，支持 Ctrl+V)",
+      mediaToolTitle: "添加图片 (JPG/PNG/WebP，最多4张，支持 Ctrl+V)",
+      quickMediaFormats: "快捷保底回复支持 JPG/PNG/WebP；视频和 GIF 请使用官方回复。",
       gifToolTitle: "添加 GIF",
       pollToolTitle: "创建投票",
       emojiToolTitle: "添加表情",
       scheduleToolTitle: "定时发布",
       locationToolTitle: "添加位置",
+      disclosureToolTitle: "内容披露（付费合作 / AI 内容）",
       openNativeReplyTitle: "在官方框中回复 (支持长文/富文本/多功能)",
-      openInOfficialReplyBox: "打开 X 官方回复框",
-      nativeModeFooterDesc: "已开启官方回复模式 · 点击直接呼出官方弹窗",
-      switchToDrawerMode: "切换回侧栏回复",
       switchToNativeMode: "切换到官方回复",
       charCountTitle: "字数统计",
       maxMediaReached: "单条回复最多添加 4 个附件",
       mediaStillUploading: "附件正在上传中，请稍候...",
       nativeReplyOpenedToast: "已打开官方回复框",
-      nativeReplyCopiedToast: "已打开官方回复框，草稿已复制到剪贴板",
+      nativeDraftAlreadyOpen: "已有官方回复草稿，请先完成或关闭该草稿。",
+      nativeMediaKeepDraft: "附件已保留在侧栏；请在当前页打开对应评论后转入官方回复。",
+      nativeReplyNotReady: "官方回复框尚未就绪，侧栏草稿已保留。",
+      nativeDraftKept: "侧栏草稿已保留，请手动复制到官方回复框。",
       overCharLimitNote: "超出长文最大限制（25,000 字）",
       // Popover
       searchGifPlaceholder: "搜索反应表情 GIF...",
@@ -375,10 +441,13 @@
       gifUploadFailed: "Failed to upload GIF",
       replyFailed: "Failed to send reply. Please try again.",
       replySent: "Reply sent",
+      replyStatusUnknown: "X did not return the published reply. Draft kept; check X before trying again.",
       overCharLimit: "Character limit exceeded",
       emptyReplies: "No replies yet. Be the first to reply!",
       noMoreReplies: "No more replies",
       loadingReplies: "Loading replies...",
+      loadMoreComments: "Load more comments",
+      loadMoreThreadReplies: "Load more replies",
       retryBtn: "Retry",
       showReplies: "Show {count} replies",
       showMoreReplies: "Show {count} more replies",
@@ -425,6 +494,8 @@
       hideTranslation: "Hide translation",
       translateFailed: "Translation failed",
       showMorePost: "Show more",
+      expandQuote: "Expand quote",
+      collapseQuote: "Collapse quote",
       likeAction: "Like",
       viewsAction: "Views",
       bookmarkAction: "Bookmark",
@@ -434,22 +505,24 @@
       justNow: "just now",
       minutesAgo: "{m}m",
       hoursAgo: "{h}h",
-      mediaToolTitle: "Add media (Up to 4 images, Ctrl+V)",
+      mediaToolTitle: "Add JPG/PNG/WebP images (up to 4, Ctrl+V)",
+      quickMediaFormats: "Fallback quick reply supports JPG/PNG/WebP. Use official reply for video or GIF.",
       gifToolTitle: "Add GIF",
       pollToolTitle: "Create poll",
       emojiToolTitle: "Add emoji",
       scheduleToolTitle: "Schedule post",
       locationToolTitle: "Add location",
+      disclosureToolTitle: "Content disclosure (paid partnership / AI content)",
       openNativeReplyTitle: "Open in official reply box",
-      openInOfficialReplyBox: "Open Official Reply Box",
-      nativeModeFooterDesc: "Native reply mode enabled · Click to open official dialog",
-      switchToDrawerMode: "Switch to Drawer Reply",
       switchToNativeMode: "Switch to Official Reply",
       charCountTitle: "Character count",
       maxMediaReached: "Maximum 4 attachments allowed",
       mediaStillUploading: "Attachments are still uploading...",
       nativeReplyOpenedToast: "Official reply dialog opened",
-      nativeReplyCopiedToast: "Official reply box opened, draft copied to clipboard",
+      nativeDraftAlreadyOpen: "An official reply draft is already open. Finish or close it first.",
+      nativeMediaKeepDraft: "Attachments kept. Open the matching comment on this page before using official reply.",
+      nativeReplyNotReady: "Official reply is not ready. Sidebar draft kept.",
+      nativeDraftKept: "Sidebar draft kept. Copy it into the official reply editor.",
       overCharLimitNote: "Exceeds long post limit (25,000 characters)",
       // Popover
       searchGifPlaceholder: "Search GIFs...",
@@ -606,7 +679,7 @@
   // Drawer DOM Setup & Layout Positioning
   // ==========================================================================
   function ensureDrawerRoot() {
-    let root = document.getElementById(ROOT_ID);
+    let root = drawerRoot || document.getElementById(ROOT_ID);
     if (!root) {
       root = document.createElement("aside");
       root.id = ROOT_ID;
@@ -626,12 +699,106 @@
     } else {
       root.className = currentThemeClass();
     }
+    drawerRoot = root;
     return root;
   }
 
+  function releasePhotoPanel() {
+    rememberPhotoScroll();
+    // Keep our node and drafts when React removes or replaces the native viewer.
+    if (drawerRoot && dockedPhotoPanel?.contains(drawerRoot)) document.body.appendChild(drawerRoot);
+    dockedPhotoPanel?.removeAttribute("data-sidex-photo-panel");
+    dockedPhotoPanel = null;
+  }
+
+  function rememberPhotoScroll() {
+    if (dockedPhotoPanel?.isConnected && document.documentElement.dataset.sidexPhotoView === "sidex" && state.focalTweetId) {
+      const body = drawerRoot?.querySelector('.sidepeek-body');
+      if (body) photoScrollPositions.set(state.focalTweetId, body.scrollTop);
+    }
+  }
+
+  function findPhotoCollapseButton() {
+    return [...(photoViewer?.viewer.querySelectorAll('button') || [])].find(button =>
+      !drawerRoot?.contains(button) && button.querySelector('svg path')?.getAttribute('d') === PHOTO_COLLAPSE_PATH);
+  }
+
+  function syncPhotoHeader(root) {
+    const canCollapse = Boolean(dockedPhotoPanel && findPhotoCollapseButton());
+    const collapse = root.querySelector('.sidepeek-btn-photo-collapse');
+    const close = root.querySelector('.sidepeek-btn-close');
+    const reset = root.querySelector('.sidepeek-btn-reset-width');
+    if (collapse) collapse.style.display = canCollapse ? "inline-flex" : "none";
+    if (close) close.style.display = canCollapse ? "none" : "inline-flex";
+    if (reset) reset.style.display = dockedPhotoPanel ? "none" : "inline-flex";
+  }
+
+  function syncPhotoViewer() {
+    if (!isSideXEnabled) return false;
+    const match = location.pathname.match(/\/status\/(\d+)\/photo\/\d+\/?$/);
+    if (match) {
+      const swipe = document.querySelector('#layers [data-testid="swipe-to-dismiss"]');
+      const viewer = swipe?.closest('[role="dialog"]');
+      const region = viewer?.querySelector('section[role="region"]');
+      const panel = region?.parentElement;
+      if (!panel || panel.contains(swipe)) {
+        releasePhotoPanel();
+        document.documentElement.setAttribute("data-sidex-photo-view", "native");
+        return true; // Wait for X to finish mounting; never cover the image.
+      }
+      const tweetId = match[1];
+      photoViewer = { viewer, panel, tweetId };
+      if (state.photoMode !== "sidex" || dismissedPhotoId === tweetId) {
+        releasePhotoPanel();
+        document.documentElement.setAttribute("data-sidex-photo-view", "native");
+      } else {
+        const root = drawerRoot || ensureDrawerRoot();
+        const remounting = root.parentElement !== panel;
+        if (dockedPhotoPanel !== panel) {
+          releasePhotoPanel();
+          dockedPhotoPanel = panel;
+          panel.setAttribute("data-sidex-photo-panel", "");
+        }
+        if (root.parentElement !== panel) panel.appendChild(root);
+        document.documentElement.setAttribute("data-sidex-photo-view", "sidex");
+        if (!state.open || state.focalTweetId !== tweetId) openDrawerForTweet(tweetId, findDetailFocalArticle(tweetId));
+        else {
+          updateDrawerPosition();
+          if (remounting) {
+            const body = root.querySelector('.sidepeek-body');
+            if (body) body.scrollTop = photoScrollPositions.get(tweetId) || 0;
+          }
+        }
+        syncPhotoHeader(root);
+        updateQuotePreviews(root);
+        nativeLayers?.sync(root);
+      }
+      return true;
+    }
+    // The reply dialog and its pickers can temporarily cover a photo viewer.
+    if (photoViewer && (nativeReplyOpening || document.querySelector('#layers [role="dialog"]'))) return true;
+    if (photoViewer || dockedPhotoPanel) {
+      const wasDocked = Boolean(dockedPhotoPanel);
+      releasePhotoPanel();
+      photoViewer = null;
+      dismissedPhotoId = null;
+      lastCheckedUrl = "";
+      updateDrawerPosition();
+      if (wasDocked && state.open) renderDrawer();
+    }
+    document.documentElement.removeAttribute("data-sidex-photo-view");
+    return false;
+  }
+
   function updateDrawerPosition() {
-    const root = document.getElementById(ROOT_ID);
+    const root = drawerRoot || document.getElementById(ROOT_ID);
     if (!root || !state.open) return;
+    if (dockedPhotoPanel?.contains(root)) {
+      root.style.left = "0px";
+      root.style.right = "0px";
+      root.style.width = "100%";
+      return;
+    }
 
     // 使用全新键名，避免继承旧版误保存的大宽度数据
     const savedWidth = Number(localStorage.getItem("sidepeek_custom_width_v2"));
@@ -770,6 +937,7 @@
     const thumb = root.querySelector(".sidepeek-scroll-thumb");
     const badge = root.querySelector(".sidepeek-scroll-badge");
     if (!body || !track || !thumb) return;
+    body.addEventListener("scroll", rememberPhotoScroll);
 
     let isDragging = false;
     let startY = 0;
@@ -910,6 +1078,7 @@
     if (window.ResizeObserver) {
       const ro = new ResizeObserver(() => {
         updateSlider();
+        updateQuotePreviews(root);
       });
       ro.observe(body);
     }
@@ -921,29 +1090,11 @@
 
   window.addEventListener("resize", updateDrawerPosition);
 
-  function getNativeFooterHtml(isDrillDown, drillDownParent) {
-    return `
-      <footer class="sidepeek-footer-composer sidepeek-footer-native-mode">
-        <div class="sidepeek-native-mode-wrap">
-          <button type="button" class="sidepeek-native-reply-big-btn">
-            ${ICONS.nativeReply}
-            <span>${isDrillDown && drillDownParent ? t("replyToUser", { handle: drillDownParent.author.handle }) : t("openInOfficialReplyBox")}</span>
-          </button>
-          <div class="sidepeek-native-mode-hint">
-            <span>${t("nativeModeFooterDesc")}</span> · <a href="#" class="sidepeek-switch-mode-link" title="${t("switchToDrawerMode")}">${t("switchToDrawerMode")}</a>
-          </div>
-        </div>
-      </footer>`;
-  }
-
   function getDrawerFooterHtml(userAvatar, replyPlaceholder) {
     return `
       <footer class="sidepeek-footer-composer">
         <!-- In-place Popovers -->
         <div class="sidepeek-popover sidepeek-emoji-popover" style="display: none;"></div>
-        <div class="sidepeek-popover sidepeek-gif-popover" style="display: none;"></div>
-        <div class="sidepeek-popover sidepeek-poll-popover" style="display: none;"></div>
-        <div class="sidepeek-popover sidepeek-schedule-popover" style="display: none;"></div>
 
         <div class="sidepeek-footer-inner">
           <div class="sidepeek-footer-avatar-wrap">
@@ -959,26 +1110,18 @@
             <div class="sidepeek-footer-toolbar">
               <div class="sidepeek-footer-tools">
                 <label class="sidepeek-tool-btn sidepeek-tool-media" title="${t("mediaToolTitle")}">
-                  <input type="file" accept="image/*,video/*" class="sidepeek-media-file-input" multiple style="display:none;" />
+                  <input type="file" accept="image/jpeg,image/png,image/webp" class="sidepeek-media-file-input" multiple style="display:none;" />
                   ${ICONS.media}
                 </label>
-                <button type="button" class="sidepeek-tool-btn sidepeek-tool-gif" title="${t("gifToolTitle")}">
-                  ${ICONS.gif}
-                </button>
-                <button type="button" class="sidepeek-tool-btn sidepeek-tool-poll" title="${t("pollToolTitle")}">
-                  ${ICONS.poll}
-                </button>
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-gif" title="${t("gifToolTitle")}">${ICONS.gif}</button>
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-poll" title="${t("pollToolTitle")}">${ICONS.poll}</button>
                 <button type="button" class="sidepeek-tool-btn sidepeek-tool-emoji" title="${t("emojiToolTitle")}">
                   ${ICONS.emoji}
                 </button>
-                <button type="button" class="sidepeek-tool-btn sidepeek-tool-schedule" title="${t("scheduleToolTitle")}">
-                  ${ICONS.schedule}
-                </button>
-                <button type="button" class="sidepeek-tool-btn sidepeek-tool-location" title="${t("locationToolTitle")}">
-                  ${ICONS.location}
-                </button>
-                <button type="button" class="sidepeek-tool-btn sidepeek-tool-native-reply" title="${t("openNativeReplyTitle")}">
-                  ${ICONS.nativeReply}
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-schedule" title="${t("scheduleToolTitle")}">${ICONS.schedule}</button>
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-location" title="${t("locationToolTitle")}">${ICONS.location}</button>
+                <button type="button" class="sidepeek-tool-btn sidepeek-tool-disclosure" title="${t("disclosureToolTitle")}">
+                  ${ICONS.disclosure}
                 </button>
               </div>
               <div class="sidepeek-footer-actions">
@@ -998,31 +1141,13 @@
       </footer>`;
   }
 
-  function initNativeModeFooter(root, isDrillDown, drillDownParent) {
-    const footer = root.querySelector(".sidepeek-footer-composer.sidepeek-footer-native-mode");
-    if (!footer) return;
-
-    const nativeBtn = footer.querySelector(".sidepeek-native-reply-big-btn");
-    nativeBtn?.addEventListener("click", () => {
-      const targetId = isDrillDown && drillDownParent ? drillDownParent.id : state.focalTweetId;
-      openNativeReplyDialog(targetId, "");
-    });
-
-    const switchLink = footer.querySelector(".sidepeek-switch-mode-link");
-    switchLink?.addEventListener("click", (e) => {
-      e.preventDefault();
-      state.replyMode = "drawer";
-      if (storage) storage.set({ sidex_reply_mode: "drawer" });
-      renderDrawer();
-    });
-  }
-
   // ==========================================================================
   // UI Rendering
   // ==========================================================================
   function renderDrawer() {
     const root = ensureDrawerRoot();
     if (!state.open) {
+      nativeLayers?.release();
       root.classList.remove("sidepeek-open");
       return;
     }
@@ -1074,6 +1199,7 @@
           <div class="sidepeek-header-actions">
             <button type="button" class="sidepeek-icon-btn sidepeek-btn-reset-width" title="${t("resetWidth")}">${ICONS.resetWidth}</button>
             <a href="#" target="_blank" class="sidepeek-icon-btn sidepeek-btn-external" title="${t("openOnX")}" style="display:none;">${ICONS.external}</a>
+            <button type="button" class="sidepeek-icon-btn sidepeek-btn-photo-collapse" style="display:none;" aria-label="${getLocale() === "zh" ? "收起评论，查看大图" : "Collapse comments to view the full image"}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${PHOTO_COLLAPSE_PATH}"></path></svg></button>
             <button type="button" class="sidepeek-icon-btn sidepeek-btn-close" aria-label="${t("closeSidebar")}">${ICONS.close}</button>
           </div>
         </header>
@@ -1090,18 +1216,17 @@
             </div>
           </div>
         </div>
-        ${isNativeMode ? getNativeFooterHtml(isDrillDown, drillDownParent) : getDrawerFooterHtml(userAvatar, replyPlaceholder)}
+        ${isNativeMode ? "" : getDrawerFooterHtml(userAvatar, replyPlaceholder)}
       `;
 
       initResizeHandle(root);
       initScrollSlider(root);
-      if (isNativeMode) {
-        initNativeModeFooter(root, isDrillDown, drillDownParent);
-      } else {
+      if (!isNativeMode) {
         initFooterComposer(root, isDrillDown, drillDownParent);
       }
 
       root.querySelector(".sidepeek-btn-close")?.addEventListener("click", closeDrawer);
+      root.querySelector(".sidepeek-btn-photo-collapse")?.addEventListener("click", () => findPhotoCollapseButton()?.click());
       root.querySelector(".sidepeek-back-btn")?.addEventListener("click", () => {
         state.activeView = "root";
         state.replyTarget = null;
@@ -1136,25 +1261,17 @@
     }
 
     // 动态同步回复栏模式（根据当前 state.replyMode 切换）
+    syncPhotoHeader(root);
     const currentFooter = root.querySelector(".sidepeek-footer-composer");
-    const isCurrentFooterNative = currentFooter?.classList.contains("sidepeek-footer-native-mode");
-
-    if (currentFooter && (isNativeMode !== isCurrentFooterNative)) {
-      currentFooter.remove();
+    if (isNativeMode) {
+      currentFooter?._sidepeekComposer?.dispose();
+      currentFooter?.remove();
+    } else if (!currentFooter) {
       const tempDiv = document.createElement("div");
-      tempDiv.innerHTML = isNativeMode ? getNativeFooterHtml(isDrillDown, drillDownParent) : getDrawerFooterHtml(userAvatar, replyPlaceholder);
+      tempDiv.innerHTML = getDrawerFooterHtml(userAvatar, replyPlaceholder);
       const newFooter = tempDiv.firstElementChild;
       root.appendChild(newFooter);
-      if (isNativeMode) {
-        initNativeModeFooter(root, isDrillDown, drillDownParent);
-      } else {
-        initFooterComposer(root, isDrillDown, drillDownParent);
-      }
-    } else if (isNativeMode) {
-      const nativeBtnSpan = root.querySelector(".sidepeek-native-reply-big-btn span");
-      if (nativeBtnSpan) {
-        nativeBtnSpan.textContent = isDrillDown && drillDownParent ? t("replyToUser", { handle: drillDownParent.author.handle }) : t("openInOfficialReplyBox");
-      }
+      initFooterComposer(root, isDrillDown, drillDownParent);
     }
 
     const replyTargetBox = root.querySelector(".sidepeek-footer-reply-target");
@@ -1172,6 +1289,7 @@
     if (textarea) {
       textarea.placeholder = replyPlaceholder;
     }
+    root.querySelector(".sidepeek-footer-composer")?._sidepeekComposer?.syncTarget();
 
     const body = root.querySelector(".sidepeek-body");
 
@@ -1229,12 +1347,20 @@
           body.appendChild(renderCommentNode(children[i], hasNext, true));
         }
       }
+      appendReplyPagination(body, drillDownParent.id);
     } else {
       // Root view: 默认就地展示或折叠展开二级回复
+      if (dockedPhotoPanel && state.focalModel) {
+        const focalNode = renderCommentNode(state.focalModel, false);
+        focalNode.classList.add("sidepeek-photo-focal");
+        body.appendChild(focalNode);
+      }
       const roots = state.tree?.rootReplies || [];
       if (roots.length === 0) {
-        body.innerHTML = `<div class="sidepeek-empty-box"><span>${t("emptyReplies")}</span></div>`;
-        return;
+        const empty = document.createElement("div");
+        empty.className = "sidepeek-empty-box";
+        empty.textContent = t("emptyReplies");
+        body.appendChild(empty);
       }
 
       const INLINE_LIMIT = state.subReplyLimit || 1; // 默认展示 1 条二级回复，可在插件设置中自定义
@@ -1285,6 +1411,8 @@
               `;
               threadGroup.appendChild(emptyTip);
             }
+
+            appendReplyPagination(threadGroup, rootReply.id);
 
             // 收起按钮
             const collapseRow = document.createElement("div");
@@ -1352,7 +1480,10 @@
           body.appendChild(threadGroup);
         }
       }
+      appendReplyPagination(body, state.focalTweetId);
     }
+
+    updateQuotePreviews(root);
 
     // 恢复滚动条位置，彻底解决“点击展开回复后页面跳回顶部”的问题
     body.scrollTop = prevScrollTop;
@@ -1373,6 +1504,7 @@
     }
 
     body.dispatchEvent(new Event("scroll"));
+    nativeLayers?.sync(root);
   }
 
   function renderVerifiedBadge(author) {
@@ -1390,18 +1522,9 @@
     return `<span class="sidepeek-verified-badge" title="${label}" style="color: ${color};"><svg viewBox="0 0 22 22" aria-label="${label}" role="img"><g><path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.887-1.687-.47-.45-1.054-.755-1.687-.887-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.887-.45.47-.755 1.054-.886 1.687-.13.633-.084 1.29.139 1.897-.585.274-1.082.705-1.435 1.246-.354.54-.551 1.17-.57 1.816.019.646.216 1.276.57 1.817.353.54.85 0.972 1.435 1.245-.223.608-.27 1.265-.14 1.898.131.633.436 1.217.886 1.686.47.45 1.055.756 1.69.887.636.13 1.295.084 1.903-.139.272.585.704 1.084 1.244 1.439.54.354 1.167.551 1.813.568.647-.017 1.274-.214 1.814-.569s.971-.854 1.245-1.44c.604.224 1.26.271 1.893.14.633-.13 1.217-.436 1.687-.887.45-.47.756-1.053.887-1.686.13-.633.083-1.29-.14-1.898.586-.273 1.084-.705 1.438-1.246.354-.54.551-1.17.57-1.816zM9.662 14.85l-3.429-3.428 1.293-1.302 2.136 2.136 5.445-5.445 1.302 1.302-6.747 6.737z" fill="currentColor"></path></g></svg></span>`;
   }
 
-  function cleanCommentBody(text, inReplyToHandle) {
-    if (!text) return "";
-    if (inReplyToHandle) {
-      const stripped = text.replace(/^(?:@[A-Za-z0-9_]+\s*)+/, "").trim();
-      return stripped || text;
-    }
-    return text;
-  }
-
   function formatCommentText(model) {
     if (!model?.text) return "";
-    let text = cleanCommentBody(model.text, model.inReplyToHandle);
+    let text = model.text;
     if (!text) return "";
 
     const tokens = [];
@@ -1476,7 +1599,20 @@
     return escaped;
   }
 
-  function renderQuoteCard(quote) {
+  function updateQuotePreviews(root) {
+    for (const card of root.querySelectorAll('.sidepeek-quote-card')) {
+      const text = card.querySelector('.sidepeek-quote-text');
+      const button = card.querySelector('.sidepeek-quote-toggle');
+      if (!text || !button) continue;
+      const expanded = expandedQuotes.has(card.dataset.id);
+      text.classList.toggle('sidepeek-quote-text-expanded', expanded);
+      button.textContent = t(expanded ? 'collapseQuote' : 'expandQuote');
+      button.setAttribute('aria-expanded', String(expanded));
+      button.hidden = !expanded && text.scrollHeight <= text.clientHeight + 1;
+    }
+  }
+
+  function renderQuoteCard(quote, ownerId) {
     if (!quote || !quote.id) return "";
     const quoteAuthorName = escapeHtml(quote.author?.name || quote.author?.handle || "");
     const quoteAuthorHandle = escapeHtml(quote.author?.handle || "");
@@ -1498,7 +1634,7 @@
 
     return `
       <div class="sidepeek-quote-card" data-id="${quote.id}" data-url="${escapeHtml(quoteUrl)}">
-        <div class="sidepeek-quote-header">
+        <div class="sidepeek-quote-header" translate="no">
           ${avatarHtml}
           ${nameHtml}
           ${renderVerifiedBadge(quote.author)}
@@ -1506,7 +1642,7 @@
           <span class="sidepeek-dot">·</span>
           ${timeHtml}
         </div>
-        ${quote.text ? `<div class="sidepeek-quote-text">${formatCommentText(quote)}</div>` : ""}
+        ${quote.text ? `<div class="sidepeek-quote-body"><div class="sidepeek-quote-text" id="sidepeek-quote-text-${escapeHtml(ownerId)}-${escapeHtml(quote.id)}">${formatCommentText(quote)}</div><button type="button" class="sidepeek-quote-toggle" aria-expanded="false" aria-controls="sidepeek-quote-text-${escapeHtml(ownerId)}-${escapeHtml(quote.id)}" hidden>${t("expandQuote")}</button></div>` : ""}
         ${renderMediaBox(quote.media)}
       </div>
     `;
@@ -1535,7 +1671,7 @@
   function shouldShowTranslate(model) {
     if (state.translationProvider === "external") return false;
     if (!model || !model.text) return false;
-    const clean = cleanCommentBody(model.text, model.inReplyToHandle).trim();
+    const clean = model.text.trim();
     if (!clean) return false;
 
     // Strip URLs, @mentions, #hashtags, and punctuation/whitespace/digits/emojis
@@ -1595,7 +1731,7 @@
     if (!button || !box) return;
     const provider = state.translationProvider;
     const destLang = getLocale();
-    const text = cleanCommentBody(model.text, model.inReplyToHandle);
+    const text = model.text || "";
     const key = JSON.stringify([model.id, text, destLang, provider]);
     let entry = translations.get(key);
     if (!entry) {
@@ -1642,7 +1778,8 @@
   }
 
   function renderCommentNode(model, hasThreadLine = false, isChild = false) {
-    const signature = JSON.stringify([getLocale(), state.translationProvider, model.text, model.author, model.media, model.quote, model.card]);
+    const signature = JSON.stringify([getLocale(), state.translationProvider, model.text, model.entities, model.lang,
+      model.inReplyToHandle, model.createdAt, model.url, model.author, model.media, model.quote, model.card]);
     const cached = commentNodes.get(model.id);
     if (cached && cached.signature === signature) {
       Object.assign(cached.model, model);
@@ -1696,7 +1833,7 @@
       ? `<button type="button" class="sidepeek-translate-btn">${t("translateAction")}</button><div class="sidepeek-translation-box" style="display: none;"></div>`
       : "";
 
-    const quoteHtml = model.quote ? renderQuoteCard(model.quote) : "";
+    const quoteHtml = model.quote ? renderQuoteCard(model.quote, model.id) : "";
     const cardHtml = !model.quote && model.card ? renderLinkCard(model.card) : "";
 
     item.innerHTML = `
@@ -1705,7 +1842,7 @@
         ${hasThreadLine ? '<div class="sidepeek-thread-line"></div>' : ""}
       </div>
       <div class="sidepeek-content-col">
-        <div class="sidepeek-author-row">
+        <div class="sidepeek-author-row" translate="no">
           ${nameHtml}
           ${renderVerifiedBadge(model.author)}
           ${opBadgeHtml}
@@ -1765,7 +1902,8 @@
     actReply?.addEventListener("click", (e) => {
       e.stopPropagation();
       if (state.replyMode === "native") {
-        openNativeReplyDialog(model.id, "");
+        const draft = composerDrafts.get(`${state.focalTweetId}:${model.id}`);
+        openNativeReplyDialog(model.id, draft?.text || "", draft?.media.map(item => item.file).filter(Boolean) || []);
       } else {
         setReplyTarget(model);
       }
@@ -1803,6 +1941,14 @@
     // Quote card click & author hover
     const quoteCard = item.querySelector(".sidepeek-quote-card");
     if (quoteCard) {
+      quoteCard.querySelector('.sidepeek-quote-toggle')?.addEventListener('click', event => {
+        event.stopPropagation();
+        const id = quoteCard.dataset.id;
+        if (expandedQuotes.has(id)) expandedQuotes.delete(id);
+        else expandedQuotes.add(id);
+        if (expandedQuotes.size > 500) expandedQuotes.delete(expandedQuotes.values().next().value);
+        updateQuotePreviews(drawerRoot);
+      });
       quoteCard.addEventListener("click", (e) => {
         if (e.target.closest("a") || e.target.closest("button") || e.target.closest("video") || e.target.closest(".sidepeek-zoomable-img")) return;
         e.stopPropagation();
@@ -1929,47 +2075,80 @@
   // ==========================================================================
   // Native Reply Dialog Launcher
   // ==========================================================================
-  function openNativeReplyDialog(tweetId, textToCopy = "") {
-    if (textToCopy) {
-      try {
-        navigator.clipboard?.writeText(textToCopy).catch(() => {});
-      } catch {}
-    }
-
-    let replyBtn = null;
+  let nativeReplyOpening = false;
+  function nativeReplyEditors() {
+    return [...document.querySelectorAll('#layers [role="dialog"] [data-testid="tweetTextarea_0"]')]
+      .filter(editor => !editor.closest('[role="dialog"]')?.querySelector('[data-testid="swipe-to-dismiss"]'));
+  }
+  async function openNativeReplyDialog(tweetId, draftText = "", files = [], { tool = null } = {}) {
     const targetId = tweetId || state.focalTweetId;
-
-    if (targetId) {
-      const article = findDetailFocalArticle(targetId);
-      replyBtn = article?.querySelector('[data-testid="reply"]');
+    if (!targetId || nativeReplyOpening) return false;
+    if (nativeReplyEditors().length) {
+      showToast(t("nativeDraftAlreadyOpen"));
+      return false;
     }
-
-    if (!replyBtn && (!targetId || targetId === state.focalTweetId)) {
-      const focalArticle = findDetailFocalArticle(state.focalTweetId);
-      replyBtn = focalArticle?.querySelector('[data-testid="reply"]');
-    }
-
-    if (replyBtn) {
-      replyBtn.click();
-      showToast(textToCopy ? t("nativeReplyCopiedToast") : t("nativeReplyOpenedToast"));
-      if (textToCopy) {
-        setTimeout(() => {
-          const nativeEditor = document.querySelector('[data-testid="tweetTextarea_0"]');
-          if (nativeEditor) {
-            nativeEditor.focus();
-            try {
-              document.execCommand("insertText", false, textToCopy);
-            } catch {}
-          }
-        }, 350);
+    const replyBtn = findDetailFocalArticle(targetId)?.querySelector('[data-testid="reply"]');
+    const focalId = state.focalTweetId;
+    nativeReplyOpening = true;
+    const existingEditors = new Set(nativeReplyEditors());
+    try {
+      let finish;
+      const ready = new Promise(resolve => {
+        const find = () => nativeReplyEditors()
+          .find(editor => !existingEditors.has(editor));
+        const observer = new MutationObserver(() => { const editor = find(); if (editor) finish(editor); });
+        const timer = setTimeout(() => finish(null), 4500);
+        finish = editor => { clearTimeout(timer); observer.disconnect(); resolve(editor); };
+        observer.observe(document.body, { childList: true, subtree: true });
+      });
+      let opened = false;
+      try { opened = Boolean((await requestPage("OPEN_NATIVE_REPLY", { tweetId: targetId, quickTool: Boolean(tool) }, 2000))?.opened); } catch {}
+      // Tool flows need a tracked router entry for Escape. Do not
+      // fall back to an untracked composer that would reveal an extra editor.
+      if (!opened && tool) { finish(null); showToast(t("nativeReplyNotReady")); return false; }
+      if (!opened && replyBtn) replyBtn.click();
+      if (!opened && !replyBtn) {
+        finish(null);
+        if (files.length || tool) { showToast(t("nativeReplyNotReady")); return false; }
+        const link = document.createElement("a");
+        link.href = `https://x.com/intent/tweet?in_reply_to=${targetId}&text=${encodeURIComponent(draftText)}`;
+        link.target = "_self";
+        link.dataset.sidexNativeReplyLink = "true";
+        document.body.appendChild(link); link.click(); link.remove();
+        return true;
       }
-    } else if (targetId) {
-      const intentUrl = textToCopy
-        ? `https://x.com/intent/tweet?in_reply_to=${targetId}&text=${encodeURIComponent(textToCopy)}`
-        : `https://x.com/intent/tweet?in_reply_to=${targetId}`;
-      window.open(intentUrl, "_blank");
-      showToast(textToCopy ? t("nativeReplyCopiedToast") : t("nativeReplyOpenedToast"));
-    }
+      const immediate = nativeReplyEditors().find(editor => !existingEditors.has(editor));
+      if (immediate) finish(immediate);
+      const editor = await ready;
+      if (!editor) { showToast(t("nativeReplyNotReady")); return false; }
+      const dialog = editor.closest('[role="dialog"]');
+      if (draftText) {
+        if (editor.textContent.trim()) { showToast(t("nativeDraftAlreadyOpen")); return false; }
+        editor.focus();
+        const inserted = document.execCommand?.("insertText", false, draftText);
+        if (!inserted && editor.textContent !== draftText) { showToast(t("nativeDraftKept")); return false; }
+      }
+      if (files.length) {
+        const input = dialog.querySelector('input[type="file"]');
+        if (!input || typeof DataTransfer !== "function") { showToast(t("nativeMediaKeepDraft")); return false; }
+        const transfer = new DataTransfer();
+        files.forEach(file => transfer.items.add(file));
+        input.files = transfer.files;
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      state.nativeReplyTransfer = { focalId, targetId, draft: composerDrafts.get(`${focalId}:${targetId}`), text: draftText };
+      nativeLayers?.sync(document.getElementById(ROOT_ID));
+      if (tool) {
+        const button = dialog.querySelector(`[data-testid="${tool}"]`);
+        if (button && !button.disabled && button.getAttribute("aria-disabled") !== "true") button.click();
+        else showToast(getLocale() === "zh" ? "X 当前回复框未开放这个工具，草稿已保留" : "X does not offer this tool for the current reply. Your draft is retained.");
+      }
+      showToast(t("nativeReplyOpenedToast"));
+      return true;
+    } catch (error) {
+      showToast(error.message || t("nativeDraftKept"));
+      return false;
+    } finally { nativeReplyOpening = false; }
   }
 
   // ==========================================================================
@@ -1977,7 +2156,12 @@
   // ==========================================================================
   function setReplyTarget(model) {
     if (!model) return;
+    if (document.querySelector('#layers [role="dialog"] [data-testid="tweetTextarea_0"]')) {
+      showToast(t("nativeDraftAlreadyOpen"));
+      return;
+    }
     state.replyTarget = model;
+    document.querySelector(".sidepeek-footer-composer")?._sidepeekComposer?.syncTarget();
     const footer = document.querySelector(".sidepeek-footer-composer");
     if (!footer) return;
     const targetBox = footer.querySelector(".sidepeek-footer-reply-target");
@@ -2007,6 +2191,7 @@
         textarea.placeholder = isDrillDown
           ? t("replyToUser", { handle: drillDownParent?.author?.handle || (getLocale() === "zh" ? "此人" : "user") })
           : t("replyToAuthor", { handle: state.focalModel?.author?.handle || (getLocale() === "zh" ? "楼主" : "author") });
+        footer._sidepeekComposer?.syncTarget();
         textarea.focus();
       }
     });
@@ -2018,41 +2203,31 @@
 
     // Toolbar buttons
     const btnMedia = footer.querySelector(".sidepeek-tool-media");
-    const btnGif = footer.querySelector(".sidepeek-tool-gif");
-    const btnPoll = footer.querySelector(".sidepeek-tool-poll");
     const btnEmoji = footer.querySelector(".sidepeek-tool-emoji");
-    const btnSchedule = footer.querySelector(".sidepeek-tool-schedule");
-    const btnLocation = footer.querySelector(".sidepeek-tool-location");
 
     // Popover containers
     const emojiPopover = footer.querySelector(".sidepeek-emoji-popover");
-    const gifPopover = footer.querySelector(".sidepeek-gif-popover");
-    const pollPopover = footer.querySelector(".sidepeek-poll-popover");
-    const schedulePopover = footer.querySelector(".sidepeek-schedule-popover");
 
     // Progress ring elements
     const charCounter = footer.querySelector(".sidepeek-char-counter");
     const ringProgress = footer.querySelector(".sidepeek-char-ring-progress");
     const charWarnNum = footer.querySelector(".sidepeek-char-warn-num");
 
-    let attachedMedia = []; // Array of { id, mediaId, dataUrl, file, isUploading, isGif }
     const MAX_MEDIA = 4;
-    let activePoll = null;
-    let activeSchedule = null;
-    let activeLocation = null;
-
-    const targetTweetId = isDrillDown && drillDownParent ? drillDownParent.id : state.focalTweetId;
-
-    // Helper: calculate character count (ASCII=1, CJK/Emoji/Fullwidth=2, Limit=280/25000)
-    function calculateTweetLength(text) {
-      let len = 0;
-      for (const ch of (text || "")) {
-        const code = ch.codePointAt(0);
-        if (code <= 127) len += 1;
-        else len += 2;
-      }
-      return len;
+    let active = true;
+    const getTargetId = () => state.replyTarget?.id ||
+      (state.activeView?.type === "drilldown" ? state.activeView.parentId : state.focalTweetId);
+    const getDraftKey = () => `${state.focalTweetId}:${getTargetId()}`;
+    function getDraft(key) {
+      if (!composerDrafts.has(key)) composerDrafts.set(key, { text: "", media: [], sending: false });
+      return composerDrafts.get(key);
     }
+    let draftKey = getDraftKey();
+    let draft = getDraft(draftKey);
+    textarea.value = draft.text;
+
+    // Use the official text parser for URLs, Unicode weights and emoji groups.
+    const calculateTweetLength = Core.tweetLength;
 
     // Update character progress ring and submit button state
     function updateComposerState() {
@@ -2061,14 +2236,17 @@
       textarea.style.height = Math.min(textarea.scrollHeight, 140) + "px";
 
       const text = textarea.value;
+      draft.text = text;
+      textarea.disabled = draft.sending;
+      fileInput.disabled = draft.sending;
       const len = calculateTweetLength(text);
       const circumference = 2 * Math.PI * 9; // ~56.5487
       const standardMax = 280;
       const absoluteMax = 25000;
 
-      const hasMedia = attachedMedia.length > 0;
-      const isMediaUploading = attachedMedia.some((m) => m.isUploading);
-      const hasContent = len > 0 || hasMedia || activePoll !== null;
+      const hasMedia = draft.media.length > 0;
+      const isMediaUploading = draft.media.some((m) => m.isUploading);
+      const hasContent = text.trim().length > 0 || hasMedia;
 
       if (len === 0) {
         ringProgress.style.strokeDasharray = `${circumference}`;
@@ -2126,8 +2304,10 @@
       }
 
       const isOverLimit = len > absoluteMax;
-      submitBtn.disabled = !hasContent || isOverLimit || isMediaUploading;
-      if (isMediaUploading) {
+      submitBtn.disabled = draft.sending || !hasContent || isOverLimit || isMediaUploading;
+      if (draft.sending) {
+        submitBtn.textContent = t("sending");
+      } else if (isMediaUploading) {
         submitBtn.textContent = t("uploading");
       } else if (submitBtn.textContent === t("uploading")) {
         submitBtn.textContent = t("replyBtn");
@@ -2138,10 +2318,10 @@
 
     // Popover toggle management
     function closeAllPopovers() {
-      [emojiPopover, gifPopover, pollPopover, schedulePopover].forEach((p) => {
+      [emojiPopover].forEach((p) => {
         if (p) p.style.display = "none";
       });
-      [btnGif, btnPoll, btnEmoji, btnSchedule].forEach((btn) => {
+      [btnEmoji].forEach((btn) => {
         btn?.classList.remove("active");
       });
     }
@@ -2166,7 +2346,8 @@
 
     // Keydown listener for Escape
     footer.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
+      if (e.key === "Escape" && emojiPopover?.style.display !== "none") {
+        e.stopPropagation();
         closeAllPopovers();
       }
     });
@@ -2230,301 +2411,6 @@
     }
 
     // =========================================================================
-    // 2. GIF Popover
-    // =========================================================================
-    if (gifPopover) {
-      let selectedTag = "全部";
-      function renderGifPopover(searchQuery = "") {
-        const query = searchQuery.trim().toLowerCase();
-        const filteredGifs = REACTION_GIFS.filter((item) => {
-          if (query) {
-            return item.title.toLowerCase().includes(query) || item.tag.toLowerCase().includes(query);
-          }
-          return selectedTag === "全部" || item.tag === selectedTag;
-        });
-
-        const rawTags = ["全部", ...new Set(REACTION_GIFS.map((g) => g.tag))];
-
-        gifPopover.innerHTML = `
-          <div class="sidepeek-popover-header">
-            <input type="text" class="sidepeek-gif-search-input" placeholder="${t("searchGifPlaceholder")}" value="${query}" />
-            <button type="button" class="sidepeek-popover-close" title="✕">✕</button>
-          </div>
-          <div class="sidepeek-gif-tags">
-            ${rawTags.map((tag) => {
-              const tagLabel = tag === "全部" ? t("allCategory") : (t("gifTags." + {
-                "哈哈": "laugh",
-                "点赞": "agree",
-                "鼓掌": "clap",
-                "吃瓜": "popcorn",
-                "比心": "love",
-                "震惊": "shock",
-                "无语": "facepalm",
-                "哭泣": "cry"
-              }[tag]) || tag);
-              return `<button type="button" class="sidepeek-gif-tag ${tag === selectedTag ? "active" : ""}" data-tag="${tag}">${tagLabel}</button>`;
-            }).join("")}
-          </div>
-          <div class="sidepeek-gif-grid">
-            ${filteredGifs.length > 0 ? filteredGifs.map((gif) => `
-              <div class="sidepeek-gif-item" data-url="${gif.url}" data-title="${gif.title}">
-                <img src="${gif.url}" alt="${gif.title}" loading="lazy" />
-                <span class="sidepeek-gif-label">${gif.title}</span>
-              </div>
-            `).join("") : `<div class="sidepeek-popover-empty">${t("noGifFound")}</div>`}
-          </div>
-        `;
-
-        const searchInput = gifPopover.querySelector(".sidepeek-gif-search-input");
-        searchInput?.addEventListener("input", (e) => {
-          renderGifPopover(e.target.value);
-          gifPopover.querySelector(".sidepeek-gif-search-input")?.focus();
-        });
-
-        gifPopover.querySelector(".sidepeek-popover-close")?.addEventListener("click", (e) => {
-          e.stopPropagation();
-          closeAllPopovers();
-        });
-
-        gifPopover.querySelectorAll(".sidepeek-gif-tag").forEach((tBtn) => {
-          tBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            selectedTag = tBtn.dataset.tag;
-            renderGifPopover();
-          });
-        });
-
-        gifPopover.querySelectorAll(".sidepeek-gif-item").forEach((item) => {
-          item.addEventListener("click", async (e) => {
-            e.stopPropagation();
-            const gifUrl = item.dataset.url;
-            closeAllPopovers();
-
-            if (attachedMedia.length >= MAX_MEDIA) {
-              showToast(t("maxMediaReached"));
-              return;
-            }
-
-            try {
-              submitBtn.textContent = t("processingGif");
-              const resp = await fetch(gifUrl);
-              const blob = await resp.blob();
-              handleImageFiles([blob], true, gifUrl);
-            } catch {
-              showToast(t("gifUploadFailed"));
-              submitBtn.textContent = t("replyBtn");
-              updateComposerState();
-            }
-          });
-        });
-      }
-      renderGifPopover();
-
-      btnGif?.addEventListener("click", (e) => {
-        e.stopPropagation();
-        togglePopover(gifPopover, btnGif);
-      });
-    }
-
-    // =========================================================================
-    // 3. Poll Popover
-    // =========================================================================
-    if (pollPopover) {
-      function renderPollPopover() {
-        pollPopover.innerHTML = `
-          <div class="sidepeek-popover-header">
-            <span class="sidepeek-popover-title">${t("pollTitle")}</span>
-            <button type="button" class="sidepeek-popover-close" title="✕">✕</button>
-          </div>
-          <div class="sidepeek-poll-body">
-            <input type="text" class="sidepeek-poll-input" id="sp-poll-opt1" placeholder="${t("pollOpt1Placeholder")}" maxlength="25" />
-            <input type="text" class="sidepeek-poll-input" id="sp-poll-opt2" placeholder="${t("pollOpt2Placeholder")}" maxlength="25" />
-            <input type="text" class="sidepeek-poll-input" id="sp-poll-opt3" placeholder="${t("pollOpt3Placeholder")}" maxlength="25" />
-            <input type="text" class="sidepeek-poll-input" id="sp-poll-opt4" placeholder="${t("pollOpt4Placeholder")}" maxlength="25" />
-            <div class="sidepeek-poll-footer">
-              <label>${t("pollDurationLabel")}
-                <select class="sidepeek-poll-duration">
-                  <option value="1">${t("pollDay1")}</option>
-                  <option value="3">${t("pollDay3")}</option>
-                  <option value="7">${t("pollDay7")}</option>
-                </select>
-              </label>
-              <div class="sidepeek-poll-btns">
-                <button type="button" class="sidepeek-poll-btn-clear">${t("pollClear")}</button>
-                <button type="button" class="sidepeek-poll-btn-apply">${t("pollApply")}</button>
-              </div>
-            </div>
-          </div>
-        `;
-
-        pollPopover.querySelector(".sidepeek-popover-close")?.addEventListener("click", (e) => {
-          e.stopPropagation();
-          closeAllPopovers();
-        });
-
-        pollPopover.querySelector(".sidepeek-poll-btn-clear")?.addEventListener("click", (e) => {
-          e.stopPropagation();
-          activePoll = null;
-          updatePollBadge();
-          closeAllPopovers();
-        });
-
-        pollPopover.querySelector(".sidepeek-poll-btn-apply")?.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const opt1 = pollPopover.querySelector("#sp-poll-opt1")?.value.trim();
-          const opt2 = pollPopover.querySelector("#sp-poll-opt2")?.value.trim();
-          const opt3 = pollPopover.querySelector("#sp-poll-opt3")?.value.trim();
-          const opt4 = pollPopover.querySelector("#sp-poll-opt4")?.value.trim();
-          const duration = pollPopover.querySelector(".sidepeek-poll-duration")?.value;
-
-          if (!opt1 || !opt2) {
-            showToast(t("pollValidation"));
-            return;
-          }
-          const options = [opt1, opt2];
-          if (opt3) options.push(opt3);
-          if (opt4) options.push(opt4);
-
-          activePoll = { options, duration };
-          updatePollBadge();
-          closeAllPopovers();
-          showToast(t("pollAddedToast"));
-          updateComposerState();
-        });
-      }
-
-      function updatePollBadge() {
-        const existing = previewArea.querySelector(".sidepeek-poll-badge");
-        if (existing) existing.remove();
-        if (activePoll) {
-          const badge = document.createElement("div");
-          badge.className = "sidepeek-composer-tag sidepeek-poll-badge";
-          badge.innerHTML = `
-            <span>${t("pollBadge", { count: activePoll.options.length, days: activePoll.duration })}</span>
-            <button type="button" class="sidepeek-tag-remove" title="${t("deletePoll")}">✕</button>
-          `;
-          badge.querySelector(".sidepeek-tag-remove")?.addEventListener("click", () => {
-            activePoll = null;
-            badge.remove();
-            updateComposerState();
-          });
-          previewArea.appendChild(badge);
-        }
-      }
-
-      renderPollPopover();
-
-      btnPoll?.addEventListener("click", (e) => {
-        e.stopPropagation();
-        togglePopover(pollPopover, btnPoll);
-      });
-    }
-
-    // =========================================================================
-    // 4. Schedule Popover
-    // =========================================================================
-    if (schedulePopover) {
-      function renderSchedulePopover() {
-        const now = new Date();
-        now.setMinutes(now.getMinutes() + 10);
-        const defaultTime = now.toISOString().slice(0, 16);
-
-        schedulePopover.innerHTML = `
-          <div class="sidepeek-popover-header">
-            <span class="sidepeek-popover-title">${t("scheduleTitle")}</span>
-            <button type="button" class="sidepeek-popover-close" title="✕">✕</button>
-          </div>
-          <div class="sidepeek-schedule-body">
-            <label class="sidepeek-schedule-label">${t("scheduleLabel")}</label>
-            <input type="datetime-local" class="sidepeek-schedule-input" value="${defaultTime}" />
-            <div class="sidepeek-schedule-footer">
-              <button type="button" class="sidepeek-schedule-btn-clear">${t("scheduleClear")}</button>
-              <button type="button" class="sidepeek-schedule-btn-apply">${t("scheduleApply")}</button>
-            </div>
-          </div>
-        `;
-
-        schedulePopover.querySelector(".sidepeek-popover-close")?.addEventListener("click", (e) => {
-          e.stopPropagation();
-          closeAllPopovers();
-        });
-
-        schedulePopover.querySelector(".sidepeek-schedule-btn-clear")?.addEventListener("click", (e) => {
-          e.stopPropagation();
-          activeSchedule = null;
-          updateScheduleBadge();
-          closeAllPopovers();
-        });
-
-        schedulePopover.querySelector(".sidepeek-schedule-btn-apply")?.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const val = schedulePopover.querySelector(".sidepeek-schedule-input")?.value;
-          if (!val) return;
-          activeSchedule = val;
-          updateScheduleBadge();
-          closeAllPopovers();
-          showToast(t("scheduleSetToast", { time: val.replace("T", " ") }));
-          updateComposerState();
-        });
-      }
-
-      function updateScheduleBadge() {
-        const existing = previewArea.querySelector(".sidepeek-schedule-badge");
-        if (existing) existing.remove();
-        if (activeSchedule) {
-          const badge = document.createElement("div");
-          badge.className = "sidepeek-composer-tag sidepeek-schedule-badge";
-          badge.innerHTML = `
-            <span>${t("scheduleBadge", { time: activeSchedule.replace("T", " ") })}</span>
-            <button type="button" class="sidepeek-tag-remove" title="${t("cancelSchedule")}">✕</button>
-          `;
-          badge.querySelector(".sidepeek-tag-remove")?.addEventListener("click", () => {
-            activeSchedule = null;
-            badge.remove();
-            updateComposerState();
-          });
-          previewArea.appendChild(badge);
-        }
-      }
-
-      renderSchedulePopover();
-
-      btnSchedule?.addEventListener("click", (e) => {
-        e.stopPropagation();
-        togglePopover(schedulePopover, btnSchedule);
-      });
-    }
-
-    // =========================================================================
-    // 5. Location Button
-    // =========================================================================
-    btnLocation?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      closeAllPopovers();
-      if (activeLocation) {
-        activeLocation = null;
-        previewArea.querySelector(".sidepeek-location-badge")?.remove();
-        showToast(t("locationClearedToast"));
-      } else {
-        activeLocation = "current";
-        const badge = document.createElement("div");
-        badge.className = "sidepeek-composer-tag sidepeek-location-badge";
-        badge.innerHTML = `
-          <span>${t("locationBadge")}</span>
-          <button type="button" class="sidepeek-tag-remove" title="${t("deleteLocation")}">✕</button>
-        `;
-        badge.querySelector(".sidepeek-tag-remove")?.addEventListener("click", () => {
-          activeLocation = null;
-          badge.remove();
-          updateComposerState();
-        });
-        previewArea.appendChild(badge);
-        showToast(t("locationAttachedToast"));
-      }
-      updateComposerState();
-    });
-
-    // =========================================================================
     // 6. Media Upload & Paste Image
     // =========================================================================
     // =========================================================================
@@ -2532,19 +2418,18 @@
     // =========================================================================
     function renderMediaPreviews() {
       previewArea.querySelectorAll(".sidepeek-pasted-preview").forEach((el) => el.remove());
-      for (const item of attachedMedia) {
+      for (const item of draft.media) {
         const previewEl = document.createElement("div");
         previewEl.className = "sidepeek-pasted-preview";
         previewEl.dataset.id = item.id;
         previewEl.innerHTML = `
           <img src="${item.dataUrl || ""}" alt="" />
-          ${item.isGif ? '<div class="sidepeek-gif-badge">GIF</div>' : ""}
           ${item.isUploading ? '<div class="sidepeek-preview-loading"><span class="sidepeek-mini-spinner"></span></div>' : ""}
           <button type="button" class="sidepeek-remove-img-btn" title="✕">✕</button>
         `;
         previewEl.querySelector(".sidepeek-remove-img-btn")?.addEventListener("click", (e) => {
           e.stopPropagation();
-          attachedMedia = attachedMedia.filter((m) => m.id !== item.id);
+          draft.media = draft.media.filter((m) => m.id !== item.id);
           renderMediaPreviews();
           updateComposerState();
         });
@@ -2552,7 +2437,7 @@
       }
     }
 
-    async function uploadMediaItem(item, mimeType, size) {
+    async function uploadMediaItem(item, mimeType, size, ownerDraft = draft) {
       try {
         const base64 = item.dataUrl.split(",")[1];
         const res = await requestPage("UPLOAD_MEDIA", {
@@ -2560,22 +2445,26 @@
           mimeType: mimeType || "image/png",
           size: size || item.file?.size || 0
         });
+        if (!res?.mediaId) throw new Error(t("uploadFailed"));
         item.mediaId = res.mediaId;
         item.isUploading = false;
       } catch (err) {
         showToast((err.message || t("uploadFailed")) + (item.file?.name ? ` (${item.file.name})` : ""));
-        attachedMedia = attachedMedia.filter((m) => m.id !== item.id);
+        ownerDraft.media = ownerDraft.media.filter((m) => m.id !== item.id);
       } finally {
-        renderMediaPreviews();
-        updateComposerState();
+        if (active) { renderMediaPreviews(); updateComposerState(); }
+        else document.querySelector(".sidepeek-footer-composer")?._sidepeekComposer?.refresh();
       }
     }
 
-    function handleImageFiles(fileList, isGif = false, gifUrl = null) {
-      const files = Array.from(fileList || []).filter((f) => f && (f.type?.startsWith("image/") || f.type?.startsWith("video/") || isGif));
-      if (!files.length && !gifUrl) return;
+    function handleImageFiles(fileList) {
+      if (draft.sending) return;
+      const ownerDraft = draft;
+      const files = Array.from(fileList || []).filter((f) => f && /^image\/(?:jpeg|png|webp)$/.test(f.type || ""));
+      if (files.length !== Array.from(fileList || []).length) showToast(t("quickMediaFormats"));
+      if (!files.length) return;
 
-      const remaining = MAX_MEDIA - attachedMedia.length;
+      const remaining = MAX_MEDIA - draft.media.length;
       if (remaining <= 0) {
         showToast(t("maxMediaReached"));
         return;
@@ -2590,26 +2479,24 @@
         const item = {
           id: "media_" + Math.random().toString(36).slice(2, 9),
           mediaId: null,
-          dataUrl: gifUrl || "",
+          dataUrl: "",
           file,
-          isUploading: true,
-          isGif
+          isUploading: true
         };
-        attachedMedia.push(item);
-        if (gifUrl) {
-          renderMediaPreviews();
-          updateComposerState();
-          uploadMediaItem(item, "image/gif", file.size);
-        } else {
-          const reader = new FileReader();
-          reader.onload = () => {
-            item.dataUrl = reader.result;
-            renderMediaPreviews();
-            updateComposerState();
-            uploadMediaItem(item, file.type, file.size);
-          };
-          reader.readAsDataURL(file);
-        }
+        draft.media.push(item);
+        const reader = new FileReader();
+        reader.onload = () => {
+          item.dataUrl = reader.result;
+          if (active) { renderMediaPreviews(); updateComposerState(); }
+          uploadMediaItem(item, file.type, file.size, ownerDraft);
+        };
+        reader.onerror = () => {
+          ownerDraft.media = ownerDraft.media.filter(media => media.id !== item.id);
+          showToast(t("uploadFailed"));
+          if (active) { renderMediaPreviews(); updateComposerState(); }
+          else document.querySelector(".sidepeek-footer-composer")?._sidepeekComposer?.refresh();
+        };
+        reader.readAsDataURL(file);
       }
       renderMediaPreviews();
       updateComposerState();
@@ -2639,177 +2526,55 @@
       }
     });
 
-    // 6.1 Native Reply Dialog Shortcut
-    const btnNativeReply = footer.querySelector(".sidepeek-tool-native-reply");
-    btnNativeReply?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const currentTargetId = state.replyTarget ? state.replyTarget.id : targetTweetId;
-      openNativeReplyDialog(currentTargetId, textarea?.value?.trim() || "");
-    });
+    for (const [name, tool] of Object.entries({ gif: "gifSearchButton", poll: "createPollButton", schedule: "scheduleOption", location: "geoButton", disclosure: "contentDisclosureButton" })) {
+      footer.querySelector(`.sidepeek-tool-${name}`)?.addEventListener("click", e => {
+        e.stopPropagation();
+        if (draft.sending || draft.media.some(item => item.isUploading)) return;
+        openNativeReplyDialog(getTargetId(), textarea?.value || "", draft.media.map(item => item.file).filter(Boolean), { tool });
+      });
+    }
 
     // =========================================================================
-    // 7. Submit Reply: Optimistic In-Place Append (无刷新直接添加到回复)
+    // Submit once, retain the draft on failure, and render the confirmed ID.
     // =========================================================================
     async function doSubmit() {
+      if (draft.sending) return;
+      const ownerDraft = draft;
       const text = textarea.value.trim();
-      const len = calculateTweetLength(text);
-      if (len > 25000) {
-        showToast(t("overCharLimitNote"));
-        return;
+      if (Core.tweetLength(text) > 25000) { showToast(t("overCharLimitNote")); return; }
+      if (!text && !ownerDraft.media.length) return;
+      if (ownerDraft.media.some(item => item.isUploading || !item.mediaId)) {
+        showToast(t("mediaStillUploading")); return;
       }
-      if (!text && !attachedMedia.length && !activePoll) return;
-
-      if (attachedMedia.some((m) => m.isUploading)) {
-        showToast(t("mediaStillUploading"));
-        return;
-      }
-
-      submitBtn.disabled = true;
-      submitBtn.textContent = t("sending");
-
-      // Safety check: ensure repliedModel belongs to current conversation tree or focal tweet
-      let repliedModel = state.replyTarget;
-      if (repliedModel && state.tree && !state.tree.byId.has(repliedModel.id) && repliedModel.id !== state.focalTweetId) {
-        repliedModel = null;
-        state.replyTarget = null;
-      }
-      const effectiveTargetId = repliedModel ? repliedModel.id : (isDrillDown && drillDownParent ? drillDownParent.id : state.focalTweetId);
-
+      const targetId = getTargetId();
+      const focalId = state.focalTweetId;
+      const generation = state.threadGeneration;
+      ownerDraft.sending = true;
+      ownerDraft.text = textarea.value;
+      updateComposerState();
       try {
-        let finalText = text;
-        if (activePoll) {
-          finalText += `\n[${t("pollTitle")}: ${activePoll.options.join(" / ")}]`;
-        }
-
-        const mediaIds = attachedMedia.map((m) => m.mediaId).filter(Boolean);
-        await requestPage("CREATE_REPLY", {
-          tweetId: effectiveTargetId,
-          text: finalText,
-          mediaIds
+        const response = await requestPage("CREATE_REPLY", {
+          tweetId: targetId, text, mediaIds: ownerDraft.media.map(item => item.mediaId)
         });
-
-        // 1. Snapshot user info & media preview before clearing
-        const currentUser = getCurrentUserInfo();
-        const mediaSnapshot = attachedMedia.map((m) => ({ type: m.isGif ? "animated_gif" : "photo", url: m.dataUrl }));
-
-        // 2. Reset composer inputs immediately
-        textarea.value = "";
-        previewArea.innerHTML = "";
-        attachedMedia = [];
-        activePoll = null;
-        activeSchedule = null;
-        activeLocation = null;
-        state.replyTarget = null;
-        if (replyTargetBox) replyTargetBox.style.display = "none";
-        textarea.placeholder = isDrillDown
-          ? t("replyToUser", { handle: drillDownParent?.author?.handle || (getLocale() === "zh" ? "此人" : "user") })
-          : t("replyToAuthor", { handle: state.focalModel?.author?.handle || (getLocale() === "zh" ? "楼主" : "author") });
-        submitBtn.textContent = t("replyBtn");
-        updateComposerState();
-        closeAllPopovers();
-
-        // 3. Create Optimistic Comment Model
-        const optimisticId = `local-${Date.now()}`;
-        const newReplyModel = {
-          id: optimisticId,
-          text: finalText,
-          createdAt: new Date().toISOString(),
-          author: {
-            name: currentUser.name,
-            handle: currentUser.handle,
-            avatar: currentUser.avatar,
-            verified: false
-          },
-          inReplyToHandle: repliedModel ? repliedModel.author.handle : (isDrillDown && drillDownParent ? drillDownParent.author.handle : state.focalModel?.author?.handle || ""),
-          counts: { replies: 0, reposts: 0, likes: 0, bookmarks: 0 },
-          flags: { liked: false, reposted: false, bookmarked: false },
-          media: mediaSnapshot,
-          url: ""
-        };
-
-        // 4. In-place DOM Insertion without any full-drawer loading/clearing!
-        const body = root.querySelector(".sidepeek-body");
-        if (body) {
-          // If body currently displays "No replies yet", clear it!
-          const emptyBox = body.querySelector(".sidepeek-empty-box");
-          if (emptyBox) emptyBox.remove();
-
-          if (repliedModel) {
-            // Replying to a specific comment: add as child
-            if (!state.tree.childrenMap.has(repliedModel.id)) {
-              state.tree.childrenMap.set(repliedModel.id, []);
-            }
-            state.tree.childrenMap.get(repliedModel.id).push(newReplyModel);
-            state.tree.byId.set(newReplyModel.id, newReplyModel);
-
-            // Update reply count on replied comment
-            repliedModel.counts.replies = (repliedModel.counts.replies || 0) + 1;
-            const targetArticle = body.querySelector(`article[data-id="${repliedModel.id}"]`);
-            if (targetArticle) {
-              const replyCountSpan = targetArticle.querySelector(".sidepeek-act-reply span span");
-              if (replyCountSpan) replyCountSpan.textContent = formatCount(repliedModel.counts.replies);
-            }
-
-            const node = renderCommentNode(newReplyModel, false, true);
-            node.classList.add("sidepeek-just-posted");
-
-            const threadGroup = targetArticle?.closest(".sidepeek-thread-group");
-            if (threadGroup) {
-              threadGroup.appendChild(node);
-            } else if (targetArticle && targetArticle.parentNode) {
-              targetArticle.parentNode.insertBefore(node, targetArticle.nextSibling);
-            } else {
-              body.appendChild(node);
-            }
-            node.scrollIntoView({ behavior: "smooth", block: "nearest" });
-          } else if (isDrillDown && drillDownParent) {
-            // Append to drilldown list
-            if (!state.tree.childrenMap.has(drillDownParent.id)) {
-              state.tree.childrenMap.set(drillDownParent.id, []);
-            }
-            state.tree.childrenMap.get(drillDownParent.id).push(newReplyModel);
-            state.tree.byId.set(newReplyModel.id, newReplyModel);
-
-            const node = renderCommentNode(newReplyModel, false, true);
-            node.classList.add("sidepeek-just-posted");
-            body.appendChild(node);
-            node.scrollIntoView({ behavior: "smooth", block: "nearest" });
-
-            const badge = root.querySelector(".sidepeek-count-badge");
-            if (badge) {
-              const count = state.tree.childrenMap.get(drillDownParent.id).length;
-              badge.textContent = `(${count})`;
-            }
-          } else {
-            // Prepend to root replies
-            if (!state.tree) {
-              state.tree = { rootReplies: [], childrenMap: new Map(), byId: new Map() };
-            }
-            state.tree.rootReplies.unshift(newReplyModel);
-            state.tree.byId.set(newReplyModel.id, newReplyModel);
-
-            const node = renderCommentNode(newReplyModel, false);
-            node.classList.add("sidepeek-just-posted");
-            body.prepend(node);
-            body.scrollTo({ top: 0, behavior: "smooth" });
-
-            const badge = root.querySelector(".sidepeek-count-badge");
-            if (badge) {
-              badge.textContent = `(${state.tree.rootReplies.length})`;
-            }
-          }
+        const created = Core.collectTweetModels(response).find(model => model.inReplyToId === targetId);
+        if (!created) throw new Error(t("replyStatusUnknown"));
+        ownerDraft.text = "";
+        ownerDraft.media = [];
+        if (active && draft === ownerDraft) {
+          textarea.value = "";
+          renderMediaPreviews();
+          closeAllPopovers();
         }
-
+        if (state.open && state.focalTweetId === focalId && state.threadGeneration === generation) {
+          acceptCreatedReply(created);
+        }
         showToast(t("replySent"));
       } catch (err) {
-        const errMsg = err.message || t("replyFailed");
-        showToast(errMsg);
-        if (errMsg.includes("Premium") || errMsg.includes("会员")) {
-          btnNativeReply?.classList.add("sidepeek-tool-btn-highlight");
-          setTimeout(() => btnNativeReply?.classList.remove("sidepeek-tool-btn-highlight"), 3000);
-        }
-        submitBtn.disabled = false;
-        submitBtn.textContent = t("replyBtn");
+        showToast(err.message || t("replyFailed"));
+      } finally {
+        ownerDraft.sending = false;
+        if (active) updateComposerState();
+        else document.querySelector(".sidepeek-footer-composer")?._sidepeekComposer?.refresh();
       }
     }
 
@@ -2821,6 +2586,26 @@
       }
     });
 
+    footer._sidepeekComposer = {
+      syncTarget() {
+        const nextKey = getDraftKey();
+        if (draftKey === nextKey) return;
+        draft.text = textarea.value;
+        draftKey = nextKey;
+        draft = getDraft(nextKey);
+        textarea.value = draft.text;
+        closeAllPopovers();
+        renderMediaPreviews();
+        updateComposerState();
+      },
+      refresh() { renderMediaPreviews(); updateComposerState(); },
+      dispose() {
+        draft.text = textarea.value;
+        active = false;
+        document.removeEventListener("click", outsideClickListener);
+      }
+    };
+    renderMediaPreviews();
     updateComposerState();
   }
 
@@ -3006,7 +2791,7 @@
     menu.querySelector(".sidepeek-menu-copy-text")?.addEventListener("click", (e) => {
       e.stopPropagation();
       closeMoreMenu();
-      const rawText = cleanCommentBody(model.text, model.inReplyToHandle);
+      const rawText = model.text || "";
       if (rawText) {
         navigator.clipboard?.writeText(rawText).then(() => {
           showToast(t("textCopied"));
@@ -3128,7 +2913,7 @@
     menu.querySelector(".sidepeek-menu-copy-text")?.addEventListener("click", (e) => {
       e.stopPropagation();
       closeShareMenu();
-      const rawText = cleanCommentBody(model.text, model.inReplyToHandle);
+      const rawText = model.text || "";
       if (rawText) {
         navigator.clipboard?.writeText(rawText).then(() => {
           showToast(t("textCopied"));
@@ -3148,7 +2933,7 @@
       if (navigator.share) {
         navigator.share({
           title: model.author?.name ? `${model.author.name} on X` : "X",
-          text: cleanCommentBody(model.text, model.inReplyToHandle),
+          text: model.text || "",
           url: model.url
         }).catch(() => {});
       }
@@ -3690,6 +3475,43 @@
   // ==========================================================================
   // Timeline Click Interceptor & Focal Tweet Show More
   // ==========================================================================
+  function rememberThreadCursor(tweetId, nextCursor, consumedCursor = null) {
+    let consumed = state.consumedCursors.get(tweetId);
+    if (!consumed) state.consumedCursors.set(tweetId, consumed = new Set());
+    if (consumedCursor) consumed.add(consumedCursor);
+    if (nextCursor && !consumed.has(nextCursor)) state.threadCursors.set(tweetId, nextCursor);
+    else state.threadCursors.delete(tweetId);
+  }
+
+  function acceptCreatedReply(model) {
+    if (!state.open || !model?.id || state.replies.some(reply => reply.id === model.id)) return;
+    if (model.inReplyToId !== state.focalTweetId && !state.tree?.byId.has(model.inReplyToId)) return;
+    state.replies.unshift(model);
+    const parent = state.tree?.byId.get(model.inReplyToId);
+    if (parent) {
+      parent.counts.replies += 1;
+      state.expandedThreadIds.add(parent.id);
+    }
+    state.tree = Core.buildConversationTree(state.replies, state.focalTweetId);
+    renderDrawer();
+  }
+
+  function appendReplyPagination(container, tweetId) {
+    const cursor = state.threadCursors.get(tweetId);
+    if (!cursor) return;
+    const row = document.createElement("div");
+    row.className = "sidepeek-pagination";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "sidepeek-expand-btn sidepeek-load-more-btn";
+    button.disabled = state.loadingThreadIds.has(tweetId);
+    button.textContent = button.disabled ? t("loadingReplies")
+      : t(tweetId === state.focalTweetId ? "loadMoreComments" : "loadMoreThreadReplies");
+    button.addEventListener("click", () => fetchSubReplies(tweetId, false, true, cursor));
+    row.appendChild(button);
+    container.appendChild(row);
+  }
+
   async function fetchThread(tweetId) {
     const generation = ++state.threadGeneration;
     clearCommentNodes();
@@ -3702,16 +3524,19 @@
     state.expandedThreadIds.clear();
     state.loadedThreadIds.clear();
     state.loadingThreadIds.clear();
+    state.threadCursors.clear();
+    state.consumedCursors.clear();
     state.replyTarget = null;
     renderDrawer();
 
     try {
       const json = await requestPage("READ_THREAD", { tweetId });
       if (!state.open || state.focalTweetId !== tweetId || generation !== state.threadGeneration) return;
-      const { focal, replies } = Core.parseTweetDetail(json, tweetId);
+      const { focal, replies, cursor } = Core.parseTweetDetail(json, tweetId);
       state.focalModel = focal;
       state.replies = replies;
       state.tree = Core.buildConversationTree(replies, tweetId);
+      rememberThreadCursor(tweetId, cursor);
       state.loading = false;
       state.resetScrollOnRender = true;
       renderDrawer();
@@ -3724,11 +3549,11 @@
     }
   }
 
-  async function fetchSubReplies(commentId, isSilent = false, expandOnSuccess = true) {
+  async function fetchSubReplies(commentId, isSilent = false, expandOnSuccess = true, cursor = null) {
     const generation = state.threadGeneration;
     if (!commentId) return;
     if (state.loadingThreadIds.has(commentId)) {
-      if (expandOnSuccess) state.expandedThreadIds.add(commentId);
+      if (expandOnSuccess && commentId !== state.focalTweetId) state.expandedThreadIds.add(commentId);
       return;
     }
     state.loadingThreadIds.add(commentId);
@@ -3738,38 +3563,42 @@
 
     try {
       const currentFocal = state.focalTweetId;
-      const json = await requestPage("READ_THREAD", { tweetId: commentId });
+      const json = await requestPage("READ_THREAD", { tweetId: commentId, ...(cursor ? { cursor } : {}) });
       if (!state.open || state.focalTweetId !== currentFocal || generation !== state.threadGeneration) return;
 
-      const { focal, replies } = Core.parseTweetDetail(json, commentId);
+      const { focal, replies, cursor: nextCursor } = Core.parseTweetDetail(json, commentId, [state.focalModel, ...state.replies]);
 
-      // 将 sub-replies 标记归属并去重加入 state.replies
-      const existingIds = new Set(state.replies.map((r) => r.id));
+      // Merge pages by ID so duplicates update their existing model, and a
+      // cursor page need not repeat the focal tweet or intermediate parents.
+      const existingReplies = new Map(state.replies.map((r) => [r.id, r]));
       for (const r of (replies || [])) {
-        if (!existingIds.has(r.id) && r.id !== state.focalTweetId) {
-          r._subThreadOf = commentId;
+        if (r.id === state.focalTweetId) continue;
+        const existing = existingReplies.get(r.id);
+        if (existing) Object.assign(existing, r);
+        else {
+          if (commentId !== state.focalTweetId) r._subThreadOf = commentId;
           state.replies.push(r);
-          existingIds.add(r.id);
+          existingReplies.set(r.id, r);
         }
       }
 
       // 如果 focal 自身数据有更新（如 counts），同步更新
       if (focal && state.tree?.byId?.has(commentId)) {
         const existing = state.tree.byId.get(commentId);
-        if (existing && focal.counts) {
-          Object.assign(existing.counts, focal.counts);
-        }
+        if (focal.counts) Object.assign(existing.counts, focal.counts);
       }
+      if (focal && commentId === state.focalTweetId) state.focalModel = focal;
+      rememberThreadCursor(commentId, nextCursor, cursor);
 
       // 重新构建对话树结构
       state.tree = Core.buildConversationTree(state.replies, state.focalTweetId);
       state.loadedThreadIds.add(commentId);
-      if (expandOnSuccess) {
+      if (expandOnSuccess && commentId !== state.focalTweetId) {
         state.expandedThreadIds.add(commentId);
       }
     } catch (err) {
-      if (generation !== state.threadGeneration) return;
-      console.warn("[SideX] 读取二级回复失败:", err);
+      if (!state.open || generation !== state.threadGeneration) return;
+      console.warn("[SideX] 读取回复失败:", err);
       if (!isSilent) {
         showToast(t("loadRepliesFailed") || "加载回复失败");
       }
@@ -3804,6 +3633,7 @@
     if (limit <= 1) return;
 
     const currentFocal = state.focalTweetId;
+    const generation = state.threadGeneration;
     const roots = state.tree.rootReplies || [];
     const candidates = roots.filter((r) => {
       const total = r.counts?.replies || 0;
@@ -3814,7 +3644,7 @@
     }).slice(0, 3);
 
     for (const r of candidates) {
-      if (!state.open || state.focalTweetId !== currentFocal) break;
+      if (!state.open || state.focalTweetId !== currentFocal || generation !== state.threadGeneration) break;
       try {
         await fetchSubReplies(r.id, /* isSilent */ true, /* expandOnSuccess */ false);
       } catch {}
@@ -3855,6 +3685,10 @@
   }
 
   async function checkDetailPageAutoOpen() {
+    if (syncPhotoViewer()) return;
+    // Pickers such as GIF search temporarily use /i/foundmedia/search. They
+    // are overlays on the current post, not navigation away from its thread.
+    if (nativeReplyOpening || document.querySelector('#layers [role="dialog"]')) return;
     if (!isSideXEnabled) return;
     if (state.isResizing) return;
     const currentUrl = location.href;
@@ -3878,6 +3712,9 @@
         state.focalModel = null;
         state.replies = [];
         state.tree = null;
+        state.threadCursors.clear();
+        state.consumedCursors.clear();
+        state.loadingThreadIds.clear();
         state.loading = true;
         state.error = "";
         state.replyTarget = null;
@@ -3896,10 +3733,10 @@
         if (Core.postIdFromUrl(location.href) !== tweetId) return;
         if (userClosedTweetId === tweetId) return;
 
-        const { focal, replies } = Core.parseTweetDetail(json, tweetId);
+        const { focal, replies, cursor } = Core.parseTweetDetail(json, tweetId);
 
         // 如果完全没有下一级回复，绝对不弹出右侧抽屉，保持完全静默
-        if (!replies || replies.length === 0) {
+        if ((!replies || replies.length === 0) && !cursor) {
           if (state.open && state.focalTweetId === tweetId) {
             closeDrawer();
           }
@@ -3924,6 +3761,9 @@
         state.expandedThreadIds.clear();
         state.loadedThreadIds.clear();
         state.loadingThreadIds.clear();
+        state.threadCursors.clear();
+        state.consumedCursors.clear();
+        rememberThreadCursor(tweetId, cursor);
         state.activeView = "root";
         state.replyTarget = null;
         state.loading = false;
@@ -3978,6 +3818,11 @@
   }
 
   function closeDrawer() {
+    if (photoViewer && dockedPhotoPanel) {
+      dismissedPhotoId = photoViewer.tweetId;
+      releasePhotoPanel();
+      document.documentElement.setAttribute("data-sidex-photo-view", "native");
+    }
     state.threadGeneration++;
     for (const observer of nativeActionObservers.values()) observer.disconnect();
     nativeActionObservers.clear();
@@ -4104,6 +3949,7 @@
   function handleTimelineClick(event) {
     if (!isSideXEnabled) return;
     if (state.isResizing) return;
+    if (event.target.closest?.('[data-sidex-native-reply-link]')) return;
     if (event.target.closest?.("#layers, #sidepeek-user-hovercard, .sidepeek-more-menu, .sidepeek-share-menu, .sidepeek-repost-menu")) return;
     if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
 
@@ -4152,16 +3998,20 @@
   }
 
   document.addEventListener("click", handleTimelineClick, true);
+  // Capture before X unmounts the native column or opens another modal.
+  document.addEventListener("click", rememberPhotoScroll, true);
 
   // X may mount its own copy after the drawer data arrives, or recycle it while
   // scrolling. Attach to that copy when it appears instead of keeping a snapshot.
   let nativeSyncScheduled = false;
   new MutationObserver(records => {
-    if (!state.open || nativeSyncScheduled || records.every(record => record.target.closest?.(`#${ROOT_ID}, #sidepeek-user-hovercard`))) return;
+    if (nativeSyncScheduled || records.every(record => record.target.closest?.(`#${ROOT_ID}, #sidepeek-user-hovercard`))) return;
     nativeSyncScheduled = true;
     requestAnimationFrame(() => {
       nativeSyncScheduled = false;
+      if (syncPhotoViewer()) return;
       if (!state.open) return;
+      nativeLayers?.sync(document.getElementById(ROOT_ID));
       for (const [id, entry] of commentNodes) {
         if (nativeActionArticles.get(id)?.isConnected) continue;
         const article = findDetailFocalArticle(id);

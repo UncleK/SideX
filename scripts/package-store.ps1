@@ -11,6 +11,7 @@ if ($manifest.version -notmatch '^\d+(\.\d+){0,3}$') { throw 'Invalid extension 
 # from being shipped with the extension. All manifest references must be included.
 $files = @('manifest.json', 'background.js', 'content.js', 'core.js', 'page-bridge.js',
   'popup.html', 'popup.js', 'popup.css', 'sidebar.css', 'LICENSE', 'PRIVACY_POLICY.md')
+$files += @('vendor/twitter-text.js', 'vendor/twitter-text.LICENSE.txt')
 $files += $manifest.icons.PSObject.Properties.Value
 $files += $manifest.action.default_icon.PSObject.Properties.Value
 $files += $manifest.web_accessible_resources.resources

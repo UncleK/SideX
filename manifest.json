@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "SideX - Dock Comments Stream & Reader for X",
   "short_name": "SideX",
-  "version": "1.1.10",
+  "version": "1.1.18",
   "description": "Dock tweet comments in-place, auto-expand long posts, and reply inline with zero-hop reading on X (Twitter).",
   "permissions": ["storage"],
   "host_permissions": [
@@ -34,14 +34,14 @@
   "content_scripts": [
     {
       "matches": ["https://x.com/*", "https://twitter.com/*"],
-      "js": ["page-bridge.js"],
+      "js": ["vendor/twitter-text.js", "page-bridge.js"],
       "run_at": "document_start",
       "world": "MAIN"
     },
     {
       "matches": ["https://x.com/*", "https://twitter.com/*"],
       "css": ["sidebar.css"],
-      "js": ["core.js", "content.js"],
+      "js": ["vendor/twitter-text.js", "core.js", "content.js"],
       "run_at": "document_idle"
     }
   ],
