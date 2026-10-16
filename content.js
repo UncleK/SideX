@@ -104,6 +104,10 @@
     loadedThreadIds: new Set(),
     loadingThreadIds: new Set(),
     threadCursors: new Map(),
+    autoLoadReplies: true,
+    autoExpandReplyText: false,
+    threadPages: new Map(),
+    openGatedThreads: new Set(),
     consumedCursors: new Map(),
     anchorCommentId: null,
     resetScrollOnRender: false,
@@ -207,8 +211,10 @@
 
   const storage = chrome?.storage?.sync || chrome?.storage?.local;
   if (storage) {
-    storage.get({ sidex_enabled: true, sidex_lang: null, sidex_sub_reply_limit: 1, sidex_reply_mode: "drawer", sidex_photo_mode: "sidex", sidex_translation_provider: "x" }, (res) => {
+    storage.get({ sidex_enabled: true, sidex_auto_load_replies: true, sidex_auto_expand_reply_text: false, sidex_lang: null, sidex_sub_reply_limit: 1, sidex_reply_mode: "drawer", sidex_photo_mode: "sidex", sidex_translation_provider: "x" }, (res) => {
       isSideXEnabled = res.sidex_enabled !== false;
+      state.autoLoadReplies = res.sidex_auto_load_replies !== false;
+      state.autoExpandReplyText = res.sidex_auto_expand_reply_text === true;
       state.translationProvider = ["x", "google", "external"].includes(res.sidex_translation_provider) ? res.sidex_translation_provider : "x";
       state.photoMode = res.sidex_photo_mode === "native" ? "native" : "sidex";
       if (res.sidex_lang) overrideLocale = res.sidex_lang;
@@ -226,6 +232,14 @@
     });
 
     chrome.storage.onChanged.addListener((changes) => {
+      if (changes.sidex_auto_expand_reply_text !== undefined) {
+        state.autoExpandReplyText = changes.sidex_auto_expand_reply_text.newValue === true;
+        if (state.open) renderDrawer();
+      }
+      if (changes.sidex_auto_load_replies !== undefined) {
+        state.autoLoadReplies = changes.sidex_auto_load_replies.newValue !== false;
+        if (state.open) renderDrawer();
+      }
       if (changes.sidex_enabled !== undefined) {
         isSideXEnabled = changes.sidex_enabled.newValue !== false;
         const root = document.getElementById(ROOT_ID);
@@ -302,10 +316,10 @@
       noMoreReplies: "暂无更多子回复",
       loadingReplies: "正在加载评论...",
       loadMoreComments: "加载更多评论",
-      loadMoreThreadReplies: "加载更多子回复",
+      loadMoreThreadReplies: "加载更多回复",
       retryBtn: "重试",
       showReplies: "展开 {count} 条回复",
-      showMoreReplies: "展开另外 {count} 条回复",
+      showMoreReplies: "展开另外 {count} 条已加载回复",
       collapseReplies: "收起回复",
       loadRepliesFailed: "加载回复失败，请重试",
       replyToTag: "回复",
@@ -456,7 +470,7 @@
       loadMoreThreadReplies: "Load more replies",
       retryBtn: "Retry",
       showReplies: "Show {count} replies",
-      showMoreReplies: "Show {count} more replies",
+      showMoreReplies: "Show {count} more loaded replies",
       collapseReplies: "Collapse replies",
       loadRepliesFailed: "Failed to load replies",
       replyToTag: "Replying to",
@@ -1150,7 +1164,11 @@
   // ==========================================================================
   // UI Rendering
   // ==========================================================================
+  let replyObserver = null;
+
   function renderDrawer() {
+    replyObserver?.disconnect();
+    replyObserver = null;
     const root = ensureDrawerRoot();
     if (!state.open) {
       nativeLayers?.release();
@@ -1250,10 +1268,10 @@
 
     const countBadge = root.querySelector(".sidepeek-count-badge");
     if (countBadge) {
-      const countNum = isDrillDown
-        ? (state.tree?.getSubtree ? state.tree.getSubtree(drillDownParent?.id)?.length : (state.tree?.childrenMap.get(drillDownParent?.id)?.length || 0))
-        : (state.tree?.rootReplies.length || 0);
-      countBadge.textContent = `(${countNum})`;
+      const model = isDrillDown ? drillDownParent : state.focalModel;
+      const directCount = isDrillDown ? (state.tree?.childrenMap.get(drillDownParent.id)?.length || 0) : (state.tree?.rootReplies.length || 0);
+      countBadge.textContent = `(${directCount}/${model?.reportedReplyCount ?? "—"})`;
+      countBadge.title = getLocale() === "zh" ? "已加载的一级回复 / X 显示的回复数（可能包含不可见回复）" : "Loaded direct replies / Reply count reported by X (may include unavailable replies)";
     }
 
     const externalBtn = root.querySelector(".sidepeek-btn-external");
@@ -1342,7 +1360,7 @@
           <span style="font-size: 13px; color: var(--sp-muted); margin-left: 8px;">${t("loadingReplies")}</span>
         `;
         body.appendChild(loader);
-      } else if (children.length === 0) {
+      } else if (children.length === 0 && !hasFoldedReplies(drillDownParent.id)) {
         const empty = document.createElement("div");
         empty.className = "sidepeek-empty-box";
         empty.textContent = t("noMoreReplies");
@@ -1350,6 +1368,7 @@
       } else {
         for (let i = 0; i < children.length; i++) {
           const hasNext = i < children.length - 1;
+          appendSectionLabel(body, children[i]);
           body.appendChild(renderCommentNode(children[i], hasNext, true));
         }
       }
@@ -1369,9 +1388,11 @@
         body.appendChild(empty);
       }
 
+      const authorChain = authorThreadIds();
       const INLINE_LIMIT = state.subReplyLimit || 1; // 默认展示 1 条二级回复，可在插件设置中自定义
 
       for (const rootReply of roots) {
+        appendSectionLabel(body, rootReply);
         const children = state.tree?.getSubtree ? state.tree.getSubtree(rootReply.id) : (state.tree?.childrenMap.get(rootReply.id) || []);
         const childrenCount = children.length;
         const totalRepliesCount = rootReply.counts?.replies || 0;
@@ -1394,6 +1415,7 @@
             for (let i = 0; i < childrenCount; i++) {
               const child = children[i];
               const hasNext = (i < childrenCount - 1) || isLoading;
+              appendSectionLabel(threadGroup, child);
               threadGroup.appendChild(renderCommentNode(child, hasNext, true));
             }
 
@@ -1408,7 +1430,7 @@
                 </div>
               `;
               threadGroup.appendChild(loaderEl);
-            } else if (childrenCount === 0) {
+            } else if (childrenCount === 0 && !hasFoldedReplies(rootReply.id)) {
               const emptyTip = document.createElement("div");
               emptyTip.className = "sidepeek-thread-loader-row";
               emptyTip.innerHTML = `
@@ -1419,6 +1441,7 @@
             }
 
             appendReplyPagination(threadGroup, rootReply.id);
+            appendUnfetchedReplies(threadGroup, rootReply);
 
             // 收起按钮
             const collapseRow = document.createElement("div");
@@ -1436,50 +1459,32 @@
             });
             threadGroup.appendChild(collapseRow);
           } else {
-            // 未展开：
-            // 如果子回复数量 <= INLINE_LIMIT 且已经全部加载完（childrenCount >= totalRepliesCount && childrenCount > 0）
-            if (childrenCount > 0 && childrenCount <= INLINE_LIMIT && childrenCount >= totalRepliesCount) {
-              for (let i = 0; i < childrenCount; i++) {
-                const child = children[i];
-                const hasNext = i < childrenCount - 1;
-                threadGroup.appendChild(renderCommentNode(child, hasNext, true));
-              }
+            // Author continuations are visible independently of the preview
+            // budget for other branches. Count only actually hidden models.
+            const preview = new Set(children.filter(child => !authorChain.has(child.id)).slice(0, INLINE_LIMIT).map(child => child.id));
+            const shown = children.filter(child => authorChain.has(child.id) || preview.has(child.id));
+            for (let i = 0; i < shown.length; i++) {
+              appendSectionLabel(threadGroup, shown[i]);
+              threadGroup.appendChild(renderCommentNode(shown[i], i < shown.length - 1, true));
+            }
+            const hiddenCount = childrenCount - shown.length;
+            if (hiddenCount > 0) {
+              const row = document.createElement("div");
+              row.className = "sidepeek-expand-btn-row";
+              const button = document.createElement("button");
+              button.type = "button";
+              button.className = "sidepeek-expand-btn";
+              button.textContent = t("showMoreReplies", { count: hiddenCount });
+              button.addEventListener("click", () => {
+                state.anchorCommentId = rootReply.id;
+                state.expandedThreadIds.add(rootReply.id);
+                renderDrawer();
+              });
+              row.appendChild(button);
+              threadGroup.appendChild(row);
             } else {
-              // 否则展示最多 INLINE_LIMIT 条预览回复（如果有的话）
-              const previewCount = Math.min(childrenCount, INLINE_LIMIT);
-              for (let i = 0; i < previewCount; i++) {
-                threadGroup.appendChild(renderCommentNode(children[i], true, true));
-              }
-
-              // 展开按钮行
-              const expandRow = document.createElement("div");
-              expandRow.className = "sidepeek-expand-btn-row";
-
-              const remaining = totalRepliesCount > previewCount
-                ? (totalRepliesCount - previewCount)
-                : (childrenCount - previewCount);
-              const countToDisplay = remaining > 0 ? remaining : (totalRepliesCount || childrenCount);
-
-              const btn = document.createElement("button");
-              btn.type = "button";
-              btn.className = "sidepeek-expand-btn";
-
-              if (isLoading) {
-                btn.disabled = true;
-                btn.innerHTML = `<span class="sidepeek-mini-spinner"></span> <span>${t("loadingReplies")}</span>`;
-              } else {
-                const btnLabel = previewCount > 0
-                  ? t("showMoreReplies", { count: countToDisplay })
-                  : t("showReplies", { count: countToDisplay });
-                btn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M1.751 10c0-4.42 3.584-8 8.005-8h4.366c4.49 0 8.129 3.64 8.129 8.13 0 2.96-1.607 5.68-4.196 7.11l-8.054 4.46v-3.69h-.25c-4.421 0-8-3.58-8-8zm6.822-1.97v3.94l3.415-1.97-3.415-1.97z"/></svg> <span>${btnLabel}</span>`;
-                btn.addEventListener("click", () => {
-                  handleExpandThread(rootReply.id);
-                });
-              }
-
-              expandRow.innerHTML = `<div class="sidepeek-thread-line-col"><div class="sidepeek-thread-line"></div><div class="sidepeek-thread-dot"></div></div>`;
-              expandRow.appendChild(btn);
-              threadGroup.appendChild(expandRow);
+              appendReplyPagination(threadGroup, rootReply.id);
+              appendUnfetchedReplies(threadGroup, rootReply);
             }
           }
 
@@ -1783,6 +1788,65 @@
     update();
   }
 
+  function syncCommentTextExpansion(item, model) {
+    const text = item.querySelector(".sidepeek-text");
+    if (!text) return;
+    const clamp = !state.autoExpandReplyText && !expandedTexts.has(model.id) &&
+      Boolean(model.text && (model.text.length > 280 || (model.text.match(/\n/g) || []).length > 4));
+    text.classList.toggle("sidepeek-text-clamp", clamp);
+    let button = item.querySelector(".sidepeek-show-more-btn");
+    if (!clamp) { button?.remove(); return; }
+    if (!button) {
+      button = document.createElement("button");
+      button.type = "button";
+      button.className = "sidepeek-show-more-btn";
+      text.after(button);
+    }
+    button.textContent = t("showMorePost");
+    button.onclick = event => {
+      event.stopPropagation();
+      expandedTexts.add(model.id);
+      if (expandedTexts.size > 500) expandedTexts.delete(expandedTexts.values().next().value);
+      syncCommentTextExpansion(item, model);
+    };
+  }
+
+  // Only real parent links back to the focal author qualify. A reply by that
+  // author to somebody else's comment is not a continuation of their thread.
+  function authorThreadIds() {
+    const ids = new Set();
+    const focal = state.focalModel;
+    if (!focal || !state.tree) return ids;
+    const sameAuthor = model => {
+      const a = focal.author, b = model?.author;
+      if (a?.id && b?.id) return a.id === b.id;
+      return Boolean(a?.handle && b?.handle && a.handle.toLowerCase() === b.handle.toLowerCase());
+    };
+    for (const model of state.tree.byId.values()) {
+      const path = new Set();
+      let current = model;
+      while (current && current.id !== focal.id && !path.has(current.id) && sameAuthor(current)) {
+        path.add(current.id);
+        current = current.inReplyToId === focal.id ? focal : state.tree.byId.get(current.inReplyToId);
+      }
+      if (current?.id === focal.id) for (const id of path) ids.add(id);
+    }
+    return ids;
+  }
+
+  function appendUnfetchedReplies(container, model) {
+    if (state.threadPages.has(model.id) || state.loadedThreadIds.has(model.id)) return;
+    const direct = (state.tree?.childrenMap.get(model.id) || []).filter(child => child.inReplyToId === model.id).length;
+    if ((model.counts?.replies || 0) <= direct) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "sidepeek-expand-btn sidepeek-fetch-replies-btn";
+    button.textContent = t("loadMoreThreadReplies");
+    button.disabled = state.loadingThreadIds.has(model.id);
+    button.addEventListener("click", () => fetchSubReplies(model.id, false, true));
+    container.appendChild(button);
+  }
+
   function renderCommentNode(model, hasThreadLine = false, isChild = false) {
     const signature = JSON.stringify([getLocale(), state.translationProvider, model.text, model.entities, model.lang,
       model.inReplyToHandle, model.createdAt, model.url, model.author, model.media, model.quote, model.card]);
@@ -1797,6 +1861,7 @@
         cached.element.querySelector(".sidepeek-avatar-col").appendChild(newLine);
       } else if (!hasThreadLine) line?.remove();
       updateActionButtons(cached.model, cached.element);
+      syncCommentTextExpansion(cached.element, cached.model);
       return cached.element;
     }
     const item = document.createElement("article");
@@ -1829,7 +1894,7 @@
       ? `<div class="sidepeek-reply-to-tag">${t("replyToTag")} <a href="https://x.com/${escapeHtml(model.inReplyToHandle)}" target="_blank">@${escapeHtml(model.inReplyToHandle)}</a></div>`
       : "";
 
-    const isLongText = !expandedTexts.has(model.id) && Boolean(model.text && (model.text.length > 280 || (model.text.match(/\n/g) || []).length > 4));
+    const isLongText = !state.autoExpandReplyText && !expandedTexts.has(model.id) && Boolean(model.text && (model.text.length > 280 || (model.text.match(/\n/g) || []).length > 4));
     const textHtml = model.text
       ? `<div class="sidepeek-text ${isLongText ? "sidepeek-text-clamp" : ""}">${formatCommentText(model)}</div>${isLongText ? `<button type="button" class="sidepeek-show-more-btn">${t("showMorePost")}</button>` : ""}`
       : "";
@@ -1929,18 +1994,7 @@
       openMoreMenu(model, actMore);
     });
 
-    // Show more text toggle
-    const showMoreBtn = item.querySelector(".sidepeek-show-more-btn");
-    if (showMoreBtn) {
-      showMoreBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const textEl = item.querySelector(".sidepeek-text");
-        if (textEl) textEl.classList.remove("sidepeek-text-clamp");
-        expandedTexts.add(model.id);
-        if (expandedTexts.size > 500) expandedTexts.delete(expandedTexts.values().next().value);
-        showMoreBtn.remove();
-      });
-    }
+    syncCommentTextExpansion(item, model);
 
     bindTranslation(item, model);
 
@@ -3519,23 +3573,91 @@
       parent.counts.replies += 1;
       state.expandedThreadIds.add(parent.id);
     }
-    state.tree = Core.buildConversationTree(state.replies, state.focalTweetId);
+    state.tree = Core.buildConversationTree(visibleReplies(), state.focalTweetId);
     renderDrawer();
   }
 
+  function visibleReplies() {
+    return state.replies.filter(reply => !reply._gateFor || state.openGatedThreads.has(reply._gateFor))
+      .slice().sort((a, b) => Boolean(a._gateFor) - Boolean(b._gateFor));
+  }
+
+  function appendSectionLabel(container, model) {
+    if (!model._gateFor || [...container.querySelectorAll(".sidepeek-section-label")].some(label => label.dataset.scope === model._gateFor)) return;
+    const label = document.createElement("div");
+    label.className = "sidepeek-section-label";
+    label.dataset.scope = model._gateFor;
+    label.textContent = model._sectionLabel || foldedText();
+    container.appendChild(label);
+  }
+
+  function hasFoldedReplies(tweetId) {
+    return Boolean(state.threadPages.get(tweetId)?.gated) || state.replies.some(reply => reply._gateFor === tweetId);
+  }
+
+  function foldedText() {
+    return getLocale() === "zh" ? "X 折叠的回复" : "Replies folded by X";
+  }
+
   function appendReplyPagination(container, tweetId) {
+    const page = state.threadPages.get(tweetId) || {};
     const cursor = state.threadCursors.get(tweetId);
-    if (!cursor) return;
+    const opened = state.openGatedThreads.has(tweetId);
+    const preloaded = state.replies.some(reply => reply._gateFor === tweetId);
     const row = document.createElement("div");
     row.className = "sidepeek-pagination";
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "sidepeek-expand-btn sidepeek-load-more-btn";
-    button.disabled = state.loadingThreadIds.has(tweetId);
-    button.textContent = button.disabled ? t("loadingReplies")
-      : t(tweetId === state.focalTweetId ? "loadMoreComments" : "loadMoreThreadReplies");
-    button.addEventListener("click", () => fetchSubReplies(tweetId, false, true, cursor));
-    row.appendChild(button);
+    const busy = state.loadingThreadIds.has(tweetId);
+    if (opened) appendSectionLabel(container, { _gateFor: tweetId, _sectionLabel: page.sectionLabel });
+    if (!opened && ((page.gated && !cursor) || preloaded)) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "sidepeek-expand-btn sidepeek-gated-btn";
+      button.textContent = page.gated?.label || foldedText();
+      button.disabled = busy;
+      button.addEventListener("click", () => {
+        state.openGatedThreads.add(tweetId);
+        page.sectionLabel ||= page.gated?.label || foldedText();
+        if (page.gated?.cursor) {
+          state.threadCursors.set(tweetId, page.gated.cursor);
+          fetchSubReplies(tweetId, false, true, page.gated.cursor);
+        } else {
+          state.tree = Core.buildConversationTree(visibleReplies(), state.focalTweetId);
+          renderDrawer();
+        }
+      });
+      row.appendChild(button);
+    } else if (cursor) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "sidepeek-expand-btn sidepeek-load-more-btn";
+      button.disabled = busy;
+      button.textContent = busy ? t("loadingReplies") : t(tweetId === state.focalTweetId ? "loadMoreComments" : "loadMoreThreadReplies");
+      button.addEventListener("click", () => fetchSubReplies(tweetId, false, true, cursor));
+      row.appendChild(button);
+      if (page.error || page.paused) {
+        const status = document.createElement("div");
+        status.className = page.error ? "sidepeek-pagination-error" : "sidepeek-pagination-paused";
+        status.textContent = page.error ? t("loadRepliesFailed") : (getLocale() === "zh" ? "本页没有新增回复，可手动继续加载" : "No new replies on this page. Continue manually.");
+        row.prepend(status);
+      } else if (state.autoLoadReplies && !opened && !busy && container.classList.contains("sidepeek-body") && typeof IntersectionObserver === "function") {
+        const generation = state.threadGeneration;
+        const observer = new IntersectionObserver(entries => {
+          if (state.autoLoadReplies && replyObserver === observer && generation === state.threadGeneration && state.open &&
+              state.threadCursors.get(tweetId) === cursor && entries.some(entry => entry.isIntersecting) &&
+              !state.loadingThreadIds.has(tweetId)) fetchSubReplies(tweetId, false, true, cursor);
+        }, { root: container, rootMargin: "200px 0px" });
+        replyObserver = observer;
+        observer.observe(row);
+      }
+    } else if (page.stalled) {
+      row.classList.add("sidepeek-pagination-paused");
+      row.textContent = getLocale() === "zh" ? "X 返回了重复的分页位置，已停止继续加载" : "X returned a repeated pagination cursor. Loading stopped.";
+    } else if (page.ended || state.threadPages.has(tweetId)) {
+      const loaded = tweetId === state.focalTweetId ? state.tree?.rootReplies : state.tree?.childrenMap.get(tweetId);
+      if (!loaded?.length) return;
+      row.classList.add("sidepeek-pagination-end");
+      row.textContent = getLocale() === "zh" ? "已加载完当前可见回复" : "All currently visible replies loaded";
+    } else return;
     container.appendChild(row);
   }
 
@@ -3552,6 +3674,8 @@
     state.loadedThreadIds.clear();
     state.loadingThreadIds.clear();
     state.threadCursors.clear();
+    state.threadPages.clear();
+    state.openGatedThreads.clear();
     state.consumedCursors.clear();
     state.replyTarget = null;
     renderDrawer();
@@ -3559,11 +3683,12 @@
     try {
       const json = await requestPage("READ_THREAD", { tweetId });
       if (!state.open || state.focalTweetId !== tweetId || generation !== state.threadGeneration) return;
-      const { focal, replies, cursor } = Core.parseTweetDetail(json, tweetId);
+      const { focal, replies, cursor, pagination } = Core.parseTweetDetail(json, tweetId);
       state.focalModel = focal;
       state.replies = replies;
-      state.tree = Core.buildConversationTree(replies, tweetId);
+      state.tree = Core.buildConversationTree(visibleReplies(), tweetId);
       rememberThreadCursor(tweetId, cursor);
+      state.threadPages.set(tweetId, pagination);
       state.loading = false;
       state.resetScrollOnRender = true;
       renderDrawer();
@@ -3593,7 +3718,10 @@
       const json = await requestPage("READ_THREAD", { tweetId: commentId, ...(cursor ? { cursor } : {}) });
       if (!state.open || state.focalTweetId !== currentFocal || generation !== state.threadGeneration) return;
 
-      const { focal, replies, cursor: nextCursor } = Core.parseTweetDetail(json, commentId, [state.focalModel, ...state.replies]);
+      const previousPage = state.threadPages.get(commentId) || {};
+      const gated = state.openGatedThreads.has(commentId);
+      const { focal, replies, cursor: nextCursor, pagination } = Core.parseTweetDetail(json, commentId, [state.focalModel, ...state.replies], gated ? previousPage.sectionLabel || foldedText() : "");
+      const beforeIds = new Set(state.replies.map(reply => reply.id));
 
       // Merge pages by ID so duplicates update their existing model, and a
       // cursor page need not repeat the focal tweet or intermediate parents.
@@ -3613,18 +3741,28 @@
       if (focal && state.tree?.byId?.has(commentId)) {
         const existing = state.tree.byId.get(commentId);
         if (focal.counts) Object.assign(existing.counts, focal.counts);
+        existing.reportedReplyCount = focal.reportedReplyCount;
       }
       if (focal && commentId === state.focalTweetId) state.focalModel = focal;
       rememberThreadCursor(commentId, nextCursor, cursor);
+      state.threadPages.set(commentId, {
+        ...pagination,
+        gated: gated ? pagination.gated : pagination.gated || previousPage.gated,
+        sectionLabel: pagination.sectionLabel || previousPage.sectionLabel || "",
+        stalled: Boolean(nextCursor && !state.threadCursors.has(commentId)),
+        paused: Boolean(cursor && nextCursor && !replies.some(reply => !beforeIds.has(reply.id)))
+      });
 
       // 重新构建对话树结构
-      state.tree = Core.buildConversationTree(state.replies, state.focalTweetId);
+      state.tree = Core.buildConversationTree(visibleReplies(), state.focalTweetId);
       state.loadedThreadIds.add(commentId);
       if (expandOnSuccess && commentId !== state.focalTweetId) {
         state.expandedThreadIds.add(commentId);
       }
     } catch (err) {
       if (!state.open || generation !== state.threadGeneration) return;
+      const page = state.threadPages.get(commentId) || {};
+      state.threadPages.set(commentId, { ...page, error: true });
       console.warn("[SideX] 读取回复失败:", err);
       if (!isSilent) {
         showToast(t("loadRepliesFailed") || "加载回复失败");
@@ -3741,6 +3879,8 @@
         state.replies = [];
         state.tree = null;
         state.threadCursors.clear();
+        state.threadPages.clear();
+        state.openGatedThreads.clear();
         state.consumedCursors.clear();
         state.loadingThreadIds.clear();
         state.loading = true;
@@ -3761,10 +3901,10 @@
         if (Core.postIdFromUrl(location.href) !== tweetId && !(state.open && state.replyEditing && state.focalTweetId === tweetId)) return;
         if (userClosedTweetId === tweetId) return;
 
-        const { focal, replies, cursor } = Core.parseTweetDetail(json, tweetId);
+        const { focal, replies, cursor, pagination } = Core.parseTweetDetail(json, tweetId);
 
         // 如果完全没有下一级回复，绝对不弹出右侧抽屉，保持完全静默
-        if ((!replies || replies.length === 0) && !cursor) {
+        if ((!replies || replies.length === 0) && !cursor && !pagination.gated) {
           if (state.open && state.focalTweetId === tweetId) {
             closeDrawer();
           }
@@ -3784,14 +3924,18 @@
         state.focalTweetId = tweetId;
         state.focalModel = focal;
         state.replies = replies;
-        state.tree = Core.buildConversationTree(replies, tweetId);
+        state.openGatedThreads.clear();
+        state.tree = Core.buildConversationTree(visibleReplies(), tweetId);
         state.resetScrollOnRender = true;
         state.expandedThreadIds.clear();
         state.loadedThreadIds.clear();
         state.loadingThreadIds.clear();
         state.threadCursors.clear();
+        state.threadPages.clear();
+        state.openGatedThreads.clear();
         state.consumedCursors.clear();
         rememberThreadCursor(tweetId, cursor);
+        state.threadPages.set(tweetId, pagination);
         state.activeView = "root";
         state.replyTarget = null;
         state.loading = false;

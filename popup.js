@@ -1,6 +1,8 @@
 (function initSideXPopup() {
   "use strict";
 
+  const autoExpandInput = document.getElementById("sidex-auto-expand-text");
+  const autoLoadInput = document.getElementById("sidex-auto-load-input");
   const toggleInput = document.getElementById("sidex-toggle-input");
   const switchTitle = document.getElementById("txt-switch-title");
   const switchDesc = document.getElementById("txt-switch-desc");
@@ -27,6 +29,10 @@
 
   const STRINGS = {
     zh: {
+      autoExpandTitle: "自动展开回复正文",
+      autoExpandDesc: "显示已加载的完整正文",
+      autoLoadTitle: "自动加载更多评论",
+      autoLoadDesc: "滚动到底部时加载",
       enabledTitle: "插件已启用",
       enabledDesc: "点击推文原地展开评论流",
       disabledTitle: "插件已停用",
@@ -54,6 +60,10 @@
       hintEsc: "关闭抽屉或大图"
     },
     en: {
+      autoExpandTitle: "Auto-expand reply text",
+      autoExpandDesc: "Show the full loaded text",
+      autoLoadTitle: "Auto-load more replies",
+      autoLoadDesc: "Load more when you reach the bottom",
       enabledTitle: "Extension Enabled",
       enabledDesc: "Click tweets to open comment stream",
       disabledTitle: "Extension Paused",
@@ -96,6 +106,10 @@
 
   function updateTexts() {
     const s = STRINGS[currentLang] || STRINGS.zh;
+    document.getElementById("txt-auto-expand-title").textContent = s.autoExpandTitle;
+    document.getElementById("txt-auto-expand-desc").textContent = s.autoExpandDesc;
+    document.getElementById("txt-auto-load-title").textContent = s.autoLoadTitle;
+    document.getElementById("txt-auto-load-desc").textContent = s.autoLoadDesc;
     if (isEnabled) {
       switchTitle.textContent = s.enabledTitle;
       switchTitle.style.color = "";
@@ -179,7 +193,7 @@
   // Load saved settings
   const storage = chrome?.storage?.sync || chrome?.storage?.local;
   if (storage) {
-    storage.get({ sidex_enabled: true, sidex_lang: null, sidex_sub_reply_limit: 1, sidex_reply_mode: "drawer", sidex_photo_mode: "sidex", sidex_translation_provider: "x" }, (res) => {
+    storage.get({ sidex_enabled: true, sidex_auto_load_replies: true, sidex_auto_expand_reply_text: false, sidex_lang: null, sidex_sub_reply_limit: 1, sidex_reply_mode: "drawer", sidex_photo_mode: "sidex", sidex_translation_provider: "x" }, (res) => {
       isEnabled = res.sidex_enabled !== false;
       currentLang = res.sidex_lang || getSystemLang();
       currentSubReplyLimit = Number(res.sidex_sub_reply_limit) || 1;
@@ -187,6 +201,8 @@
       currentPhotoMode = res.sidex_photo_mode === "native" ? "native" : "sidex";
       translationProvider = ["x", "google", "external"].includes(res.sidex_translation_provider) ? res.sidex_translation_provider : "x";
       toggleInput.checked = isEnabled;
+      autoLoadInput.checked = res.sidex_auto_load_replies !== false;
+      autoExpandInput.checked = res.sidex_auto_expand_reply_text === true;
       updateTexts();
       updateBadge(isEnabled);
       updateLimitButtons(currentSubReplyLimit);
@@ -198,6 +214,14 @@
     updateLimitButtons(currentSubReplyLimit);
     updateReplyModeButtons(currentReplyMode);
   }
+
+  autoExpandInput.addEventListener("change", () => {
+    storage?.set({ sidex_auto_expand_reply_text: autoExpandInput.checked });
+  });
+
+  autoLoadInput.addEventListener("change", () => {
+    storage?.set({ sidex_auto_load_replies: autoLoadInput.checked });
+  });
 
   // Toggle switch change handler
   translationSelect.addEventListener("change", () => {
