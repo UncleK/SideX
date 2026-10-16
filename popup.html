@@ -26,14 +26,27 @@
 
     <!-- Main Switch Card -->
     <div class="sidex-card sidex-switch-card">
-      <div class="sidex-switch-info">
-        <div class="sidex-switch-title" id="txt-switch-title">插件状态</div>
-        <div class="sidex-switch-desc" id="txt-switch-desc">点击推文原地展开评论流</div>
+      <div class="sidex-switch-main-row">
+        <div class="sidex-switch-info">
+          <div class="sidex-switch-title" id="txt-switch-title">插件状态</div>
+          <div class="sidex-switch-desc" id="txt-switch-desc">点击推文原地展开评论流</div>
+        </div>
+        <label class="sidex-toggle">
+          <input type="checkbox" id="sidex-toggle-input" checked />
+          <span class="sidex-toggle-slider"></span>
+        </label>
       </div>
-      <label class="sidex-toggle">
-        <input type="checkbox" id="sidex-toggle-input" checked />
-        <span class="sidex-toggle-slider"></span>
-      </label>
+      <div class="sidex-card-divider"></div>
+      <div class="sidex-auto-pin-row">
+        <div class="sidex-switch-info">
+          <label class="sidex-action-label" id="txt-auto-pin-label" for="sidex-auto-pin">打开面板时自动固定</label>
+          <p class="sidex-setting-hint" id="txt-auto-pin-hint">自动固定新打开的侧栏，仍可手动关闭。</p>
+        </div>
+        <label class="sidex-toggle">
+          <input type="checkbox" id="sidex-auto-pin" aria-labelledby="txt-auto-pin-label" />
+          <span class="sidex-toggle-slider"></span>
+        </label>
+      </div>
     </div>
 
     <!-- Features / Quick Actions -->

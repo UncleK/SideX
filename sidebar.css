@@ -39,6 +39,22 @@ article[data-testid="tweet"].sidepeek-focal-active {
   transition: box-shadow 0.25s ease !important;
 }
 
+/* A pinned focal post keeps its marker after X rewrites the article's class. */
+article[data-testid="tweet"][data-sidex-pinned-active] {
+  box-shadow: inset 0 0 0 2px rgba(29, 155, 240, 0.45), 0 2px 12px rgba(29, 155, 240, 0.12) !important;
+  border-radius: 8px !important;
+  transition: background-color 0.2s ease, box-shadow 0.25s ease !important;
+}
+
+article[data-testid="tweet"][data-sidex-pinned-active="light"] {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+
+article[data-testid="tweet"][data-sidex-pinned-active="dark"],
+article[data-testid="tweet"][data-sidex-pinned-active="dim"] {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
 /* ==========================================================================
    Drawer Container
    ========================================================================== */
@@ -238,6 +254,16 @@ body:has(#sidepeek-drawer-root.sidepeek-open) #layers {
 .sidepeek-icon-btn:hover {
   background: var(--sp-soft);
   color: var(--sp-fg);
+}
+
+.sidepeek-btn-pin[aria-pressed="true"] {
+  background: var(--sp-soft);
+  color: var(--sp-accent);
+}
+
+.sidepeek-btn-pin:focus-visible {
+  outline: 2px solid var(--sp-accent);
+  outline-offset: 2px;
 }
 
 .sidepeek-icon-btn svg {

@@ -129,15 +129,25 @@ body {
 /* Switch Card */
 .sidex-switch-card {
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.sidex-switch-main-row,
+.sidex-auto-pin-row {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  width: 100%;
 }
 
 .sidex-switch-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
 .sidex-switch-title {
