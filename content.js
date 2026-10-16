@@ -3653,6 +3653,9 @@
       row.classList.add("sidepeek-pagination-paused");
       row.textContent = getLocale() === "zh" ? "X 返回了重复的分页位置，已停止继续加载" : "X returned a repeated pagination cursor. Loading stopped.";
     } else if (page.ended || state.threadPages.has(tweetId)) {
+      // Completion belongs to the current list, not each inline branch.
+      // Keep branch pagination controls above, but only show this at the body end.
+      if (!container.classList.contains("sidepeek-body")) return;
       const loaded = tweetId === state.focalTweetId ? state.tree?.rootReplies : state.tree?.childrenMap.get(tweetId);
       if (!loaded?.length) return;
       row.classList.add("sidepeek-pagination-end");

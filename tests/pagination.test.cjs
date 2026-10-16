@@ -32,6 +32,43 @@ function observers() {
   }; }, fire() { for (const i of [...instances]) { const targets = i.targets.filter(n => n.isConnected); if (targets.length) i.callback(targets.map(target => ({ target, isIntersecting: true }))); } }, instances };
 }
 
+for (const focalId of ['100', '200']) {
+  test(`completed inline branches only show one end message at the list bottom (focal ${focalId})`, async t => {
+    const parentId = String(Number(focalId) + 1);
+    const childId = String(Number(focalId) + 2);
+    const root = tweet(focalId, focalId === '200' ? '99' : '');
+    const parent = tweet(parentId, focalId); parent.legacy.reply_count = 1;
+    const child = tweet(childId, parentId);
+    const p = createPage({ request: m => page({ focal: false, end: 'Bottom',
+      replies: m.tweetId === focalId ? [root, parent] : [parent, child] }) });
+    t.after(() => p.w.close()); await tick();
+    p.clickPost(focalId === '100' ? 0 : 1); await tick();
+    p.query('.sidepeek-fetch-replies-btn').click(); await tick();
+    const body = p.query('.sidepeek-body');
+    assert.ok(body.querySelector(`[data-id="${childId}"]`));
+    assert.equal(body.querySelectorAll('.sidepeek-pagination-end').length, 1);
+    assert.ok(body.lastElementChild.classList.contains('sidepeek-pagination-end'));
+    assert.equal(body.querySelector('.sidepeek-thread-group .sidepeek-pagination-end'), null);
+    p.query('.sidepeek-collapse-btn').click(); await tick();
+    assert.equal(body.querySelectorAll('.sidepeek-pagination-end').length, 1);
+    p.change({ sidex_lang: { newValue: 'en' } }); await tick();
+    assert.equal(body.querySelector('.sidepeek-pagination-end').textContent, 'All currently visible replies loaded');
+  });
+}
+
+test('inline completion stays hidden while the outer list has more pages, and branch cursors remain actionable', async t => {
+  const parent = tweet('101', '100'); parent.legacy.reply_count = 2;
+  const p = await open(t, m => m.tweetId === '100' ? page({ replies: [parent], cursor: 'outer-next' })
+    : page({ focal: false, replies: [parent, tweet('102', '101')],
+      ...(m.cursor ? { end: 'Bottom' } : { cursor: 'branch-next' }) }));
+  p.query('.sidepeek-fetch-replies-btn').click(); await tick();
+  assert.ok(p.query('.sidepeek-thread-group .sidepeek-load-more-btn'));
+  p.query('.sidepeek-thread-group .sidepeek-load-more-btn').click(); await tick();
+  assert.ok(p.calls.some(m => m.tweetId === '101' && m.cursor === 'branch-next'));
+  assert.equal(p.query('.sidepeek-pagination-end'), null);
+  assert.ok(p.query('.sidepeek-body > .sidepeek-pagination .sidepeek-load-more-btn'));
+});
+
 test('an explicit bottom termination wins over an otherwise valid bottom cursor', async t => {
   const p = await open(t, () => page({ cursor: 'still-present', end: 'Bottom' }));
   assert.equal(p.query('.sidepeek-load-more-btn'), null);
