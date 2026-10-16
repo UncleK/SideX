@@ -2,10 +2,10 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const { JSDOM } = require('jsdom');
-const { source } = require('./helpers.cjs');
+const { source, tweet, tick, html } = require('./helpers.cjs');
 
-function bridge(fetchResult) {
-  const dom = new JSDOM('', { url: 'https://x.com/home', runScripts: 'outside-only' });
+function bridge(fetchResult, setupWindow) {
+  const dom = new JSDOM('', { url: 'https://x.com/home', runScripts: 'outside-only', pretendToBeVisual: true });
   const w = dom.window;
   const requests = [];
   w.Headers = Headers;
@@ -16,6 +16,7 @@ function bridge(fetchResult) {
     requests.push(request);
     return fetchResult?.(request) || { ok: true, json: async () => ({ data: { success: true } }) };
   };
+  setupWindow?.(w);
   w.eval(source('vendor/twitter-text.js'));
   w.eval(source('page-bridge.js'));
   let id = 0;
@@ -83,6 +84,103 @@ test('comment pagination forwards the focal ID and opaque cursor to TweetDetail'
   const variables = JSON.parse(b.requests.at(-1).url.searchParams.get('variables'));
   assert.equal(variables.focalTweetId, '123');
   assert.equal(variables.cursor, 'opaque+/cursor==');
+});
+
+test('native TweetDetail responses supplement shorter child reads without consuming native bodies', async t => {
+  const data = posts => ({ data: { instructions: [{ entries: posts.map(result => ({ content: { itemContent: { tweet_results: { result } } } })) }] } });
+  const full = data([tweet('100'), tweet('101', '100'), tweet('102', '101'), tweet('103', '102')]);
+  const short = data([tweet('101', '100'), tweet('102', '101')]);
+  let originalReads = 0;
+  const b = bridge(r => {
+    const vars = JSON.parse(r.url.searchParams.get('variables') || '{}');
+    const json = vars.focalTweetId === '100' ? full : short;
+    return { ok: true, json: async () => { originalReads++; return json; }, clone: () => ({ json: async () => json }) };
+  }); t.after(() => b.w.close());
+  const url = new URL('https://x.com/i/api/graphql/test/TweetDetail');
+  url.searchParams.set('variables', JSON.stringify({ focalTweetId: '100' }));
+  const native = await b.w.fetch(url.href); await tick();
+  assert.equal(originalReads, 0, 'capture reads a clone only');
+  assert.equal(await native.json(), full);
+  const payload = await b.send({ type: 'READ_THREAD', tweetId: '101' });
+  assert.equal(payload.sidepeekObservedThreads.filter(p => p.requestTweetId === '100').length, 1);
+  b.w.eval(source('core.js'));
+  const parsed = b.w.SidePeekCore.parseTweetDetail(payload, '101');
+  assert.deepEqual(Array.from(parsed.replies, p => p.id), ['102', '103']);
+});
+
+test('native response replay excludes unknown and Spam cursor pages and expires its cache', async t => {
+  const b = bridge(r => {
+    const variables = JSON.parse(r.url.searchParams.get('variables') || '{}');
+    const json = { data: { instructions: [{ entries: [
+      { content: { cursorType: 'ShowMore', value: 'ordinary' } },
+      { content: { cursorType: 'ShowMoreThreads', value: 'spam' } }
+    ] }], marker: variables.cursor || 'initial' } };
+    return { ok: true, json: async () => json, clone: () => ({ json: async () => json }) };
+  }); t.after(() => b.w.close());
+  const capture = async cursor => {
+    const url = new URL('https://x.com/i/api/graphql/test/TweetDetail');
+    url.searchParams.set('variables', JSON.stringify({ focalTweetId: '100', ...(cursor ? { cursor } : {}) }));
+    await b.w.fetch(url.href); await tick();
+  };
+  await capture(); await capture('spam'); await capture('unknown'); await capture('ordinary');
+  const payload = await b.send({ type: 'READ_THREAD', tweetId: '101' });
+  assert.deepEqual(Array.from(payload.sidepeekObservedThreads.filter(p => p.requestTweetId === '100'), p => p.json.data.marker), ['initial', 'ordinary']);
+  b.w.Date.now = () => Date.now() + 6 * 60 * 1000;
+  assert.equal((await b.send({ type: 'READ_THREAD', tweetId: '101' })).sidepeekObservedThreads.some(p => p.requestTweetId === '100'), false);
+});
+
+test('observed response snapshots are bounded to twelve recent requests', async t => {
+  const b = bridge(() => ({ ok: true, json: async () => ({ data: {} }) })); t.after(() => b.w.close());
+  await b.w.fetch('/i/api/graphql/test/TweetDetail?variables=%7B%7D');
+  for (let id = 1; id <= 15; id++) await b.send({ type: 'READ_THREAD', tweetId: String(id) });
+  const result = await b.send({ type: 'READ_THREAD', tweetId: '15' });
+  assert.equal(result.sidepeekObservedThreads.length, 12);
+  assert.equal(result.sidepeekObservedThreads[0].requestTweetId, '4');
+});
+
+test('page bridge, parser and drawer retain native descendants across a shorter child request', async t => {
+  const detail = posts => ({ data: { instructions: [{ entries: posts.map(result => ({ content: { itemContent: { tweet_results: { result } } } })) }] } });
+  const full = detail([tweet('99'), tweet('100', '99'), tweet('101', '100'), tweet('102', '101'), tweet('103', '102')]);
+  const short = detail([tweet('100', '99'), tweet('101', '100')]);
+  const b = bridge(r => {
+    const vars = JSON.parse(r.url.searchParams.get('variables') || '{}');
+    const json = vars.focalTweetId === '99' ? full : short;
+    return { ok: true, json: async () => json, clone: () => ({ json: async () => json }) };
+  }, w => {
+    w.document.body.innerHTML = html;
+    w.ResizeObserver = class { observe() {} disconnect() {} };
+    w.HTMLElement.prototype.scrollIntoView = function () {};
+    w.chrome = { runtime: { getURL: name => name }, storage: {
+      sync: { get(defaults, cb) { queueMicrotask(() => cb(defaults)); }, set() {} },
+      onChanged: { addListener() {} }
+    } };
+    w.postMessage = data => queueMicrotask(() => w.dispatchEvent(new w.MessageEvent('message', {
+      source: w, origin: w.location.origin, data
+    })));
+  }); t.after(() => b.w.close());
+  const url = new URL('https://x.com/i/api/graphql/test/TweetDetail');
+  url.searchParams.set('variables', JSON.stringify({ focalTweetId: '99' }));
+  await b.w.fetch(url.href); await tick();
+  b.w.eval(source('core.js')); b.w.eval(source('content.js')); await tick();
+  b.w.document.querySelector('[data-testid="tweetText"]').click(); await tick();
+  assert.ok(b.w.document.querySelector('#sidepeek-drawer-root [data-id="103"]'));
+  assert.equal(b.requests.length, 2, 'supplementing known replies adds no network requests');
+});
+
+test('successful sidebar reads also preserve descendants when the user switches to a child', async t => {
+  const detail = posts => ({ data: { instructions: [{ entries: posts.map(result => ({ content: { itemContent: { tweet_results: { result } } } })) }] } });
+  const b = bridge(r => {
+    const vars = JSON.parse(r.url.searchParams.get('variables') || '{}');
+    const json = detail(vars.focalTweetId === '100'
+      ? [tweet('100'), tweet('101', '100'), tweet('102', '101'), tweet('103', '102')]
+      : [tweet('101', '100'), tweet('102', '101')]);
+    return { ok: true, json: async () => json };
+  }); t.after(() => b.w.close());
+  await b.w.fetch('/i/api/graphql/test/TweetDetail?variables=%7B%7D');
+  await b.send({ type: 'READ_THREAD', tweetId: '100' });
+  const child = await b.send({ type: 'READ_THREAD', tweetId: '101' });
+  b.w.eval(source('core.js'));
+  assert.deepEqual(Array.from(b.w.SidePeekCore.parseTweetDetail(child, '101').replies, r => r.id), ['102', '103']);
 });
 
 test('native replies use X router state for the exact target without navigation, publication or another window', async t => {

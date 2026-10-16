@@ -107,6 +107,7 @@
     autoLoadReplies: true,
     autoExpandReplyText: false,
     threadPages: new Map(),
+    inlinePages: new Map(),
     openGatedThreads: new Set(),
     consumedCursors: new Map(),
     anchorCommentId: null,
@@ -180,6 +181,10 @@
         }
         acceptCreatedReply(model);
       }
+      return;
+    }
+    if (event.data.type === "NATIVE_THREAD_OBSERVED") {
+      acceptNativeThread(event.data.payload);
       return;
     }
     const request = pendingRequests.get(event.data.requestId);
@@ -1164,11 +1169,11 @@
   // ==========================================================================
   // UI Rendering
   // ==========================================================================
-  let replyObserver = null;
+  const replyObservers = new Set();
 
   function renderDrawer() {
-    replyObserver?.disconnect();
-    replyObserver = null;
+    for (const observer of replyObservers) observer.disconnect();
+    replyObservers.clear();
     const root = ensureDrawerRoot();
     if (!state.open) {
       nativeLayers?.release();
@@ -1270,7 +1275,8 @@
     if (countBadge) {
       const model = isDrillDown ? drillDownParent : state.focalModel;
       const directCount = isDrillDown ? (state.tree?.childrenMap.get(drillDownParent.id)?.length || 0) : (state.tree?.rootReplies.length || 0);
-      countBadge.textContent = `(${directCount}/${model?.reportedReplyCount ?? "—"})`;
+      countBadge.hidden = state.loading || !model;
+      countBadge.textContent = countBadge.hidden ? "" : `(${directCount}/${model.reportedReplyCount ?? "—"})`;
       countBadge.title = getLocale() === "zh" ? "已加载的一级回复 / X 显示的回复数（可能包含不可见回复）" : "Loaded direct replies / Reply count reported by X (may include unavailable replies)";
     }
 
@@ -1494,6 +1500,7 @@
       appendReplyPagination(body, state.focalTweetId);
     }
 
+    appendInlinePaginations(body);
     updateQuotePreviews(root);
 
     // 恢复滚动条位置，彻底解决“点击展开回复后页面跳回顶部”的问题
@@ -1836,6 +1843,7 @@
 
   function appendUnfetchedReplies(container, model) {
     if (state.threadPages.has(model.id) || state.loadedThreadIds.has(model.id)) return;
+    if ([...state.inlinePages.values()].some(page => page.branchRootId === model.id && inlinePageVisible(page))) return;
     const direct = (state.tree?.childrenMap.get(model.id) || []).filter(child => child.inReplyToId === model.id).length;
     if ((model.counts?.replies || 0) <= direct) return;
     const button = document.createElement("button");
@@ -3582,6 +3590,22 @@
       .slice().sort((a, b) => Boolean(a._gateFor) - Boolean(b._gateFor));
   }
 
+  function acceptNativeThread(payload) {
+    if (!state.open || state.loading || !state.focalModel || !payload?.sidepeekObservedThreads) return;
+    const { replies, pagination } = Core.parseTweetDetail({ data: {}, ...payload }, state.focalTweetId,
+      [state.focalModel, ...state.replies]);
+    const ids = new Set(state.replies.map(reply => reply.id));
+    const added = replies.filter(reply => !ids.has(reply.id));
+    const signature = () => JSON.stringify([...state.inlinePages].map(([key, page]) => [key, page.cursor]));
+    const previous = signature();
+    state.replies.push(...added);
+    rememberInlinePages(pagination);
+    if (added.length || previous !== signature()) {
+      state.tree = Core.buildConversationTree(visibleReplies(), state.focalTweetId);
+      renderDrawer();
+    }
+  }
+
   function appendSectionLabel(container, model) {
     if (!model._gateFor || [...container.querySelectorAll(".sidepeek-section-label")].some(label => label.dataset.scope === model._gateFor)) return;
     const label = document.createElement("div");
@@ -3597,6 +3621,130 @@
 
   function foldedText() {
     return getLocale() === "zh" ? "X 折叠的回复" : "Replies folded by X";
+  }
+
+  function inlinePageKey(page) {
+    return `${page.requestTweetId}:${page.moduleId}`;
+  }
+
+  function rememberInlinePages(pagination, consumedKey = null) {
+    const next = new Map((pagination.inlineCursors || []).map(page => [inlinePageKey(page), page]));
+    const touched = new Set((pagination.inlineModules || []).map(inlinePageKey));
+    if (consumedKey) touched.add(consumedKey);
+    for (const key of touched) {
+      const previous = state.inlinePages.get(key);
+      const descriptor = next.get(key);
+      if (!descriptor) {
+        state.inlinePages.delete(key);
+        continue;
+      }
+      const consumed = previous?.consumed || new Set();
+      if (key === consumedKey && previous?.cursor) consumed.add(previous.cursor);
+      state.inlinePages.set(key, { ...descriptor, consumed,
+        stalled: consumed.has(descriptor.cursor), paused: false, error: false, loading: false });
+    }
+  }
+
+  function inlinePageVisible(page) {
+    return (!page.gateFor || state.openGatedThreads.has(page.gateFor)) &&
+      (page.branchRootId === state.focalTweetId || state.tree?.byId.has(page.branchRootId));
+  }
+
+  function hasPendingInlinePages(tweetId) {
+    const ids = new Set([tweetId, ...(state.tree?.getSubtree(tweetId) || []).map(reply => reply.id)]);
+    if (tweetId === state.focalTweetId) for (const id of state.tree?.byId.keys() || []) ids.add(id);
+    return [...state.inlinePages.values()].some(page => inlinePageVisible(page) && ids.has(page.branchRootId));
+  }
+
+  function hasPendingBranchPages(tweetId) {
+    const ids = tweetId === state.focalTweetId ? [...state.tree?.byId.keys() || []]
+      : (state.tree?.getSubtree(tweetId) || []).map(reply => reply.id);
+    return ids.some(id => state.threadCursors.has(id) || state.threadPages.get(id)?.stalled);
+  }
+
+  function observeReplyPage(row, body, isCurrent, load) {
+    if (!state.autoLoadReplies || typeof IntersectionObserver !== "function") return;
+    const generation = state.threadGeneration;
+    const observer = new IntersectionObserver(entries => {
+      if (replyObservers.has(observer) && generation === state.threadGeneration && state.open &&
+          state.autoLoadReplies && row.isConnected && isCurrent() &&
+          !state.loadingThreadIds.size && ![...state.inlinePages.values()].some(page => page.loading) &&
+          entries.some(entry => entry.isIntersecting)) load();
+    }, { root: body, rootMargin: "200px 0px" });
+    replyObservers.add(observer);
+    observer.observe(row);
+  }
+
+  function appendInlinePaginations(body) {
+    const nodes = [...body.querySelectorAll("article.sidepeek-comment-item")];
+    const shown = new Set(nodes.map(node => node.dataset.id));
+    for (const [key, page] of state.inlinePages) {
+      if (!inlinePageVisible(page)) continue;
+      const branch = [page.branchRootId, ...(state.tree?.getSubtree(page.branchRootId) || []).map(reply => reply.id)];
+      // Do not fetch beyond a preview which the user has not expanded.
+      const renderedBranch = branch.filter(id => id !== state.focalTweetId);
+      if (!renderedBranch.length || renderedBranch.some(id => !shown.has(id))) continue;
+      const ids = new Set(renderedBranch);
+      const anchor = nodes.filter(node => ids.has(node.dataset.id)).at(-1);
+      if (!anchor) continue;
+      const row = document.createElement("div");
+      row.className = "sidepeek-pagination sidepeek-inline-pagination";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "sidepeek-expand-btn sidepeek-inline-load-more-btn";
+      button.disabled = page.loading || page.stalled;
+      button.textContent = page.loading ? t("loadingReplies") : t("loadMoreThreadReplies");
+      button.addEventListener("click", () => fetchInlineReplies(key));
+      row.appendChild(button);
+      if (page.error || page.paused || page.stalled) {
+        const status = document.createElement("div");
+        status.className = page.error ? "sidepeek-pagination-error" : "sidepeek-pagination-paused";
+        status.textContent = page.error ? t("loadRepliesFailed") : page.stalled
+          ? (getLocale() === "zh" ? "X 返回了重复的分页位置，已停止继续加载" : "X returned a repeated pagination cursor. Loading stopped.")
+          : (getLocale() === "zh" ? "本页没有新增回复，可手动继续加载" : "No new replies on this page. Continue manually.");
+        row.prepend(status);
+      }
+      anchor.after(row);
+      if (!page.gateFor && !page.loading && !page.error && !page.paused && !page.stalled) {
+        observeReplyPage(row, body, () => state.inlinePages.get(key) === page, () => fetchInlineReplies(key));
+      }
+    }
+  }
+
+  async function fetchInlineReplies(key) {
+    const page = state.inlinePages.get(key);
+    if (!page || page.loading || page.stalled || !state.open) return;
+    const generation = state.threadGeneration;
+    page.loading = true;
+    renderDrawer();
+    try {
+      const json = await requestPage("READ_THREAD", { tweetId: page.requestTweetId, cursor: page.cursor });
+      if (!state.open || generation !== state.threadGeneration || state.inlinePages.get(key) !== page) return;
+      const section = page.gateFor ? state.threadPages.get(page.gateFor)?.sectionLabel || foldedText() : "";
+      const { focal, replies, pagination } = Core.parseTweetDetail(json, page.requestTweetId, [state.focalModel, ...state.replies], section);
+      const existing = new Map(state.replies.map(reply => [reply.id, reply]));
+      let added = 0;
+      for (const reply of replies) {
+        if (reply.id === state.focalTweetId) continue;
+        if (existing.has(reply.id)) Object.assign(existing.get(reply.id), reply);
+        else { state.replies.push(reply); existing.set(reply.id, reply); added++; }
+      }
+      if (focal?.id === state.focalTweetId) state.focalModel = focal;
+      state.tree = Core.buildConversationTree(visibleReplies(), state.focalTweetId);
+      for (const root of state.tree.rootReplies) {
+        if (root.id === page.branchRootId || state.tree.getSubtree(root.id).some(reply => reply.id === page.branchRootId)) {
+          state.expandedThreadIds.add(root.id);
+        }
+      }
+      rememberInlinePages(pagination, key);
+      const next = state.inlinePages.get(key);
+      if (next && !added && !next.stalled) next.paused = true;
+    } catch (err) {
+      if (state.open && generation === state.threadGeneration && state.inlinePages.get(key) === page) page.error = true;
+    } finally {
+      page.loading = false;
+      if (state.open && generation === state.threadGeneration) renderDrawer();
+    }
   }
 
   function appendReplyPagination(container, tweetId) {
@@ -3639,15 +3787,9 @@
         status.className = page.error ? "sidepeek-pagination-error" : "sidepeek-pagination-paused";
         status.textContent = page.error ? t("loadRepliesFailed") : (getLocale() === "zh" ? "本页没有新增回复，可手动继续加载" : "No new replies on this page. Continue manually.");
         row.prepend(status);
-      } else if (state.autoLoadReplies && !opened && !busy && container.classList.contains("sidepeek-body") && typeof IntersectionObserver === "function") {
-        const generation = state.threadGeneration;
-        const observer = new IntersectionObserver(entries => {
-          if (state.autoLoadReplies && replyObserver === observer && generation === state.threadGeneration && state.open &&
-              state.threadCursors.get(tweetId) === cursor && entries.some(entry => entry.isIntersecting) &&
-              !state.loadingThreadIds.has(tweetId)) fetchSubReplies(tweetId, false, true, cursor);
-        }, { root: container, rootMargin: "200px 0px" });
-        replyObserver = observer;
-        observer.observe(row);
+      } else if (!opened && !busy && container.classList.contains("sidepeek-body")) {
+        observeReplyPage(row, container, () => state.threadCursors.get(tweetId) === cursor,
+          () => fetchSubReplies(tweetId, false, true, cursor));
       }
     } else if (page.stalled) {
       row.classList.add("sidepeek-pagination-paused");
@@ -3656,6 +3798,7 @@
       // Completion belongs to the current list, not each inline branch.
       // Keep branch pagination controls above, but only show this at the body end.
       if (!container.classList.contains("sidepeek-body")) return;
+      if (hasPendingInlinePages(tweetId) || hasPendingBranchPages(tweetId)) return;
       const loaded = tweetId === state.focalTweetId ? state.tree?.rootReplies : state.tree?.childrenMap.get(tweetId);
       if (!loaded?.length) return;
       row.classList.add("sidepeek-pagination-end");
@@ -3678,6 +3821,7 @@
     state.loadingThreadIds.clear();
     state.threadCursors.clear();
     state.threadPages.clear();
+    state.inlinePages.clear();
     state.openGatedThreads.clear();
     state.consumedCursors.clear();
     state.replyTarget = null;
@@ -3692,6 +3836,7 @@
       state.tree = Core.buildConversationTree(visibleReplies(), tweetId);
       rememberThreadCursor(tweetId, cursor);
       state.threadPages.set(tweetId, pagination);
+      rememberInlinePages(pagination);
       state.loading = false;
       state.resetScrollOnRender = true;
       renderDrawer();
@@ -3755,6 +3900,8 @@
         stalled: Boolean(nextCursor && !state.threadCursors.has(commentId)),
         paused: Boolean(cursor && nextCursor && !replies.some(reply => !beforeIds.has(reply.id)))
       });
+
+      rememberInlinePages(pagination);
 
       // 重新构建对话树结构
       state.tree = Core.buildConversationTree(visibleReplies(), state.focalTweetId);
@@ -3883,6 +4030,7 @@
         state.tree = null;
         state.threadCursors.clear();
         state.threadPages.clear();
+        state.inlinePages.clear();
         state.openGatedThreads.clear();
         state.consumedCursors.clear();
         state.loadingThreadIds.clear();
@@ -3907,7 +4055,7 @@
         const { focal, replies, cursor, pagination } = Core.parseTweetDetail(json, tweetId);
 
         // 如果完全没有下一级回复，绝对不弹出右侧抽屉，保持完全静默
-        if ((!replies || replies.length === 0) && !cursor && !pagination.gated) {
+        if ((!replies || replies.length === 0) && !cursor && !pagination.gated && !pagination.inlineCursors.length) {
           if (state.open && state.focalTweetId === tweetId) {
             closeDrawer();
           }
@@ -3935,10 +4083,12 @@
         state.loadingThreadIds.clear();
         state.threadCursors.clear();
         state.threadPages.clear();
+        state.inlinePages.clear();
         state.openGatedThreads.clear();
         state.consumedCursors.clear();
         rememberThreadCursor(tweetId, cursor);
         state.threadPages.set(tweetId, pagination);
+        rememberInlinePages(pagination);
         state.activeView = "root";
         state.replyTarget = null;
         state.loading = false;
