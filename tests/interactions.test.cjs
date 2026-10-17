@@ -90,6 +90,71 @@ test('focusing an empty reply box starts protection until explicit close', async
   assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), false);
 });
 
+for (const area of ['text', 'blank']) {
+  test(`protected reply blocks X navigation from another post ${area}, then normal drawer switching resumes`, async t => {
+    const p = createPage({ request: m => m.type === 'CREATE_REPLY'
+      ? { data: [{ tweet_results: { result: tweet('999', '100', 'Draft for A') } }] } : thread(m.tweetId) });
+    t.after(() => p.w.close());
+    const navigated = [];
+    p.w.document.querySelector('main').addEventListener('click', event => {
+      const article = event.target.closest('article[data-testid="tweet"]');
+      if (!article || event.defaultPrevented) return;
+      const href = article.querySelector('time').closest('a').getAttribute('href');
+      navigated.push(href);
+      p.w.history.pushState({}, '', href);
+      p.w.dispatchEvent(new p.w.PopStateEvent('popstate'));
+    });
+    await tick(); p.clickPost(0); await tick();
+    const editor = p.query('.sidepeek-footer-textarea');
+    editor.focus();
+    const postB = p.w.document.querySelectorAll('main article')[1];
+    const target = area === 'text' ? postB.querySelector('[data-testid="tweetText"]') : postB;
+    target.click(); await tick();
+    assert.deepEqual(navigated, [], 'X must not receive the protected post click');
+    assert.equal(p.w.location.pathname, '/home');
+    assert.equal(p.query('.sidepeek-comment-item').dataset.id, '101');
+    assert.equal(p.calls.some(m => m.type === 'READ_THREAD' && m.tweetId === '200'), false);
+    assert.match(p.query('#sidepeek-toast').textContent, /发送.*关闭/);
+
+    editor.value = 'Draft for A'; editor.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+    target.click(); await tick();
+    assert.equal(editor.value, 'Draft for A');
+    assert.deepEqual(navigated, []);
+    if (area === 'text') {
+      p.query('.sidepeek-footer-submit-btn').click(); await tick();
+      assert.ok(p.query('.sidepeek-comment-item[data-id="999"]'));
+    } else {
+      p.query('.sidepeek-btn-close').click();
+    }
+    target.click(); await tick();
+    assert.deepEqual(navigated, [], 'normal post clicks still open SideX in place');
+    assert.equal(p.w.location.pathname, '/home');
+    assert.equal(p.query('.sidepeek-comment-item').dataset.id, '201');
+  });
+}
+
+test('reply protection still allows explicit timestamps, photos, quoted posts and native action buttons', async t => {
+  const p = createPage(); t.after(() => p.w.close());
+  await tick(); p.clickPost(0); await tick();
+  p.query('.sidepeek-footer-textarea').focus();
+  const article = p.w.document.querySelectorAll('main article')[1];
+  const photo = p.w.document.createElement('a'); photo.href = '/reader/status/200/photo/1';
+  photo.innerHTML = '<img alt="Photo">'; article.append(photo);
+  const quote = p.w.document.createElement('div'); quote.dataset.testid = 'quoteTweet';
+  quote.textContent = 'Quoted post'; article.append(quote);
+  const like = p.w.document.createElement('button'); like.dataset.testid = 'like'; article.append(like);
+  const targets = [article.querySelector('time'), photo.querySelector('img'), quote, like];
+  const allowed = [];
+  for (const target of targets) {
+    target.addEventListener('click', event => {
+      allowed.push(!event.defaultPrevented); event.preventDefault(); event.stopPropagation();
+    });
+    target.click();
+  }
+  assert.deepEqual(allowed, [true, true, true, true]);
+  assert.equal(p.query('.sidepeek-comment-item').dataset.id, '101');
+});
+
 test('a failed reply keeps the editing guard and draft', async t => {
   const p = createPage({ request: m => m.type === 'CREATE_REPLY' ? Promise.reject(new Error('Rejected')) : thread(m.tweetId) });
   t.after(() => p.w.close());

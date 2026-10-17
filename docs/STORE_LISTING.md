@@ -18,10 +18,10 @@ FEATURES
 • Translation choices: use X official translation, choose Google, or use your existing translation extension's selection/page translation.
 • Appearance: follows X's theme and supports an adjustable sidebar width.
 
-WHAT'S NEW IN 1.1.20
-• Fixed the quick reply button staying on "Replying..." after the request finishes.
-• Success, failure and unconfirmed responses now restore the normal reply label in the current language, including reply-mode changes during a pending send.
-• Failed or unconfirmed sends retain the draft. Confirmed sends clear their draft and let you write the next reply with the correct button state.
+WHAT'S NEW IN 1.1.21
+• Fixed ordinary post-body and blank-area clicks unexpectedly navigating to X post pages while reply protection was active.
+• Keep the current conversation and draft in place, with a prompt to send or close the comments panel before switching posts. Confirmed sends or manual close restore normal drawer switching.
+• Timestamps, photos, quoted posts and native action buttons keep their existing behavior.
 
 PRIVACY
 SideX runs in your browser and has no SideX relay server or analytics service. It processes the X content you open and uses your current X session for authenticated requests. Replies and selected attachments go to X. If you select Google translation and click Translate, the post text is sent directly to Google. X authentication information is not sent to Google. Other translation extensions follow their own settings and privacy policies.
@@ -53,10 +53,10 @@ SideX 把 X 的评论区放到右侧。点击帖子正文或空白处，在保�
 • 默认使用 X 官方翻译，也可选择 Google，或使用已有翻译插件的划词／网页翻译。
 • 跟随 X 主题，支持调整侧栏宽度。
 
-1.1.20 更新
-• 修复快捷回复请求结束后，按钮一直显示“Replying...”或“发送中...”的问题。
-• 成功、失败或结果未确认时，按钮都会按当前语言恢复普通回复文案，兼容发送期间切换回复模式。
-• 失败或未确认时保留草稿；确认发送成功后清空对应草稿，再写下一条回复时按钮状态正常。
+1.1.21 更新
+• 修复回复保护期间，点击其他帖子正文或空白处会意外进入 X 帖子详情页的问题。
+• 保留当前会话与草稿，并提示先发送或关闭评论区再切换；确认发送成功或主动关闭后恢复正常原地切帖。
+• 时间、图片、引用卡片和原生操作按钮仍按原来的方式工作。
 
 隐私说明
 SideX 在浏览器中运行，没有 SideX 中转或统计服务器。扩展处理你打开的 X 内容，并复用当前 X 会话；回复及选择的附件发送给 X。只有选择 Google 翻译并点击翻译时，正文才会直接发送给 Google，X 认证信息不会发给 Google。已有翻译插件遵循各自的设置和隐私政策。

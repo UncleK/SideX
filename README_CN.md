@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-官方商店上架-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.20-00b4f8?style=flat-square" alt="Version 1.1.20" />
+    <img src="https://img.shields.io/badge/Version-1.1.21-00b4f8?style=flat-square" alt="Version 1.1.21" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -78,7 +78,7 @@ git clone https://github.com/UncleK/SideX.git
 
 | 操作 / 快捷键 | 功能说明 |
 | :--- | :--- |
-| **单击推文空白处** | 原地展开主贴长文并在右侧打开评论抽屉 |
+| **单击推文正文或空白处** | 原地打开评论；回复保护中先发送或主动关闭评论区，再切换帖子 |
 | **ESC** | 关闭当前浮层；回复保护生效时保留评论抽屉 |
 | **单击侧栏外空白处** | 回复保护未生效时收起评论抽屉 |
 | **侧栏关闭按钮** | 主动关闭抽屉并结束回复保护，保留当前页面内的草稿 |
@@ -105,6 +105,8 @@ npm test
 ```
 
 回归检查使用合成 X 响应和 DOM，覆盖新旧用户资料结构、官方翻译请求、Google 长文分段、原生按钮复用、失败回滚、翻译/展开状态保留、切帖滚动重置和过期请求隔离。测试不会对真实 X 账号执行操作。
+
+1.1.21 修复快捷回复保护期间，点击其他帖子正文或空白处会放行 X 原生跳转的问题。现在保留当前会话与草稿，并提示先发送或关闭评论区再切换；确认发送成功或主动关闭后恢复正常原地切帖。时间、图片、引用卡片和原生操作按钮仍按原来的方式工作。本次 79 项本地回归加入模拟 X 点击跳转的场景，覆盖这处冲突。
 
 1.1.20 修复快捷回复请求结束后，按钮一直显示“Replying...”或“发送中...”的问题。成功、失败或结果未确认时，按钮都会按当前语言恢复普通回复文案；失败或未确认时继续保留草稿。本次 76 项本地回归覆盖连续回复、失败重试，以及发送期间切换语言和回复模式的状态收尾。
 

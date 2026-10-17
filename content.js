@@ -296,6 +296,7 @@
       gifUploadFailed: "GIF 上传失败",
       replyFailed: "回复发送失败，请重试",
       replySent: "回复已发布",
+      replyProtectedToast: "当前回复正在编辑，请先发送或关闭评论区，再切换帖子",
       replyStatusUnknown: "X 未返回已发布的回复，草稿已保留。请先在 X 确认发布状态。",
       overCharLimit: "字数超出限制",
       emptyReplies: "暂无评论，快来抢沙发吧~",
@@ -447,6 +448,7 @@
       gifUploadFailed: "Failed to upload GIF",
       replyFailed: "Failed to send reply. Please try again.",
       replySent: "Reply sent",
+      replyProtectedToast: "Reply in progress. Send it or close the comments panel before switching posts.",
       replyStatusUnknown: "X did not return the published reply. Draft kept; check X before trying again.",
       overCharLimit: "Character limit exceeded",
       emptyReplies: "No replies yet. Be the first to reply!",
@@ -3994,14 +3996,23 @@
     const lightbox = document.getElementById("sidepeek-lightbox");
     if (lightbox && lightbox.contains(event.target)) return;
 
-    if (state.open && state.replyEditing) return;
+    const isReplyProtected = Boolean(state.open && state.replyEditing);
 
     const article = event.target.closest?.('article[data-testid="tweet"]');
     if (!article) {
       // Clicked blank space outside drawer -> close drawer
-      if (state.open && drawer && !drawer.contains(event.target)) {
+      if (!isReplyProtected && state.open && drawer && !drawer.contains(event.target)) {
         closeDrawer();
       }
+      return;
+    }
+
+    if (shouldSkipClick(event.target, article)) return;
+    if (isReplyProtected) {
+      // Keep ordinary post clicks from falling through to X's own router.
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      showToast(t("replyProtectedToast"));
       return;
     }
 
@@ -4013,8 +4024,6 @@
         return;
       }
     }
-
-    if (shouldSkipClick(event.target, article)) return;
 
     // Find tweet URL & ID
     // 优先从推文顶部的第一条时间链接提取自身 ID，避免受内嵌引用推文的 status 链接干扰

@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-Available-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.20-00b4f8?style=flat-square" alt="Version 1.1.20" />
+    <img src="https://img.shields.io/badge/Version-1.1.21-00b4f8?style=flat-square" alt="Version 1.1.21" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -78,7 +78,7 @@ Then click **"Load unpacked"** and select the cloned `SideX` folder.
 
 | Shortcut / Action | Description |
 | :--- | :--- |
-| **Click Tweet body** | Expand post text & open comments drawer in-place |
+| **Click Tweet body** | Open comments in place; send or explicitly close a protected reply before switching posts |
 | **ESC** | Close the current overlay; keep the comments drawer open while reply protection is active |
 | **Click outside drawer** | Close comments drawer when reply protection is inactive |
 | **Drawer close button** | Explicitly close the drawer and end reply protection; retain the draft on the current page |
@@ -105,6 +105,8 @@ npm test
 ```
 
 Tests use synthetic X responses and DOM fixtures without performing real account actions. They cover profile parsing, translation requests, long-text chunking, native controls, rollback, retained reading state, scroll reset, and stale responses. X internals and third-party translation extensions may change. Without a matching native profile link, SideX renders a fallback with a full-profile link rather than simulating Grok's Profile Summary button; comments without native nodes are still rendered by SideX.
+
+Version 1.1.21 prevents ordinary post-body and blank-area clicks from reaching X's navigation handler while a quick reply is protected. The current conversation and draft stay in place, with a prompt to send or close the comments panel before switching. Confirmed sends or manual close restore normal drawer switching. Timestamps, photos, quoted posts and native action buttons keep their existing behavior. Validation includes 79 local regression cases, including simulated X navigation handlers for this conflict.
 
 Version 1.1.20 fixes the quick reply button staying on "Replying..." after a request finishes. Success, failure and unconfirmed responses restore the idle label using the current language. Failed or unconfirmed sends retain the draft. Validation includes 76 local regression cases covering consecutive replies, failure and retry, language changes and reply-mode changes during a pending send.
 
