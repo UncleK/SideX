@@ -286,7 +286,7 @@ test('an empty conversation shows its empty state without a redundant pagination
   }
 });
 
-test('reply protection and auto-pagination coexist without losing drafts or bypassing spam', async t => {
+test('auto-pagination preserves drafts and gated replies while allowing post switching', async t => {
   const io = observers();
   const p = await open(t, m => m.cursor === 'normal-next'
     ? page({ replies: [tweet('102', '100')], focal: false, gate: 'spam', end: 'Bottom' })
@@ -301,11 +301,15 @@ test('reply protection and auto-pagination coexist without losing drafts or bypa
   assert.ok(p.query('.sidepeek-gated-btn'));
   io.fire(); await tick();
   assert.equal(p.calls.filter(m => m.cursor).length, 1);
-  composer.blur(); p.clickPost(1); await tick();
-  assert.equal(p.calls.filter(m => m.tweetId === '200').length, 0);
+  assert.equal(p.calls.some(m => m.cursor === 'spam'), false);
   p.query('.sidepeek-gated-btn').click(); await tick();
   assert.equal(p.query('.sidepeek-section-label').textContent, 'Probable spam');
   assert.ok(p.query('[data-id="103"]'));
+  assert.equal(p.query('.sidepeek-footer-textarea').value, 'Keep this reply draft');
+  composer.blur(); p.clickPost(1); await tick();
+  assert.equal(p.calls.filter(m => m.tweetId === '200').length, 1);
+  assert.equal(p.query('.sidepeek-footer-textarea').value, '');
+  p.clickPost(0); await tick();
   assert.equal(p.query('.sidepeek-footer-textarea').value, 'Keep this reply draft');
   p.query('.sidepeek-btn-close').click();
 });
