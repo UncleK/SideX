@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-Available-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.22-00b4f8?style=flat-square" alt="Version 1.1.22" />
+    <img src="https://img.shields.io/badge/Version-1.1.23-00b4f8?style=flat-square" alt="Version 1.1.23" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -41,7 +41,9 @@
 
 * 🚀 **In-Place Drawer**: Click any tweet to dock its replies directly in the 3rd column—zero page redirects or reload.
 * 📖 **Auto-Unroll Long Posts**: Automatically expands "Show more" on focal posts.
-* 🧵 **Conversation Tree & Drill-down**: Reconstructs nested replies with clean thread lines; configurable sub-reply previews (1, 2, 3, 5) with zero-jump smooth in-place expansion.
+* 🧵 **Conversation Tree & Drill-down**: Reconstructs nested replies with clean thread lines; configurable sub-reply previews (1, 2, 3, 5) with zero-jump smooth in-place expansion. Loaded consecutive self-replies by the original author unfold automatically. Full reply text can also expand automatically when enabled; this option defaults to off.
+* 📚 **Reply loading**: Shows loaded direct replies alongside the total reported by X. Near-bottom automatic loading defaults to on and can be disabled. Nested branches retain their own continuation controls; replies folded by X require an explicit reveal action.
+* 📌 **Optional panel pinning**: Keep the panel open across outside clicks, Esc and X navigation, with the active post highlighted. You can still switch posts or close the panel manually. Automatic pinning defaults to off and applies to newly opened panels.
 * 💬 **Quick replies and official dialogs**: The compact quick toolbar has seven entries: images, GIFs, polls, emoji, scheduling, location and content disclosure (flag). Send text, emoji and up to four JPG/PNG/WebP images directly. Advanced tools open X's actual dialogs above the sidebar. In Official mode, clicking a comment's reply icon opens the official reply dialog in the current page without another browser window.
 * ✍️ **Separate text drafts**: Switch posts and close comments freely without a prompt. Unsent text is kept separately per post and reply target in the current tab and restored on return. Refreshing the page or closing the tab clears these drafts; image attachments are not retained after closing or switching replies.
 * 🔄 **Native interactions first**: Reuse native like, bookmark, and menu controls when the same post is rendered on the page; other comments use X session requests.
@@ -79,8 +81,9 @@ Then click **"Load unpacked"** and select the cloned `SideX` folder.
 | Shortcut / Action | Description |
 | :--- | :--- |
 | **Click Tweet body** | Open or switch comments in place, keeping separate text drafts |
-| **ESC** | Close the current overlay or comments drawer |
-| **Click outside drawer** | Close comments drawer and keep its text draft |
+| **ESC** | Close the current overlay or unpinned comments drawer |
+| **Click outside drawer** | Close an unpinned comments drawer and keep its text draft |
+| **Pin button** | Toggle whether outside clicks, Esc and X navigation keep the panel open |
 | **Drawer close button** | Close the drawer and keep its text draft |
 | **Drag right edge** | Resize drawer width (auto-saved) |
 | **Double-click handle** | Reset drawer to default width |
@@ -106,7 +109,7 @@ npm test
 
 Tests use synthetic X responses and DOM fixtures without performing real account actions. They cover profile parsing, translation requests, long-text chunking, native controls, rollback, retained reading state, scroll reset, and stale responses. X internals and third-party translation extensions may change. Without a matching native profile link, SideX renders a fallback with a full-profile link rather than simulating Grok's Profile Summary button; comments without native nodes are still rendered by SideX.
 
-Unreleased on `main`: [PR #2](https://github.com/UncleK/SideX/pull/2), [PR #3](https://github.com/UncleK/SideX/pull/3) and [PR #4](https://github.com/UncleK/SideX/pull/4) add optional panel pinning with an active-post marker, loaded/total reply counts, near-bottom loading, author-thread unfolding and scoped nested pagination. Auto-pin and automatic long-text expansion default to off; automatic pagination defaults to on. Folded replies require an explicit reveal action. Additional fixes preserve normal pagination before Spam, retain pending requests through navigation and native observations, and apply visibility updates to cached replies and their descendants. The combined source passes 162 local regression cases and keeps the v1.1.22 text-only draft behavior.
+Version 1.1.23 integrates [PR #2](https://github.com/UncleK/SideX/pull/2), [PR #3](https://github.com/UncleK/SideX/pull/3) and [PR #4](https://github.com/UncleK/SideX/pull/4): optional panel pinning with an active-post marker, loaded/total reply counts, near-bottom loading, author-thread unfolding and scoped nested pagination. Auto-pin and automatic long-text expansion default to off; automatic pagination defaults to on. Folded replies require an explicit reveal action. Additional fixes preserve normal pagination before Spam, retain pending requests through navigation and native observations, and apply visibility updates to cached replies and their descendants. The combined source passes 162 local regression cases and keeps the v1.1.22 text-only draft behavior. Chinese and English popup layouts and setting writes were also checked in Chromium using a local extension-API fixture.
 
 Version 1.1.22 removes reply protection and its navigation prompts, and keeps separate text drafts per post and reply target. Switching posts, closing the drawer, pressing Esc or clicking outside saves the current text; returning restores it with the original recipient. Drafts last only in the current tab until the page is refreshed or the tab is closed. Image attachments are not saved with drafts and are cleared when closing or switching replies. Failed or unconfirmed sends retain text; confirmed publication clears only the corresponding draft. Pending sends remain single-flight, late responses cannot clear a different reply, and the Reply button returns to its idle state when a request finishes. Validation includes 85 local regression cases, including draft restoration, discarded attachments and late uploads.
 
