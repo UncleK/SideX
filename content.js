@@ -3614,7 +3614,7 @@
     row.className = "sidepeek-pagination";
     const busy = state.loadingThreadIds.has(tweetId);
     if (opened) appendSectionLabel(container, { _gateFor: tweetId, _sectionLabel: page.sectionLabel });
-    if (!opened && ((page.gated && !cursor) || preloaded)) {
+    if (!opened && !cursor && (page.gated || preloaded)) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "sidepeek-expand-btn sidepeek-gated-btn";

@@ -159,6 +159,32 @@ test('ordinary pages finish before a retained spam gate and spam never auto-load
   assert.equal(p.query('.sidepeek-section-label').textContent, 'Probable spam');
 });
 
+for (const hasGateCursor of [true, false]) {
+  test('preloaded folded replies cannot replace ordinary pagination, with gate cursor ' + hasGateCursor, async t => {
+    const initial = page({ replies: [tweet('101', '100'), tweet('102', '100', 'FOLDED_BODY')],
+      cursor: 'normal-next', ...(hasGateCursor ? { gate: 'spam' } : {}) });
+    initial.data.threaded_conversation_with_injections_v2.instructions[0].entries.splice(2, 0,
+      { content: { itemContent: { itemType: 'TimelineLabel', text: 'Probable spam' } } });
+    const p = await open(t, m => m.cursor === 'normal-next'
+      ? page({ replies: [tweet('103', '100', 'NORMAL_NEXT_BODY')], focal: false, end: 'Bottom' })
+      : m.cursor === 'spam' ? page({ replies: [tweet('104', '100', 'SPAM_NEXT_BODY')], focal: false, end: 'Bottom' })
+        : initial);
+    assert.equal(p.query('.sidepeek-gated-btn'), null, 'normal pagination retains priority');
+    assert.doesNotMatch(p.query('.sidepeek-body').textContent, /FOLDED_BODY/);
+    p.query('.sidepeek-body > .sidepeek-pagination .sidepeek-load-more-btn').click(); await tick();
+    assert.ok(p.query('[data-id="103"]'));
+    assert.doesNotMatch(p.query('.sidepeek-body').textContent, /FOLDED_BODY/);
+    assert.ok(p.query('.sidepeek-gated-btn'));
+    p.query('.sidepeek-gated-btn').click(); await tick();
+    assert.match(p.query('.sidepeek-body').textContent, /FOLDED_BODY/);
+    assert.ok(p.query('[data-id="101"]'));
+    assert.ok(p.query('[data-id="103"]'), 'ordinary replies stay visible after revealing folded replies');
+    assert.deepEqual(p.calls.filter(m => m.cursor).map(m => m.cursor),
+      hasGateCursor ? ['normal-next', 'spam'] : ['normal-next']);
+    if (hasGateCursor) assert.ok(p.query('[data-id="104"]'));
+  });
+}
+
 test('failed explicit spam expansion has a manual retry and keeps the boundary', async t => {
   const io = observers(); let fail = true;
   const p = await open(t, m => {
