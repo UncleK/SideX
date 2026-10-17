@@ -18,12 +18,10 @@ FEATURES
 • Translation choices: use X official translation, choose Google, or use your existing translation extension's selection/page translation.
 • Appearance: follows X's theme and supports an adjustable sidebar width.
 
-WHAT'S NEW IN 1.1.19
-• While editing a quick reply, outside clicks, Esc, selecting another post and X navigation keep the current conversation open.
-• Image-only drafts and opening native GIF, poll and other quick tools also start protection.
-• Manual close or a confirmed send ends protection for the matching reply. Failed sends retain the draft and protection; older responses cannot unlock a newer reply.
-• Fixed sent text returning after reply-mode changes during a pending send, and comments getting stuck loading when editing starts.
-• Kept conversations and drafts intact through photo changes, viewer exit and native overlays, with an explicit close button available while editing beside photos.
+WHAT'S NEW IN 1.1.20
+• Fixed the quick reply button staying on "Replying..." after the request finishes.
+• Success, failure and unconfirmed responses now restore the normal reply label in the current language, including reply-mode changes during a pending send.
+• Failed or unconfirmed sends retain the draft. Confirmed sends clear their draft and let you write the next reply with the correct button state.
 
 PRIVACY
 SideX runs in your browser and has no SideX relay server or analytics service. It processes the X content you open and uses your current X session for authenticated requests. Replies and selected attachments go to X. If you select Google translation and click Translate, the post text is sent directly to Google. X authentication information is not sent to Google. Other translation extensions follow their own settings and privacy policies.
@@ -55,12 +53,10 @@ SideX 把 X 的评论区放到右侧。点击帖子正文或空白处，在保�
 • 默认使用 X 官方翻译，也可选择 Google，或使用已有翻译插件的划词／网页翻译。
 • 跟随 X 主题，支持调整侧栏宽度。
 
-1.1.19 更新
-• 编辑快捷回复时，点击外部、按 Esc、选择其他帖子或 X 站内导航都会保留当前会话。
-• 仅含图片的草稿，以及打开官方 GIF、投票等快捷工具，也会启动保护。
-• 主动关闭或对应回复确认发送成功后结束保护；发送失败保留草稿及保护，旧响应不会解除新回复的保护。
-• 修复发送期间切换回复模式后已发送文字重新出现，以及开始编辑后评论一直加载的问题。
-• 图片切换、退出查看器和官方弹层往返时保留会话与草稿；图片旁编辑时始终提供主动关闭按钮。
+1.1.20 更新
+• 修复快捷回复请求结束后，按钮一直显示“Replying...”或“发送中...”的问题。
+• 成功、失败或结果未确认时，按钮都会按当前语言恢复普通回复文案，兼容发送期间切换回复模式。
+• 失败或未确认时保留草稿；确认发送成功后清空对应草稿，再写下一条回复时按钮状态正常。
 
 隐私说明
 SideX 在浏览器中运行，没有 SideX 中转或统计服务器。扩展处理你打开的 X 内容，并复用当前 X 会话；回复及选择的附件发送给 X。只有选择 Google 翻译并点击翻译时，正文才会直接发送给 Google，X 认证信息不会发给 Google。已有翻译插件遵循各自的设置和隐私政策。

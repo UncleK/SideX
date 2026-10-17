@@ -2322,7 +2322,7 @@
         submitBtn.textContent = t("sending");
       } else if (isMediaUploading) {
         submitBtn.textContent = t("uploading");
-      } else if (submitBtn.textContent === t("uploading")) {
+      } else {
         submitBtn.textContent = t("replyBtn");
       }
     }

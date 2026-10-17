@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-官方商店上架-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.19-00b4f8?style=flat-square" alt="Version 1.1.19" />
+    <img src="https://img.shields.io/badge/Version-1.1.20-00b4f8?style=flat-square" alt="Version 1.1.20" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -105,6 +105,8 @@ npm test
 ```
 
 回归检查使用合成 X 响应和 DOM，覆盖新旧用户资料结构、官方翻译请求、Google 长文分段、原生按钮复用、失败回滚、翻译/展开状态保留、切帖滚动重置和过期请求隔离。测试不会对真实 X 账号执行操作。
+
+1.1.20 修复快捷回复请求结束后，按钮一直显示“Replying...”或“发送中...”的问题。成功、失败或结果未确认时，按钮都会按当前语言恢复普通回复文案；失败或未确认时继续保留草稿。本次 76 项本地回归覆盖连续回复、失败重试，以及发送期间切换语言和回复模式的状态收尾。
 
 1.1.19 为快捷回复增加编辑保护，即使输入框失去焦点也会保留当前会话，覆盖仅含图片的草稿和官方快捷工具。保护跟随当前草稿，旧发送结果不会解除新回复的保护。同时修复发送期间切换回复模式后已发送文字重新出现、编辑时评论加载卡住的问题，并保留图片切换、退出查看器和官方弹层往返时的会话与草稿。图片旁编辑时，原生折叠按钮旁始终保留主动关闭入口。本次验证包含 74 项本地回归，其中 11 项在审查 [PR #1](https://github.com/UncleK/SideX/pull/1) 时补充。
 

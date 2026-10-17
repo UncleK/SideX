@@ -39,12 +39,23 @@ test('Ctrl+Enter is single-flight and successful replies use the real server ID 
   const editor = input(p, 'Hello');
   for (let i = 0; i < 3; i++) editor.dispatchEvent(new p.w.KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true }));
   await tick(); assert.equal(p.calls.filter(m => m.type === 'CREATE_REPLY').length, 1);
+  assert.equal(p.query('.sidepeek-footer-submit-btn').textContent, '发送中...');
   finish(created()); await tick();
+  assert.equal(p.query('.sidepeek-footer-submit-btn').textContent, '回复');
+  assert.equal(editor.disabled, false);
+  assert.equal(p.query('.sidepeek-footer-submit-btn').disabled, true, 'the empty composer is idle');
   assert.ok(p.query('.sidepeek-comment-item[data-id="999"]'));
   assert.equal(p.query('.sidepeek-comment-item[data-id="999"] .sidepeek-time').href, 'https://x.com/reader/status/999');
   p.change({ sidex_sub_reply_limit: { newValue: 2 } }); await tick();
   assert.ok(p.query('.sidepeek-comment-item[data-id="999"]'));
   assert.equal(p.query('.sidepeek-footer-textarea').value, '');
+  input(p, 'Second reply');
+  assert.equal(p.query('.sidepeek-footer-submit-btn').disabled, false);
+  p.query('.sidepeek-footer-submit-btn').click(); await tick();
+  assert.equal(p.calls.filter(m => m.type === 'CREATE_REPLY').length, 2);
+  finish(created('1000', '100', 'Second reply')); await tick();
+  assert.equal(p.query('.sidepeek-footer-submit-btn').textContent, '回复');
+  assert.ok(p.query('.sidepeek-comment-item[data-id="1000"]'));
 });
 
 test('an old send cannot clear a newer draft or insert into a different conversation', async t => {
@@ -71,6 +82,43 @@ test('missing publication confirmation keeps the draft and does not invent a loc
   assert.equal(p.query('.sidepeek-footer-textarea').value, 'Keep me');
   assert.equal(p.query('[data-id^="local-"]'), null);
   assert.equal(p.query('.sidepeek-footer-submit-btn').disabled, false);
+  assert.equal(p.query('.sidepeek-footer-submit-btn').textContent, '回复');
+});
+
+test('a failed English reply restores the Reply button and retained draft can be retried', async t => {
+  let finish, fail;
+  const p = createPage({ settings: { sidex_lang: 'en' }, request: m => m.type === 'CREATE_REPLY'
+    ? new Promise((resolve, reject) => { finish = resolve; fail = reject; }) : thread(m.tweetId) });
+  t.after(() => p.w.close());
+  await tick(); p.clickPost(0); await tick();
+  const editor = input(p, 'Keep and retry');
+  const submit = p.query('.sidepeek-footer-submit-btn');
+  submit.click(); await tick();
+  assert.equal(submit.textContent, 'Replying...');
+  assert.equal(submit.disabled, true);
+  fail(new Error('Rejected')); await tick();
+  assert.equal(submit.textContent, 'Reply');
+  assert.equal(submit.disabled, false);
+  assert.equal(editor.disabled, false);
+  assert.equal(editor.value, 'Keep and retry');
+  submit.click(); await tick();
+  assert.equal(p.calls.filter(m => m.type === 'CREATE_REPLY').length, 2);
+  finish(created()); await tick();
+  assert.equal(submit.textContent, 'Reply');
+  assert.equal(editor.value, '');
+});
+
+test('a reply completed after a language change restores the current locale button text', async t => {
+  let finish;
+  const p = createPage({ settings: { sidex_lang: 'en' }, request: m => m.type === 'CREATE_REPLY'
+    ? new Promise(resolve => { finish = resolve; }) : thread(m.tweetId) });
+  t.after(() => p.w.close());
+  await tick(); p.clickPost(0); await tick(); input(p, 'Hello');
+  p.query('.sidepeek-footer-submit-btn').click(); await tick();
+  assert.equal(p.query('.sidepeek-footer-submit-btn').textContent, 'Replying...');
+  p.change({ sidex_lang: { newValue: 'zh' } });
+  finish(created()); await tick();
+  assert.equal(p.query('.sidepeek-footer-submit-btn').textContent, '回复');
 });
 
 test('the counter uses URL weights and Unicode emoji sequences from twitter-text', async t => {
@@ -292,6 +340,7 @@ test('a pending send releases its draft protection after replacing the footer th
   p.query('.sidepeek-footer-textarea').focus();
   finish(created()); await tick();
   assert.equal(p.query('.sidepeek-footer-textarea').value, '');
+  assert.equal(p.query('.sidepeek-footer-submit-btn').textContent, '回复');
   p.w.document.querySelector('main').click();
   assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), false);
 });
