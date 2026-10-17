@@ -31,6 +31,73 @@ async function open(t, request, settings = {}, setupWindow) {
   await tick(); p.clickPost(0); await tick(); return p;
 }
 
+function observeNative(p, json) {
+  p.w.dispatchEvent(new p.w.MessageEvent('message', { source: p.w, origin: p.w.location.origin,
+    data: { source: 'sidepeek-page', type: 'NATIVE_THREAD_OBSERVED',
+      payload: { sidepeekObservedThreads: [{ requestTweetId: '100', json }] } } }));
+}
+
+for (const addsReply of [false, true]) {
+  test('native observations preserve an in-flight inline request, with a new reply ' + addsReply, async t => {
+    let finish;
+    const p = await open(t, m => m.cursor ? new Promise(resolve => { finish = resolve; }) : initial(),
+      { sidex_auto_load_replies: false });
+    const editor = p.query('.sidepeek-footer-textarea'); editor.value = 'Keep this reply';
+    editor.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+    p.query('.sidepeek-inline-load-more-btn').click(); await tick();
+    const observed = initial();
+    if (addsReply) observed.data.instructions[0].entries.push(entry(tweet('110', '100')));
+    observeNative(p, observed); await tick();
+    assert.equal(p.query('.sidepeek-inline-load-more-btn').disabled, true, 'the same cursor is still being loaded');
+    p.query('.sidepeek-inline-load-more-btn').click(); await tick();
+    assert.equal(p.calls.filter(m => m.cursor).length, 1);
+    finish(detail([moduleEntry('101', [tweet('103', '102')])], { posts: [] })); await tick();
+    assert.ok(p.query('[data-id="103"]'), 'the original successful response is accepted');
+    assert.equal(p.query('.sidepeek-inline-load-more-btn'), null);
+    assert.equal(p.query('.sidepeek-footer-textarea').value, 'Keep this reply');
+    if (addsReply) assert.ok(p.query('[data-id="110"]'));
+  });
+}
+
+test('native visibility updates reclassify existing replies and hide their cached descendants', async t => {
+  const p = await open(t, () => initial(null));
+  assert.ok(p.query('[data-id="101"]')); assert.ok(p.query('[data-id="102"]'));
+  const editor = p.query('.sidepeek-footer-textarea'); editor.value = 'Keep draft';
+  editor.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+  const folded = detail([]);
+  folded.data.instructions[0].entries.push(
+    { content: { itemContent: { itemType: 'TimelineLabel', text: 'Probable spam' } } },
+    entry(tweet('101', '100', 'UPDATED_FOLDED_REPLY')));
+  observeNative(p, folded); await tick();
+  assert.equal(p.query('[data-id="101"]'), null);
+  assert.equal(p.query('[data-id="102"]'), null, 'cached descendants inherit the folded parent boundary');
+  assert.ok(p.query('.sidepeek-gated-btn'));
+  observeNative(p, detail([], { posts: [tweet('100'), tweet('101', '100', 'UPDATED_NORMAL_REPLY')] })); await tick();
+  assert.match(p.query('[data-id="101"]').textContent, /UPDATED_NORMAL_REPLY/);
+  assert.ok(p.query('[data-id="102"]'));
+  assert.equal(p.query('.sidepeek-section-label'), null);
+  assert.equal(p.query('.sidepeek-gated-btn'), null);
+  observeNative(p, folded); await tick();
+  p.query('.sidepeek-gated-btn').click(); await tick();
+  assert.match(p.query('[data-id="101"]').textContent, /UPDATED_FOLDED_REPLY/);
+  assert.ok(p.query('[data-id="102"]'));
+  assert.equal(p.query('.sidepeek-section-label').textContent, 'Probable spam');
+  assert.equal(p.query('.sidepeek-footer-textarea').value, 'Keep draft');
+});
+
+test('native unavailability hides an existing reply and its descendants until a valid update arrives', async t => {
+  const p = await open(t, () => initial(null));
+  const unavailable = detail([]);
+  unavailable.data.instructions[0].entries.push({ entryId: 'tweet-101',
+    content: { itemContent: { tweet_results: { result: { __typename: 'TweetUnavailable' } } } } });
+  observeNative(p, unavailable); await tick();
+  assert.equal(p.query('[data-id="101"]'), null);
+  assert.equal(p.query('[data-id="102"]'), null);
+  observeNative(p, detail([], { posts: [tweet('100'), tweet('101', '100')] })); await tick();
+  assert.ok(p.query('[data-id="101"]'));
+  assert.ok(p.query('[data-id="102"]'));
+});
+
 test('an ended outer timeline retains a separately scoped inline continuation', t => {
   const dom = new JSDOM('', { runScripts: 'outside-only' }); t.after(() => dom.window.close());
   dom.window.eval(source('core.js'));

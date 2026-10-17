@@ -435,7 +435,7 @@
     }
     const focal = byId.get(focalId) || null;
 
-    if (!focal) return { focal: null, replies: [], cursor: null, pagination };
+    if (!focal) return { focal: null, replies: [], cursor: null, pagination, unavailableIds: [...unavailable] };
 
     const ancestors = new Set();
     let ancId = focal.inReplyToId;
@@ -466,7 +466,7 @@
     const inScope = entry => entry.branchRootId === focalId || descendsFromFocal(byId.get(entry.branchRootId));
     pagination.inlineCursors = pagination.inlineCursors.filter(inScope);
     pagination.inlineModules = pagination.inlineModules.filter(inScope);
-    return { focal, replies, cursor: pagination.cursor, pagination };
+    return { focal, replies, cursor: pagination.cursor, pagination, unavailableIds: [...unavailable] };
   }
 
   /**
