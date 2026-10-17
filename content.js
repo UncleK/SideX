@@ -109,7 +109,6 @@
     resetScrollOnRender: false,
     activeView: "root", // "root" or { type: "drilldown", parentId: string }
     replyTarget: null, // Comment model being replied to, or null for focal tweet
-    replyEditing: null, // Draft protected from automatic dismissal or replacement.
     loading: false,
     error: "",
     isResizing: false,
@@ -127,7 +126,9 @@
   const translations = new Map();
   const expandedTexts = new Set();
   const expandedQuotes = new Set();
+  // Text drafts live only in this page. Attachments stay with the active edit.
   const composerDrafts = new Map();
+  const replyDraftTargets = new Map();
   const pendingActions = new Set();
   const nativeActionObservers = new Map();
   const nativeActionArticles = new Map();
@@ -167,10 +168,6 @@
             const textarea = document.querySelector(".sidepeek-footer-textarea");
             if (textarea) textarea.value = "";
             document.querySelector(".sidepeek-footer-composer")?._sidepeekComposer?.refresh();
-            if (state.threadGeneration === intent.generation && state.replyEditing === intent.draft) {
-              state.replyEditing = null;
-              syncPhotoHeader(drawerRoot);
-            }
           }
           state.nativeReplyTransfer = null;
         }
@@ -254,7 +251,6 @@
       }
       if (changes.sidex_reply_mode !== undefined) {
         state.replyMode = changes.sidex_reply_mode.newValue === "native" ? "native" : "drawer";
-        if (state.replyMode === "native") state.replyEditing = null;
         if (state.open) renderDrawer(true);
       }
       if (changes.sidex_sub_reply_limit !== undefined) {
@@ -296,7 +292,6 @@
       gifUploadFailed: "GIF 上传失败",
       replyFailed: "回复发送失败，请重试",
       replySent: "回复已发布",
-      replyProtectedToast: "当前回复正在编辑，请先发送或关闭评论区，再切换帖子",
       replyStatusUnknown: "X 未返回已发布的回复，草稿已保留。请先在 X 确认发布状态。",
       overCharLimit: "字数超出限制",
       emptyReplies: "暂无评论，快来抢沙发吧~",
@@ -448,7 +443,6 @@
       gifUploadFailed: "Failed to upload GIF",
       replyFailed: "Failed to send reply. Please try again.",
       replySent: "Reply sent",
-      replyProtectedToast: "Reply in progress. Send it or close the comments panel before switching posts.",
       replyStatusUnknown: "X did not return the published reply. Draft kept; check X before trying again.",
       overCharLimit: "Character limit exceeded",
       emptyReplies: "No replies yet. Be the first to reply!",
@@ -737,7 +731,7 @@
     const close = root?.querySelector('.sidepeek-btn-close');
     const reset = root?.querySelector('.sidepeek-btn-reset-width');
     if (collapse) collapse.style.display = canCollapse ? "inline-flex" : "none";
-    if (close) close.style.display = canCollapse && !state.replyEditing ? "none" : "inline-flex";
+    if (close) close.style.display = "inline-flex";
     if (reset) reset.style.display = dockedPhotoPanel ? "none" : "inline-flex";
   }
 
@@ -769,7 +763,7 @@
         }
         if (root.parentElement !== panel) panel.appendChild(root);
         document.documentElement.setAttribute("data-sidex-photo-view", "sidex");
-        if ((!state.open || state.focalTweetId !== tweetId) && !state.replyEditing) openDrawerForTweet(tweetId, findDetailFocalArticle(tweetId));
+        if (!state.open || state.focalTweetId !== tweetId) openDrawerForTweet(tweetId, findDetailFocalArticle(tweetId));
         else {
           updateDrawerPosition();
           if (remounting) {
@@ -1167,7 +1161,8 @@
     if (state.replyTarget) {
       const isTargetInCurrentTree = Boolean(state.tree && state.tree.byId && state.tree.byId.has(state.replyTarget.id));
       const isTargetFocal = state.replyTarget.id === state.focalTweetId;
-      if (state.tree && !isTargetInCurrentTree && !isTargetFocal) {
+      const savedTarget = getSavedReplyTarget(state.focalTweetId);
+      if (state.tree && !isTargetInCurrentTree && !isTargetFocal && savedTarget?.id !== state.replyTarget.id) {
         state.replyTarget = null;
       }
     }
@@ -2144,7 +2139,7 @@
         input.files = transfer.files;
         input.dispatchEvent(new Event("change", { bubbles: true }));
       }
-      state.nativeReplyTransfer = { focalId, targetId, draft: composerDrafts.get(`${focalId}:${targetId}`), text: draftText, generation: state.threadGeneration };
+      state.nativeReplyTransfer = { focalId, targetId, draft: composerDrafts.get(`${focalId}:${targetId}`), text: draftText };
       nativeLayers?.sync(document.getElementById(ROOT_ID));
       if (tool) {
         const button = dialog.querySelector(`[data-testid="${tool}"]`);
@@ -2184,9 +2179,19 @@
     }
   }
 
-  function protectReplyDraft(draft) {
-    state.replyEditing = draft;
-    syncPhotoHeader(drawerRoot);
+  function preserveReplyText() {
+    document.querySelector(".sidepeek-footer-composer")?._sidepeekComposer?.saveTextOnly();
+    if (!state.open) return;
+    const target = state.replyTarget ||
+      (state.activeView?.type === "drilldown" ? state.tree?.byId.get(state.activeView.parentId) : null);
+    if (target) replyDraftTargets.set(state.focalTweetId, target);
+    else replyDraftTargets.delete(state.focalTweetId);
+  }
+
+  function getSavedReplyTarget(focalId) {
+    const target = replyDraftTargets.get(focalId);
+    const draft = target && composerDrafts.get(`${focalId}:${target.id}`);
+    return draft?.text || draft?.sending ? target : null;
   }
 
   function initFooterComposer(root, isDrillDown, drillDownParent) {
@@ -2211,7 +2216,6 @@
 
     const textarea = footer.querySelector(".sidepeek-footer-textarea");
     const previewArea = footer.querySelector(".sidepeek-footer-preview-area");
-    textarea?.addEventListener("focus", () => protectReplyDraft(draft));
     const submitBtn = footer.querySelector(".sidepeek-footer-submit-btn");
     const fileInput = footer.querySelector(".sidepeek-media-file-input");
 
@@ -2239,7 +2243,6 @@
     let draftKey = getDraftKey();
     let draft = getDraft(draftKey);
     textarea.value = draft.text;
-    if (draft.sending) protectReplyDraft(draft);
 
     // Use the official text parser for URLs, Unicode weights and emoji groups.
     const calculateTweetLength = Core.tweetLength;
@@ -2329,10 +2332,7 @@
       }
     }
 
-    textarea?.addEventListener("input", () => {
-      protectReplyDraft(draft);
-      updateComposerState();
-    });
+    textarea?.addEventListener("input", updateComposerState);
 
     // Popover toggle management
     function closeAllPopovers() {
@@ -2467,7 +2467,9 @@
         item.mediaId = res.mediaId;
         item.isUploading = false;
       } catch (err) {
-        showToast((err.message || t("uploadFailed")) + (item.file?.name ? ` (${item.file.name})` : ""));
+        if (ownerDraft.media.includes(item)) {
+          showToast((err.message || t("uploadFailed")) + (item.file?.name ? ` (${item.file.name})` : ""));
+        }
         ownerDraft.media = ownerDraft.media.filter((m) => m.id !== item.id);
       } finally {
         if (active) { renderMediaPreviews(); updateComposerState(); }
@@ -2481,7 +2483,6 @@
       const files = Array.from(fileList || []).filter((f) => f && /^image\/(?:jpeg|png|webp)$/.test(f.type || ""));
       if (files.length !== Array.from(fileList || []).length) showToast(t("quickMediaFormats"));
       if (!files.length) return;
-      protectReplyDraft(draft);
 
       const remaining = MAX_MEDIA - draft.media.length;
       if (remaining <= 0) {
@@ -2505,11 +2506,13 @@
         draft.media.push(item);
         const reader = new FileReader();
         reader.onload = () => {
+          if (!ownerDraft.media.includes(item)) return;
           item.dataUrl = reader.result;
           if (active) { renderMediaPreviews(); updateComposerState(); }
           uploadMediaItem(item, file.type, file.size, ownerDraft);
         };
         reader.onerror = () => {
+          if (!ownerDraft.media.includes(item)) return;
           ownerDraft.media = ownerDraft.media.filter(media => media.id !== item.id);
           showToast(t("uploadFailed"));
           if (active) { renderMediaPreviews(); updateComposerState(); }
@@ -2549,7 +2552,6 @@
       footer.querySelector(`.sidepeek-tool-${name}`)?.addEventListener("click", e => {
         e.stopPropagation();
         if (draft.sending || draft.media.some(item => item.isUploading)) return;
-        protectReplyDraft(draft);
         openNativeReplyDialog(getTargetId(), textarea?.value || "", draft.media.map(item => item.file).filter(Boolean), { tool });
       });
     }
@@ -2569,7 +2571,6 @@
       const targetId = getTargetId();
       const focalId = state.focalTweetId;
       const generation = state.threadGeneration;
-      protectReplyDraft(ownerDraft);
       ownerDraft.sending = true;
       ownerDraft.text = textarea.value;
       updateComposerState();
@@ -2590,10 +2591,6 @@
           acceptCreatedReply(created);
         }
         showToast(t("replySent"));
-        if (state.replyEditing === ownerDraft && state.open && state.focalTweetId === focalId && state.threadGeneration === generation) {
-          state.replyEditing = null;
-          syncPhotoHeader(drawerRoot);
-        }
       } catch (err) {
         showToast(err.message || t("replyFailed"));
       } finally {
@@ -2616,10 +2613,10 @@
         const nextKey = getDraftKey();
         if (draftKey === nextKey) return;
         draft.text = textarea.value;
+        draft.media = [];
         draftKey = nextKey;
         draft = getDraft(nextKey);
         textarea.value = draft.text;
-        if (state.replyEditing || draft.sending) protectReplyDraft(draft);
         closeAllPopovers();
         renderMediaPreviews();
         updateComposerState();
@@ -2628,8 +2625,15 @@
         if (draft === changedDraft) textarea.value = draft.text;
         renderMediaPreviews(); updateComposerState();
       },
+      saveTextOnly() {
+        draft.text = textarea.value;
+        draft.media = [];
+        closeAllPopovers();
+        renderMediaPreviews(); updateComposerState();
+      },
       dispose() {
         draft.text = textarea.value;
+        draft.media = [];
         active = false;
         document.removeEventListener("click", outsideClickListener);
       }
@@ -3555,7 +3559,7 @@
     state.loadingThreadIds.clear();
     state.threadCursors.clear();
     state.consumedCursors.clear();
-    state.replyTarget = null;
+    state.replyTarget = getSavedReplyTarget(tweetId);
     renderDrawer();
 
     try {
@@ -3715,7 +3719,6 @@
 
   async function checkDetailPageAutoOpen() {
     if (syncPhotoViewer()) return;
-    if (state.open && state.replyEditing) return;
     // Pickers such as GIF search temporarily use /i/foundmedia/search. They
     // are overlays on the current post, not navigation away from its thread.
     if (nativeReplyOpening || document.querySelector('#layers [role="dialog"]')) return;
@@ -3735,6 +3738,7 @@
       if (state.open && state.focalTweetId === tweetId) return;
 
       lastHandledDetailTweetId = tweetId;
+      if (state.focalTweetId !== tweetId) preserveReplyText();
       const generation = ++state.threadGeneration;
       if (state.open) {
         clearCommentNodes();
@@ -3747,7 +3751,8 @@
         state.loadingThreadIds.clear();
         state.loading = true;
         state.error = "";
-        state.replyTarget = null;
+        state.activeView = "root";
+        state.replyTarget = getSavedReplyTarget(tweetId);
         state.resetScrollOnRender = true;
         renderDrawer();
       }
@@ -3759,8 +3764,9 @@
       try {
         const json = await requestPage("READ_THREAD", { tweetId });
         if (generation !== state.threadGeneration) return;
-        // A protected reply stays on its original thread even when X navigates.
-        if (Core.postIdFromUrl(location.href) !== tweetId && !(state.open && state.replyEditing && state.focalTweetId === tweetId)) return;
+        // Native quick tools cover the current thread without abandoning it.
+        const hasNativeOverlay = nativeReplyOpening || document.querySelector('#layers [role="dialog"]');
+        if (Core.postIdFromUrl(location.href) !== tweetId && !(state.open && state.focalTweetId === tweetId && hasNativeOverlay)) return;
         if (userClosedTweetId === tweetId) return;
 
         const { focal, replies, cursor } = Core.parseTweetDetail(json, tweetId);
@@ -3781,6 +3787,7 @@
         state.focalArticle = focalArticle;
         state.focalArticle?.classList.add("sidepeek-focal-active");
 
+        const wasOpenForTweet = state.open && state.focalTweetId === tweetId;
         state.open = true;
         clearCommentNodes();
         state.focalTweetId = tweetId;
@@ -3795,7 +3802,7 @@
         state.consumedCursors.clear();
         rememberThreadCursor(tweetId, cursor);
         state.activeView = "root";
-        state.replyTarget = null;
+        if (!wasOpenForTweet) state.replyTarget = getSavedReplyTarget(tweetId);
         state.loading = false;
         state.error = "";
         renderDrawer();
@@ -3810,7 +3817,6 @@
     } else {
       // Navigated away from a detail page (e.g. back to /home, /explore)
       userClosedTweetId = null;
-      state.replyTarget = null;
       if (lastHandledDetailTweetId) {
         lastHandledDetailTweetId = null;
         if (state.open) {
@@ -3821,6 +3827,7 @@
   }
 
   function openDrawerForTweet(tweetId, articleNode) {
+    preserveReplyText();
     userClosedTweetId = null;
     lastHandledDetailTweetId = tweetId;
 
@@ -3843,15 +3850,14 @@
     state.resetScrollOnRender = true;
     state.activeView = "root";
     state.replyTarget = null;
-    renderDrawer();
     fetchThread(tweetId);
   }
 
   function closeDrawer() {
-    const wasReplyEditing = state.replyEditing;
-    if (wasReplyEditing && document.getElementById(ROOT_ID)?.contains(document.activeElement)) {
+    if (document.getElementById(ROOT_ID)?.contains(document.activeElement)) {
       document.activeElement.blur();
     }
+    preserveReplyText();
     if (photoViewer && dockedPhotoPanel) {
       dismissedPhotoId = photoViewer.tweetId;
       releasePhotoPanel();
@@ -3865,11 +3871,10 @@
     closeShareMenu();
     hideUserHoverCard();
     state.open = false;
-    state.replyEditing = null;
     state.replyTarget = null;
     state.resetScrollOnRender = true;
     userClosedTweetId = state.focalTweetId;
-    if (wasReplyEditing) lastCheckedUrl = location.href;
+    lastCheckedUrl = location.href;
     if (state.focalArticle) {
       state.focalArticle.classList.remove("sidepeek-focal-active");
       state.focalArticle = null;
@@ -3996,26 +4001,16 @@
     const lightbox = document.getElementById("sidepeek-lightbox");
     if (lightbox && lightbox.contains(event.target)) return;
 
-    const isReplyProtected = Boolean(state.open && state.replyEditing);
-
     const article = event.target.closest?.('article[data-testid="tweet"]');
     if (!article) {
       // Clicked blank space outside drawer -> close drawer
-      if (!isReplyProtected && state.open && drawer && !drawer.contains(event.target)) {
+      if (state.open && drawer && !drawer.contains(event.target)) {
         closeDrawer();
       }
       return;
     }
 
     if (shouldSkipClick(event.target, article)) return;
-    if (isReplyProtected) {
-      // Keep ordinary post clicks from falling through to X's own router.
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      showToast(t("replyProtectedToast"));
-      return;
-    }
-
     // 在通知页面中，如果是没有下一级回复的最新评论，不要拦截弹侧栏，让原生逻辑跳转到原回复贴
     const isNotificationsPage = location.pathname.startsWith("/notifications");
     if (isNotificationsPage) {
@@ -4093,7 +4088,6 @@
         return;
       }
       if (state.open) {
-        if (state.replyEditing) return;
         closeDrawer();
       }
     }

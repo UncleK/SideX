@@ -13,23 +13,51 @@ const created = (id = '999', parent = '100', text = 'Published') => ({ data: {
   create_tweet: { tweet_results: { result: tweet(id, parent, text) } }
 } });
 
-test('quick reply keeps drafts separate by post, reply target and reply mode', async t => {
+test('text drafts are separate per post and reply target and survive reply mode changes', async t => {
   const p = createPage(); t.after(() => p.w.close());
   await tick(); p.clickPost(0); await tick(); input(p, 'Root draft');
   p.query('.sidepeek-act-reply').click(); input(p, 'Child draft');
   p.query('.sidepeek-cancel-reply-target').click();
   assert.equal(p.query('.sidepeek-footer-textarea').value, 'Root draft');
-  p.query('.sidepeek-btn-close').click();
   p.clickPost(1); await tick(); input(p, 'Other post');
-  p.query('.sidepeek-btn-close').click();
   p.clickPost(0); await tick();
   assert.equal(p.query('.sidepeek-footer-textarea').value, 'Root draft');
+  input(p, 'Continue in another mode');
   p.change({ sidex_reply_mode: { newValue: 'native' } });
   p.change({ sidex_reply_mode: { newValue: 'drawer' } });
-  assert.equal(p.query('.sidepeek-footer-textarea').value, 'Root draft');
+  assert.equal(p.query('.sidepeek-footer-textarea').value, 'Continue in another mode');
   p.query('.sidepeek-act-reply').click();
   assert.equal(p.query('.sidepeek-footer-textarea').value, 'Child draft');
+  p.clickPost(1); await tick();
+  assert.equal(p.query('.sidepeek-footer-textarea').value, 'Other post');
 });
+
+for (const leave of ['close', 'switch', 'same post']) {
+  test('a child reply restores its text and recipient after ' + leave, async t => {
+    let sent;
+    const p = createPage({ request: m => {
+      if (m.type !== 'CREATE_REPLY') return thread(m.tweetId);
+      sent = m; return created('999', '101', m.text);
+    } });
+    t.after(() => p.w.close());
+    await tick(); p.clickPost(0); await tick();
+    p.query('.sidepeek-act-reply').click(); input(p, 'Reply to the child');
+    if (leave === 'close') p.query('.sidepeek-btn-close').click();
+    else if (leave === 'switch') { p.clickPost(1); await tick(); input(p, 'Other post draft'); }
+    p.clickPost(0); await tick();
+    assert.equal(p.query('.sidepeek-footer-textarea').value, 'Reply to the child');
+    assert.equal(p.query('.sidepeek-footer-reply-target').style.display, 'flex');
+    p.query('.sidepeek-footer-submit-btn').click(); await tick();
+    assert.equal(sent.tweetId, '101', 'restored text keeps its original recipient');
+    assert.equal(sent.text, 'Reply to the child');
+    p.query('.sidepeek-cancel-reply-target').click();
+    assert.equal(p.query('.sidepeek-footer-textarea').value, '');
+    if (leave === 'switch') {
+      p.clickPost(1); await tick();
+      assert.equal(p.query('.sidepeek-footer-textarea').value, 'Other post draft');
+    }
+  });
+}
 
 test('Ctrl+Enter is single-flight and successful replies use the real server ID and persist through rerender', async t => {
   let finish;
@@ -73,6 +101,37 @@ test('an old send cannot clear a newer draft or insert into a different conversa
   p.clickPost(0); await tick();
   assert.equal(p.query('.sidepeek-footer-textarea').value, '');
 });
+
+for (const outcome of ['success', 'failure']) {
+  test('returning to an in-flight reply preserves single-flight state and handles ' + outcome, async t => {
+    let finish, fail;
+    const p = createPage({ request: m => m.type === 'CREATE_REPLY'
+      ? new Promise((resolve, reject) => { finish = resolve; fail = reject; }) : thread(m.tweetId) });
+    t.after(() => p.w.close());
+    await tick(); p.clickPost(0); await tick(); input(p, 'Already submitted');
+    p.query('.sidepeek-footer-submit-btn').click(); await tick();
+    p.clickPost(1); await tick(); input(p, 'Other post reply');
+    p.clickPost(0); await tick();
+    const editor = p.query('.sidepeek-footer-textarea');
+    assert.equal(editor.value, 'Already submitted');
+    assert.equal(editor.disabled, true, 'the original publication is still pending');
+    editor.dispatchEvent(new p.w.KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true }));
+    await tick();
+    assert.equal(p.calls.filter(m => m.type === 'CREATE_REPLY').length, 1);
+    if (outcome === 'success') finish(created());
+    else fail(new Error('Rejected'));
+    await tick();
+    assert.equal(editor.value, outcome === 'success' ? '' : 'Already submitted');
+    assert.equal(editor.disabled, false);
+    assert.equal(p.query('.sidepeek-footer-submit-btn').textContent, '回复');
+    input(p, 'A new reply'); p.query('.sidepeek-footer-submit-btn').click(); await tick();
+    assert.equal(p.calls.filter(m => m.type === 'CREATE_REPLY').length, 2);
+    finish(created('1000', '100', 'A new reply')); await tick();
+    assert.equal(editor.value, '');
+    p.clickPost(1); await tick();
+    assert.equal(p.query('.sidepeek-footer-textarea').value, 'Other post reply');
+  });
+}
 
 test('missing publication confirmation keeps the draft and does not invent a local success', async t => {
   const p = createPage({ request: m => m.type === 'CREATE_REPLY' ? { data: {} } : thread(m.tweetId) });
@@ -259,9 +318,8 @@ test('picker navigation preserves the thread, scroll and quick footer while keep
   layers.replaceChildren();
   p.w.history.pushState({}, '', '/explore');
   p.w.dispatchEvent(new p.w.PopStateEvent('popstate')); await tick();
-  assert.equal(drawer.classList.contains('sidepeek-open'), true, 'reply editing keeps the drawer open across navigation');
-  p.query('.sidepeek-btn-close').click();
-  assert.equal(drawer.classList.contains('sidepeek-open'), false, 'the close button dismisses the drawer');
+  assert.equal(drawer.classList.contains('sidepeek-open'), false, 'real navigation closes the drawer');
+  assert.equal(p.query('.sidepeek-footer-textarea').value, 'Preserved native draft');
   assert.equal(newHost.hasAttribute('data-sidex-native-composer'), false);
   assert.equal(layers.hasAttribute('popover'), false);
   assert.equal(layers.hasAttribute('data-sidex-native-layers'), false);
@@ -280,7 +338,7 @@ test('a confirmed native publication clears only its transferred quick draft and
   assert.equal(p.query('.sidepeek-footer-textarea').value, '');
 });
 
-test('a confirmed native publication releases protection for its transferred draft', async t => {
+test('a confirmed native publication does not block outside-click dismissal', async t => {
   const p = nativePage(); t.after(() => p.w.close());
   await tick(); p.clickPost(0); await tick(); input(p, 'Transferred draft');
   p.query('.sidepeek-tool-poll').click(); await tick(50);
@@ -292,7 +350,7 @@ test('a confirmed native publication releases protection for its transferred dra
   assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), false);
 });
 
-test('a native confirmation cannot release protection for a newer reply target', async t => {
+test('a native confirmation cannot clear input for a newer reply target', async t => {
   const p = nativePage(); t.after(() => p.w.close());
   await tick(); p.clickPost(0); await tick(); input(p, 'Transferred root');
   p.query('.sidepeek-tool-poll').click(); await tick(50);
@@ -300,12 +358,17 @@ test('a native confirmation cannot release protection for a newer reply target',
   p.query('.sidepeek-act-reply').click(); input(p, 'New child draft');
   p.w.dispatchEvent(new p.w.MessageEvent('message', { source: p.w, origin: p.w.location.origin,
     data: { source: 'sidepeek-page', type: 'REPLY_CREATED', payload: created('998', '100', 'Transferred root') } }));
-  p.w.document.querySelector('main').click();
   assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), true);
   assert.equal(p.query('.sidepeek-footer-textarea').value, 'New child draft');
+  p.w.document.querySelector('main').click();
+  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), false);
+  p.clickPost(0); await tick();
+  assert.equal(p.query('.sidepeek-footer-textarea').value, 'New child draft');
+  p.query('.sidepeek-cancel-reply-target').click();
+  assert.equal(p.query('.sidepeek-footer-textarea').value, '', 'only the published root draft was cleared');
 });
 
-test('selecting an attachment protects an image-only reply before focusing the text box', async t => {
+test('closing an image-only reply discards attachments and a late upload cannot restore them', async t => {
   const p = createPage({ request: m => m.type === 'UPLOAD_MEDIA' ? { mediaId: 'image-1' } : thread(m.tweetId) });
   t.after(() => p.w.close());
   await tick(); p.clickPost(0); await tick();
@@ -313,23 +376,55 @@ test('selecting an attachment protects an image-only reply before focusing the t
   Object.defineProperty(fileInput, 'files', { value: [new p.w.File(['image'], 'photo.png', { type: 'image/png' })] });
   fileInput.dispatchEvent(new p.w.Event('change', { bubbles: true }));
   p.w.document.querySelector('main').click();
-  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), true);
+  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), false);
   await tick(50);
-  assert.equal(p.w.document.querySelectorAll('.sidepeek-pasted-preview').length, 1);
-  assert.equal(p.query('.sidepeek-footer-submit-btn').disabled, false);
+  p.clickPost(0); await tick();
+  assert.equal(p.w.document.querySelectorAll('.sidepeek-pasted-preview').length, 0);
+  assert.equal(p.query('.sidepeek-footer-submit-btn').disabled, true);
 });
 
-test('opening a native tool without text protects the reply after canceling the tool', async t => {
+for (const leave of ['close', 'switch', 'change target']) {
+  test('only text is restored after ' + leave + ' even when an image upload finishes late', async t => {
+    let finishUpload, sent;
+    const p = createPage({ request: m => {
+      if (m.type === 'UPLOAD_MEDIA') return new Promise(resolve => { finishUpload = resolve; });
+      if (m.type === 'CREATE_REPLY') { sent = m; return created('999', '100', m.text); }
+      return thread(m.tweetId);
+    } });
+    t.after(() => p.w.close());
+    await tick(); p.clickPost(0); await tick(); input(p, 'Caption to retain');
+    const fileInput = p.query('.sidepeek-media-file-input');
+    Object.defineProperty(fileInput, 'files', { value: [new p.w.File(['image'], 'photo.png', { type: 'image/png' })] });
+    fileInput.dispatchEvent(new p.w.Event('change', { bubbles: true })); await tick(50);
+    assert.equal(p.calls.filter(m => m.type === 'UPLOAD_MEDIA').length, 1);
+    assert.equal(p.w.document.querySelectorAll('.sidepeek-pasted-preview').length, 1);
+    if (leave === 'close') { p.query('.sidepeek-btn-close').click(); p.clickPost(0); await tick(); }
+    else if (leave === 'switch') { p.clickPost(1); await tick(); input(p, 'Other draft'); p.clickPost(0); await tick(); }
+    else { p.query('.sidepeek-act-reply').click(); input(p, 'Other draft'); p.query('.sidepeek-cancel-reply-target').click(); }
+    assert.equal(p.query('.sidepeek-footer-textarea').value, 'Caption to retain');
+    assert.equal(p.w.document.querySelectorAll('.sidepeek-pasted-preview').length, 0);
+    finishUpload({ mediaId: 'old-image' }); await tick();
+    assert.equal(p.w.document.querySelectorAll('.sidepeek-pasted-preview').length, 0);
+    assert.equal(p.query('.sidepeek-footer-submit-btn').disabled, false);
+    p.query('.sidepeek-footer-submit-btn').click(); await tick();
+    assert.equal(sent.text, 'Caption to retain');
+    assert.deepEqual(Array.from(sent.mediaIds), [], 'restored drafts never submit the old image');
+    if (leave === 'switch') { p.clickPost(1); await tick(); assert.equal(p.query('.sidepeek-footer-textarea').value, 'Other draft'); }
+    else if (leave === 'change target') { p.query('.sidepeek-comment-item[data-id="101"] .sidepeek-act-reply').click(); assert.equal(p.query('.sidepeek-footer-textarea').value, 'Other draft'); }
+  });
+}
+
+test('canceling an empty native tool does not prevent closing the drawer', async t => {
   const p = nativePage(); t.after(() => p.w.close());
   await tick(); p.clickPost(0); await tick();
   p.query('.sidepeek-tool-poll').click(); await tick(50);
   p.query('#layers').replaceChildren();
   p.w.history.pushState({}, '', '/home');
   p.w.document.querySelector('main').click();
-  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), true);
+  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), false);
 });
 
-test('a pending send releases its draft protection after replacing the footer through reply mode changes', async t => {
+test('a pending send clears the submitted text and button after replacing the footer through reply mode changes', async t => {
   let finish;
   const p = createPage({ request: m => m.type === 'CREATE_REPLY' ? new Promise(resolve => { finish = resolve; }) : thread(m.tweetId) });
   t.after(() => p.w.close());
@@ -345,7 +440,7 @@ test('a pending send releases its draft protection after replacing the footer th
   assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), false);
 });
 
-test('a successful old send cannot release protection for a different reply target', async t => {
+test('a successful old send cannot clear input for a different reply target', async t => {
   let finish;
   const p = createPage({ request: m => m.type === 'CREATE_REPLY' ? new Promise(resolve => { finish = resolve; }) : thread(m.tweetId) });
   t.after(() => p.w.close());
@@ -353,9 +448,10 @@ test('a successful old send cannot release protection for a different reply targ
   p.query('.sidepeek-footer-submit-btn').click(); await tick();
   p.query('.sidepeek-act-reply').click(); input(p, 'New child draft');
   finish(created()); await tick();
-  p.w.document.querySelector('main').click();
   assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), true);
   assert.equal(p.query('.sidepeek-footer-textarea').value, 'New child draft');
+  p.w.document.querySelector('main').click();
+  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), false);
 });
 
 test('the actual popup mode selection makes comment reply icons open official dialogs or focus quick reply, retaining drafts', async t => {
