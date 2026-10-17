@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-Available-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.19-00b4f8?style=flat-square" alt="Version 1.1.19" />
+    <img src="https://img.shields.io/badge/Version-1.1.22-00b4f8?style=flat-square" alt="Version 1.1.22" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -43,7 +43,7 @@
 * 📖 **Auto-Unroll Long Posts**: Automatically expands "Show more" on focal posts.
 * 🧵 **Conversation Tree & Drill-down**: Reconstructs nested replies with clean thread lines; configurable sub-reply previews (1, 2, 3, 5) with zero-jump smooth in-place expansion.
 * 💬 **Quick replies and official dialogs**: The compact quick toolbar has seven entries: images, GIFs, polls, emoji, scheduling, location and content disclosure (flag). Send text, emoji and up to four JPG/PNG/WebP images directly. Advanced tools open X's actual dialogs above the sidebar. In Official mode, clicking a comment's reply icon opens the official reply dialog in the current page without another browser window.
-* ✍️ **Reply draft protection**: While editing a quick reply, outside clicks, Esc, selecting another post and X navigation keep the current conversation open. Image-only replies and quick tools also start protection. The close button stays available; confirmed sends release protection, while failed sends retain it.
+* ✍️ **Separate text drafts**: Switch posts and close comments freely without a prompt. Unsent text is kept separately per post and reply target in the current tab and restored on return. Refreshing the page or closing the tab clears these drafts; image attachments are not retained after closing or switching replies.
 * 🔄 **Native interactions first**: Reuse native like, bookmark, and menu controls when the same post is rendered on the page; other comments use X session requests.
 * 🌐 **Translation options**: Use X official translation by default, choose Google, or hide SideX translation controls and use your existing translator's selection/page translation.
 * 👤 **Profile hover cards**: Reuse the actual X card next to the sidebar when a matching native profile link exists; otherwise show a fallback with biography, relationship counts, and followers you know.
@@ -78,10 +78,10 @@ Then click **"Load unpacked"** and select the cloned `SideX` folder.
 
 | Shortcut / Action | Description |
 | :--- | :--- |
-| **Click Tweet body** | Expand post text & open comments drawer in-place |
-| **ESC** | Close the current overlay; keep the comments drawer open while reply protection is active |
-| **Click outside drawer** | Close comments drawer when reply protection is inactive |
-| **Drawer close button** | Explicitly close the drawer and end reply protection; retain the draft on the current page |
+| **Click Tweet body** | Open or switch comments in place, keeping separate text drafts |
+| **ESC** | Close the current overlay or comments drawer |
+| **Click outside drawer** | Close comments drawer and keep its text draft |
+| **Drawer close button** | Close the drawer and keep its text draft |
 | **Drag right edge** | Resize drawer width (auto-saved) |
 | **Double-click handle** | Reset drawer to default width |
 | **Ctrl + V** | Paste clipboard image directly into reply box |
@@ -106,7 +106,7 @@ npm test
 
 Tests use synthetic X responses and DOM fixtures without performing real account actions. They cover profile parsing, translation requests, long-text chunking, native controls, rollback, retained reading state, scroll reset, and stale responses. X internals and third-party translation extensions may change. Without a matching native profile link, SideX renders a fallback with a full-profile link rather than simulating Grok's Profile Summary button; comments without native nodes are still rendered by SideX.
 
-Version 1.1.19 protects quick replies after focus leaves the composer, including image-only drafts and native quick tools. Protection follows the active draft, so an older send cannot unlock a newer reply. It also fixes sent text returning after reply-mode changes during a pending send, allows matching comments to finish loading while a reply is pinned, and preserves the conversation and draft across photo changes and native overlays. Editing beside a photo keeps an explicit close button available alongside the native collapse control. Validation includes 74 local regression cases, with 11 added during review of [PR #1](https://github.com/UncleK/SideX/pull/1).
+Version 1.1.22 removes reply protection and its navigation prompts, and keeps separate text drafts per post and reply target. Switching posts, closing the drawer, pressing Esc or clicking outside saves the current text; returning restores it with the original recipient. Drafts last only in the current tab until the page is refreshed or the tab is closed. Image attachments are not saved with drafts and are cleared when closing or switching replies. Failed or unconfirmed sends retain text; confirmed publication clears only the corresponding draft. Pending sends remain single-flight, late responses cannot clear a different reply, and the Reply button returns to its idle state when a request finishes. Validation includes 85 local regression cases, including draft restoration, discarded attachments and late uploads.
 
 Version 1.1.18 adds a Photo comments setting, defaulting to SideX. SideX replaces only the native photo viewer's right column, keeping image navigation and native collapse/expand. The SideX header also offers collapse; expanding retains comment position and drafts. Timeline image links still open the native viewer, while text and blank areas open the in-place comments. Photo styling and reply mode are independent settings. Official reply mode has no bottom composer. Escape from a quick tool returns directly to its starting history entry, preserving an underlying photo viewer.
 
@@ -114,7 +114,7 @@ Quoted text previews use at most three lines. Overflowing quotes can expand and 
 
 Previous fixes preserve body links and authored mentions, exclude sibling branches, and support paginated loading with retry, deduplication and stale-response isolation. The public fields in `tests/fixtures/google-source-comment.json` reproduce the source-link regression.
 
-The quick composer keeps its compact layout and is never replaced by a moved official editor. X's editors and pickers retain their original React parents; SideX promotes the existing dialog portal to the browser top layer so the sidebar cannot cover them. The flag opens X's actual content disclosure panel for paid partnerships and AI content. Advanced editing, attachments and publication continue in the official reply dialog. Quick drafts are backed up and cleared only on matching publication confirmation. If the native router is unavailable, drafts are retained with an explicit message; Official mode can fall back to X's reply intent in the current tab. Tests cover both mode selections, native tools, draft transfer, picker navigation, stale confirmations and official text counting without publishing real account actions.
+The quick composer keeps its compact layout and is never replaced by a moved official editor. X's editors and pickers retain their original React parents; SideX promotes the existing dialog portal to the browser top layer so the sidebar cannot cover them. The flag opens X's actual content disclosure panel for paid partnerships and AI content. Advanced editing, attachments and publication continue in the official reply dialog. Current input can be transferred to official tools; matching publication confirmation clears its text draft without affecting other replies. SideX keeps only text drafts, not images or native tool selections. If the native router is unavailable, the current editor stays available with an explicit message; Official mode can fall back to X's reply intent in the current tab. Tests cover both mode selections, native tools, draft transfer, picker navigation, stale confirmations and official text counting without publishing real account actions.
 
 ## 📄 License
 

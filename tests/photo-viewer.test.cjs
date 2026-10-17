@@ -139,13 +139,13 @@ test('the SideX collapse button delegates to the native viewer and expanding kee
   assert.equal(p.calls.filter(m => m.type === 'READ_THREAD').length, reads);
 });
 
-test('leaving a photo while editing restores a working close button and clears viewer layout', async t => {
+test('leaving a photo while editing closes the drawer and preserves the text draft', async t => {
   const p = createPage(); t.after(() => p.w.close()); await tick();
   const photo = mountPhoto(p); await tick(70);
   const toggle = p.w.document.createElement('button');
   toggle.innerHTML = '<svg><path d="M11.59 12L3.54 3.96l1.42-1.42L14.41 12l-9.45 9.46-1.42-1.42L11.59 12zm7 0l-8.05-8.04 1.42-1.42L21.41 12l-9.45 9.46-1.42-1.42L18.59 12z"></path></svg>';
   photo.dialog.prepend(toggle); p.change({ sidex_lang: { newValue: 'zh' } });
-  assert.equal(p.query('.sidepeek-btn-close').style.display, 'none');
+  assert.equal(p.query('.sidepeek-btn-close').style.display, 'inline-flex');
   const textarea = p.query('.sidepeek-footer-textarea');
   textarea.focus(); textarea.value = 'Keep the photo draft';
   textarea.dispatchEvent(new p.w.Event('input', { bubbles: true }));
@@ -153,7 +153,7 @@ test('leaving a photo while editing restores a working close button and clears v
   p.w.history.pushState({}, '', '/home'); p.w.dispatchEvent(new p.w.PopStateEvent('popstate')); await tick(70);
   const drawer = p.query('#sidepeek-drawer-root');
   assert.equal(drawer.isConnected, true);
-  assert.equal(drawer.classList.contains('sidepeek-open'), true);
+  assert.equal(drawer.classList.contains('sidepeek-open'), false);
   assert.equal(p.w.document.documentElement.hasAttribute('data-sidex-photo-view'), false);
   assert.equal(p.query('.sidepeek-btn-close').style.display, 'inline-flex');
   assert.equal(p.query('.sidepeek-btn-photo-collapse').style.display, 'none');
@@ -162,7 +162,7 @@ test('leaving a photo while editing restores a working close button and clears v
   assert.equal(drawer.classList.contains('sidepeek-open'), false);
 });
 
-test('a protected photo reply offers an explicit close button alongside the native collapse control', async t => {
+test('photo comments offer an explicit close button alongside the native collapse control', async t => {
   const p = createPage(); t.after(() => p.w.close()); await tick();
   const photo = mountPhoto(p); await tick(70);
   const toggle = p.w.document.createElement('button');
@@ -177,7 +177,7 @@ test('a protected photo reply offers an explicit close button alongside the nati
   assert.equal(photo.dialog.isConnected, true);
 });
 
-test('editing keeps the same conversation docked when navigating to another photo post', async t => {
+test('navigating between photo posts switches freely and restores each text draft', async t => {
   const p = createPage(); t.after(() => p.w.close()); await tick();
   const photo = mountPhoto(p); await tick(70);
   const drawer = p.query('#sidepeek-drawer-root');
@@ -187,9 +187,11 @@ test('editing keeps the same conversation docked when navigating to another phot
   photo.dialog.remove();
   const next = mountPhoto(p, '400'); await tick(70);
   assert.equal(drawer.parentElement, next.panel);
-  assert.ok(p.query('.sidepeek-photo-focal[data-id="300"]'));
+  assert.ok(p.query('.sidepeek-photo-focal[data-id="400"]'));
+  assert.equal(p.query('.sidepeek-footer-textarea').value, '');
+  assert.equal(p.calls.some(m => m.type === 'READ_THREAD' && m.tweetId === '400'), true);
+  next.dialog.remove(); mountPhoto(p); await tick(70);
   assert.equal(p.query('.sidepeek-footer-textarea').value, 'Reply to photo 300');
-  assert.equal(p.calls.some(m => m.type === 'READ_THREAD' && m.tweetId === '400'), false);
 });
 
 test('opening an official quick tool keeps the active photo reply docked in its viewer', async t => {

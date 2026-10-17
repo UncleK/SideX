@@ -100,7 +100,7 @@ test('the default auto-pin preference starts off, applies to future sessions, an
   setting.dispatchEvent(new popup.window.Event('change', { bubbles: true }));
   assert.equal(prefs.sidex_auto_pin, true);
   popup.window.document.querySelector('[data-lang="en"]').click();
-  assert.match(popup.window.document.querySelector('#txt-auto-pin-hint').textContent, /close them manually/i);
+  assert.equal(popup.window.document.querySelector('#txt-auto-pin-hint').textContent, 'Automatically pin new sidebars');
 });
 
 test('pinned highlight survives X replacing the post class, follows the panel, and clears on unpin or close', async t => {
@@ -216,7 +216,7 @@ test('auto-pinned highlight follows theme changes and a remounted own post, with
   assert.match(css, /background-color: rgba\(255, 255, 255, 0\.03\)/);
 });
 
-test('reply protection keeps the pinned highlight on its original post until manual close', async t => {
+test('a pinned sidebar switches posts and restores its text draft and highlight on return', async t => {
   const p = createPage();
   t.after(() => p.w.close());
   await tick();
@@ -232,12 +232,43 @@ test('reply protection keeps the pinned highlight on its original post until man
 
   p.clickPost(1);
   await tick();
-  assert.equal(p.query('.sidepeek-comment-item').dataset.id, '101');
+  assert.equal(p.query('.sidepeek-comment-item').dataset.id, '201');
+  assert.equal(first.hasAttribute('data-sidex-pinned-active'), false);
+  assert.equal(second.getAttribute('data-sidex-pinned-active'), 'light');
+  assert.equal(p.query('.sidepeek-footer-textarea').value, '');
+
+  p.clickPost(0);
+  await tick();
+  assert.equal(p.query('.sidepeek-footer-textarea').value, 'Reply draft');
   assert.equal(first.getAttribute('data-sidex-pinned-active'), 'light');
   assert.equal(second.hasAttribute('data-sidex-pinned-active'), false);
 
   p.query('.sidepeek-btn-close').click();
   assert.equal(first.hasAttribute('data-sidex-pinned-active'), false);
+});
+
+test('a pinned child draft restores its recipient after switching posts and closing', async t => {
+  const p = createPage({ request: m => m.type === 'CREATE_REPLY'
+    ? { data: [{ tweet_results: { result: tweet('999', m.tweetId, m.text) } }] } : thread(m.tweetId) });
+  t.after(() => p.w.close());
+  await tick(); p.clickPost(0); await tick();
+  p.query('.sidepeek-btn-pin').click();
+  p.query('.sidepeek-act-reply').click();
+  const editor = p.query('.sidepeek-footer-textarea');
+  editor.value = 'Child draft';
+  editor.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+  p.clickPost(1); await tick();
+  p.clickPost(0); await tick();
+  assert.equal(p.query('.sidepeek-footer-textarea').value, 'Child draft');
+  assert.equal(p.query('.sidepeek-footer-reply-target').style.display, 'flex');
+  p.query('.sidepeek-btn-close').click();
+  p.clickPost(0); await tick();
+  assert.equal(p.query('.sidepeek-btn-pin').getAttribute('aria-pressed'), 'false');
+  assert.equal(p.query('.sidepeek-footer-textarea').value, 'Child draft');
+  p.query('.sidepeek-footer-submit-btn').click(); await tick();
+  assert.equal(p.calls.find(m => m.type === 'CREATE_REPLY').tweetId, '101');
+  assert.equal(p.query('.sidepeek-footer-textarea').value, '');
+  assert.equal(p.query('.sidepeek-footer-submit-btn').textContent, '回复');
 });
 
 test('a pinned panel follows X detail navigation and remains open on an empty thread', async t => {
@@ -311,7 +342,7 @@ test('pinned highlight follows the active post when switching from a detail-page
   assert.equal(replyPost.getAttribute('data-sidex-pinned-active'), 'light', 'a thread reply opened by SideX remains the highlighted focal post');
 });
 
-test('unpinning during reply composition leaves reply protection active', async t => {
+test('unpinning during reply composition restores dismissal and keeps the text draft', async t => {
   const p = createPage();
   t.after(() => p.w.close());
   await tick();
@@ -325,15 +356,17 @@ test('unpinning during reply composition leaves reply protection active', async 
   p.query('.sidepeek-btn-pin').click();
 
   p.w.document.querySelector('main').click();
-  p.w.document.dispatchEvent(new p.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-  p.clickPost(1);
+  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), false);
+  p.clickPost(0);
   await tick();
-  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), true);
-  assert.equal(textarea.value, 'Reply draft');
+  assert.equal(p.query('.sidepeek-footer-textarea').value, 'Reply draft');
+  assert.equal(p.query('.sidepeek-btn-pin').getAttribute('aria-pressed'), 'false');
   assert.equal(p.query('.sidepeek-comment-item').dataset.id, '101');
+  p.w.document.dispatchEvent(new p.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), false);
 });
 
-test('a successful reply clears reply protection without removing the independent pin', async t => {
+test('a successful reply restores its button without removing the independent pin', async t => {
   const created = { data: { create_tweet: { tweet_results: { result: tweet('999', '100', 'Sent reply') } } } };
   const p = createPage({ request: m => m.type === 'CREATE_REPLY' ? created : thread(m.tweetId) });
   t.after(() => p.w.close());
@@ -347,6 +380,7 @@ test('a successful reply clears reply protection without removing the independen
   textarea.dispatchEvent(new p.w.Event('input', { bubbles: true }));
   p.query('.sidepeek-footer-submit-btn').click();
   await tick();
+  assert.equal(p.query('.sidepeek-footer-submit-btn').textContent, '回复');
   p.w.document.querySelector('main').click();
   assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), true);
   p.query('.sidepeek-btn-pin').click();
@@ -367,7 +401,7 @@ test('the photo viewer hides Pin, preserves its native controls, then restores t
   assert.equal(p.query('article[data-testid="tweet"]').hasAttribute('data-sidex-pinned-active'), false);
   assert.equal(drawer.parentElement, photo.panel);
   assert.equal(p.query('.sidepeek-btn-photo-collapse').style.display, 'inline-flex');
-  assert.equal(p.query('.sidepeek-btn-close').style.display, 'none');
+  assert.equal(p.query('.sidepeek-btn-close').style.display, 'inline-flex');
 
   photo.dialog.remove();
   p.w.history.pushState({}, '', '/reader/status/100');
