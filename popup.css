@@ -126,11 +126,18 @@ body {
   padding: 14px;
 }
 
-/* Switch Card */
-.sidex-switch-card {
+/* Switch and reply settings cards */
+.sidex-switch-card,
+.sidex-switch-setting-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+}
+
+.sidex-reply-settings-card {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
@@ -143,6 +150,11 @@ body {
 .sidex-switch-title {
   font-size: 14px;
   font-weight: 600;
+}
+
+.sidex-reply-settings-card .sidex-switch-title {
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .sidex-switch-desc {

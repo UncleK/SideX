@@ -57,6 +57,8 @@
   function unwrapResult(value) {
     let current = objectValue(value);
     for (let index = 0; current && index < 6; index += 1) {
+      // Visibility wrappers may still contain the original body and media.
+      if (current.tweetInterstitial || /Tombstone|Unavailable/i.test(current.__typename || "")) return null;
       if (current.legacy && current.rest_id) return current;
       if (objectValue(current.tweet)) {
         current = current.tweet;
@@ -259,6 +261,7 @@
       conversationId: String(legacy.conversation_id_str || ""),
       inReplyToId: String(legacy.in_reply_to_status_id_str || ""),
       inReplyToHandle: String(legacy.in_reply_to_screen_name || ""),
+      reportedReplyCount: Number.isFinite(legacy.reply_count) ? legacy.reply_count : null,
       counts: {
         replies: numberValue(legacy.reply_count),
         reposts: numberValue(legacy.retweet_count),
@@ -307,39 +310,71 @@
     return models;
   }
 
-  function bottomCursor(value) {
-    let cursor = null;
-    let fallback = null;
+  function replyPagination(value) {
+    const page = { cursor: null, gated: null, ended: false, sectionLabel: "" };
     const seen = new Set();
     function visit(node) {
-      if (cursor || !node || typeof node !== "object" || seen.has(node)) return;
+      if (!node || typeof node !== "object" || seen.has(node)) return;
       seen.add(node);
-      if (node.promotedMetadata || node.promoted_metadata || node.tweet_results || node.tweetResult) return;
-      // Module cursors belong to inline subthreads, not the current page.
+      if (node.promotedMetadata || node.promoted_metadata || node.tweet_results || node.tweetResult ||
+          /^tweetdetailrelatedtweets-/i.test(node.entryId || "")) return;
+      if (node.type === "TimelineTerminateTimeline" && node.direction === "Bottom") page.ended = true;
+      // Inline module cursors belong to another conversation.
       if (node.entryType === "TimelineTimelineModule" || node.__typename === "TimelineTimelineModule" ||
           /^conversationthread-/i.test(String(node.entryId || ""))) return;
-      if (/^Bottom$/i.test(String(node.cursorType || "")) && typeof node.value === "string") {
-        cursor = node.value;
-        return;
+      if (node.cursorType === "Bottom" && typeof node.value === "string") page.cursor = node.value;
+      if (/^ShowMoreThreads?$/i.test(node.cursorType || "") && typeof node.value === "string") {
+        page.gated = { cursor: node.value, label: node.displayTreatment?.actionText || "" };
       }
-      if (/^(?:ShowMoreThreads|ShowMoreThread)$/i.test(String(node.cursorType || "")) && typeof node.value === "string" && !fallback) {
-        fallback = node.value;
-      }
+      if ((node.itemType || node.__typename) === "TimelineLabel" && typeof node.text === "string") page.sectionLabel = node.text;
       if (Array.isArray(node)) node.forEach(visit);
-      else for (const child of Object.values(node)) visit(child);
+      else Object.values(node).forEach(visit);
     }
     visit(value);
-    return cursor || fallback;
+    if (page.ended) page.cursor = null;
+    return page;
   }
 
-  function parseTweetDetail(json, focalTweetId, knownModels = []) {
+  // Retain the timeline boundary instead of flattening a folded section into
+  // normal replies. Request context carries it across subsequent cursor pages.
+  function sectionedTweetModels(value, focalId, section) {
+    const models = [];
+    function visit(node, label = section || "") {
+      if (!node || typeof node !== "object" || node.promotedMetadata || node.promoted_metadata) return;
+      if (/^tweetdetailrelatedtweets-/i.test(node.entryId || "")) return;
+      if (Array.isArray(node)) {
+        let current = label;
+        for (const child of node) {
+          const item = child?.content?.itemContent;
+          if ((item?.itemType || item?.__typename) === "TimelineLabel") current = item.text || current;
+          visit(child, current);
+        }
+        return;
+      }
+      const result = node.tweet_results?.result || node.tweetResult?.result;
+      if (result) {
+        const model = tweetModel(result);
+        if (model) {
+          if (label && model.id !== focalId) { model._gateFor = focalId; model._sectionLabel = label; }
+          models.push(model);
+        }
+        return;
+      }
+      Object.values(node).forEach(child => visit(child, label));
+    }
+    visit(value);
+    return [...new Map(models.map(model => [model.id, model])).values()];
+  }
+
+  function parseTweetDetail(json, focalTweetId, knownModels = [], section = "") {
     const focalId = String(focalTweetId || "");
-    const models = collectTweetModels(json?.data || json);
+    const models = sectionedTweetModels(json?.data || json, focalId, section);
+    const pagination = replyPagination(json);
     // Cursor pages may omit the focal tweet and intermediate parents.
     const byId = new Map([...knownModels, ...models].filter(Boolean).map((model) => [model.id, model]));
     const focal = byId.get(focalId) || null;
 
-    if (!focal) return { focal: null, replies: [], cursor: null };
+    if (!focal) return { focal: null, replies: [], cursor: null, pagination };
 
     const ancestors = new Set();
     let ancId = focal.inReplyToId;
@@ -367,7 +402,7 @@
     }
 
     const replies = models.filter(descendsFromFocal);
-    return { focal, replies, cursor: bottomCursor(json) };
+    return { focal, replies, cursor: pagination.cursor, pagination };
   }
 
   /**
