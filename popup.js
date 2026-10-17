@@ -7,6 +7,9 @@
   const switchTitle = document.getElementById("txt-switch-title");
   const switchDesc = document.getElementById("txt-switch-desc");
   const replyModeLabel = document.getElementById("txt-reply-mode-label");
+  const autoPinInput = document.getElementById("sidex-auto-pin");
+  const autoPinLabel = document.getElementById("txt-auto-pin-label");
+  const autoPinHint = document.getElementById("txt-auto-pin-hint");
   const replyModeGroup = document.getElementById("sidex-reply-mode-group");
   const photoModeGroup = document.getElementById("sidex-photo-mode-group");
   const subReplyLimitLabel = document.getElementById("txt-subreply-limit-label");
@@ -38,6 +41,8 @@
       disabledTitle: "插件已停用",
       disabledDesc: "已恢复 X 原生跳转与浏览行为",
       replyModeLabel: "回复模式",
+      autoPinLabel: "打开面板时自动固定",
+      autoPinHint: "自动固定新打开的侧栏",
       replyModeDrawer: "快捷回复",
       replyModeNative: "官方弹窗",
       photoModeLabel: "图片评论区",
@@ -69,6 +74,8 @@
       disabledTitle: "Extension Paused",
       disabledDesc: "Native X navigation restored",
       replyModeLabel: "Reply Mode",
+      autoPinLabel: "Automatically pin new panels",
+      autoPinHint: "Automatically pin new sidebars",
       replyModeDrawer: "Quick reply",
       replyModeNative: "Official",
       photoModeLabel: "Photo comments",
@@ -120,6 +127,8 @@
       switchDesc.textContent = s.disabledDesc;
     }
     if (replyModeLabel) replyModeLabel.textContent = s.replyModeLabel;
+    if (autoPinLabel) autoPinLabel.textContent = s.autoPinLabel;
+    if (autoPinHint) autoPinHint.textContent = s.autoPinHint;
     const btnDrawer = document.getElementById("btn-mode-drawer");
     const btnNative = document.getElementById("btn-mode-native");
     if (btnDrawer) btnDrawer.textContent = s.replyModeDrawer;
@@ -193,12 +202,13 @@
   // Load saved settings
   const storage = chrome?.storage?.sync || chrome?.storage?.local;
   if (storage) {
-    storage.get({ sidex_enabled: true, sidex_auto_load_replies: true, sidex_auto_expand_reply_text: false, sidex_lang: null, sidex_sub_reply_limit: 1, sidex_reply_mode: "drawer", sidex_photo_mode: "sidex", sidex_translation_provider: "x" }, (res) => {
+    storage.get({ sidex_enabled: true, sidex_auto_load_replies: true, sidex_auto_expand_reply_text: false, sidex_lang: null, sidex_sub_reply_limit: 1, sidex_reply_mode: "drawer", sidex_photo_mode: "sidex", sidex_translation_provider: "x", sidex_auto_pin: false }, (res) => {
       isEnabled = res.sidex_enabled !== false;
       currentLang = res.sidex_lang || getSystemLang();
       currentSubReplyLimit = Number(res.sidex_sub_reply_limit) || 1;
       currentReplyMode = res.sidex_reply_mode === "native" ? "native" : "drawer";
       currentPhotoMode = res.sidex_photo_mode === "native" ? "native" : "sidex";
+      autoPinInput.checked = res.sidex_auto_pin === true;
       translationProvider = ["x", "google", "external"].includes(res.sidex_translation_provider) ? res.sidex_translation_provider : "x";
       toggleInput.checked = isEnabled;
       autoLoadInput.checked = res.sidex_auto_load_replies !== false;
@@ -237,6 +247,10 @@
     if (storage) {
       storage.set({ sidex_enabled: isEnabled });
     }
+  });
+
+  autoPinInput?.addEventListener("change", () => {
+    storage?.set({ sidex_auto_pin: autoPinInput.checked });
   });
 
   // Language switch buttons handler

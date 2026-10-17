@@ -77,6 +77,11 @@
     webShare: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"></path></g></svg>`
   };
 
+  const PIN_ICONS = {
+    unpinned: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 9V4h1V2H7v2h1v5l-2 3v2h5v7h2v-7h5v-2l-2-3zm-8 3 2-2V4h4v6l2 2H8z"></path></svg>`,
+    pinned: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 9V4h1V2H7v2h1v5l-2 3v2h5v8h2v-8h5l-2-3z"></path></svg>`
+  };
+
   const EMOJI_CATEGORIES = [
     {
       name: "常用",
@@ -97,6 +102,7 @@
     open: false,
     focalTweetId: null,
     focalArticle: null,
+    pinnedFocalArticle: null,
     focalModel: null,
     replies: [],
     tree: null,
@@ -115,6 +121,7 @@
     resetScrollOnRender: false,
     activeView: "root", // "root" or { type: "drilldown", parentId: string }
     replyTarget: null, // Comment model being replied to, or null for focal tweet
+    pinned: false,
     loading: false,
     error: "",
     isResizing: false,
@@ -213,11 +220,15 @@
   }
 
   const storage = chrome?.storage?.sync || chrome?.storage?.local;
+  let autoPinDefault = false;
+  let settingsLoaded = !storage;
   if (storage) {
-    storage.get({ sidex_enabled: true, sidex_auto_load_replies: true, sidex_auto_expand_reply_text: false, sidex_lang: null, sidex_sub_reply_limit: 1, sidex_reply_mode: "drawer", sidex_photo_mode: "sidex", sidex_translation_provider: "x" }, (res) => {
+    storage.get({ sidex_enabled: true, sidex_auto_load_replies: true, sidex_auto_expand_reply_text: false, sidex_lang: null, sidex_sub_reply_limit: 1, sidex_reply_mode: "drawer", sidex_photo_mode: "sidex", sidex_translation_provider: "x", sidex_auto_pin: false }, (res) => {
+      settingsLoaded = true;
       isSideXEnabled = res.sidex_enabled !== false;
       state.autoLoadReplies = res.sidex_auto_load_replies !== false;
       state.autoExpandReplyText = res.sidex_auto_expand_reply_text === true;
+      autoPinDefault = res.sidex_auto_pin === true;
       state.translationProvider = ["x", "google", "external"].includes(res.sidex_translation_provider) ? res.sidex_translation_provider : "x";
       state.photoMode = res.sidex_photo_mode === "native" ? "native" : "sidex";
       if (res.sidex_lang) overrideLocale = res.sidex_lang;
@@ -231,6 +242,8 @@
         closeDrawer();
         const root = document.getElementById(ROOT_ID);
         if (root) root.style.display = "none";
+      } else {
+        checkDetailPageAutoOpen();
       }
     });
 
@@ -242,6 +255,9 @@
       if (changes.sidex_auto_load_replies !== undefined) {
         state.autoLoadReplies = changes.sidex_auto_load_replies.newValue !== false;
         if (state.open) renderDrawer();
+      }
+      if (changes.sidex_auto_pin !== undefined) {
+        autoPinDefault = changes.sidex_auto_pin.newValue === true;
       }
       if (changes.sidex_enabled !== undefined) {
         isSideXEnabled = changes.sidex_enabled.newValue !== false;
@@ -297,6 +313,8 @@
       resetWidth: "恢复默认宽度",
       widthResetToast: "已恢复默认宽度",
       openOnX: "在 X 详情页打开",
+      pinPanel: "固定面板",
+      unpinPanel: "取消固定",
       closeSidebar: "关闭侧栏",
       replyToAuthor: "回复 @{handle}... (按 Ctrl+Enter 发送)",
       replyToUser: "回复 @{handle}...",
@@ -448,6 +466,8 @@
       resetWidth: "Reset width",
       widthResetToast: "Default width restored",
       openOnX: "Open on X",
+      pinPanel: "Pin panel",
+      unpinPanel: "Unpin panel",
       closeSidebar: "Close sidebar",
       replyToAuthor: "Reply to @{handle}... (Ctrl+Enter to send)",
       replyToUser: "Reply to @{handle}...",
@@ -750,14 +770,35 @@
     const collapse = root?.querySelector('.sidepeek-btn-photo-collapse');
     const close = root?.querySelector('.sidepeek-btn-close');
     const reset = root?.querySelector('.sidepeek-btn-reset-width');
+    const pin = root?.querySelector('.sidepeek-btn-pin');
+    const pinLabel = state.pinned ? t("unpinPanel") : t("pinPanel");
     if (collapse) collapse.style.display = canCollapse ? "inline-flex" : "none";
     if (close) close.style.display = "inline-flex";
     if (reset) reset.style.display = dockedPhotoPanel ? "none" : "inline-flex";
+    if (pin) {
+      pin.style.display = isPhotoViewerRoute() ? "none" : "inline-flex";
+      pin.setAttribute("aria-pressed", String(state.pinned));
+      pin.setAttribute("aria-label", pinLabel);
+      pin.title = pinLabel;
+      pin.innerHTML = state.pinned ? PIN_ICONS.pinned : PIN_ICONS.unpinned;
+    }
+  }
+
+  function isPhotoViewerRoute() {
+    return /\/status\/\d+\/photo\/\d+\/?$/.test(location.pathname);
+  }
+
+  function isPinProtectionActive() {
+    return state.pinned && !isPhotoViewerRoute();
   }
 
   function syncPhotoViewer() {
-    if (!isSideXEnabled) return false;
+    if (!settingsLoaded || !isSideXEnabled) {
+      syncPinnedFocalHighlight();
+      return false;
+    }
     const match = location.pathname.match(/\/status\/(\d+)\/photo\/\d+\/?$/);
+    if (match) syncPinnedFocalHighlight();
     if (match) {
       const swipe = document.querySelector('#layers [data-testid="swipe-to-dismiss"]');
       const viewer = swipe?.closest('[role="dialog"]');
@@ -807,6 +848,7 @@
       lastCheckedUrl = "";
       updateDrawerPosition();
       if (wasDocked && state.open) renderDrawer();
+      syncPinnedFocalHighlight();
     }
     document.documentElement.removeAttribute("data-sidex-photo-view");
     return false;
@@ -1226,6 +1268,7 @@
           <div class="sidepeek-header-actions">
             <button type="button" class="sidepeek-icon-btn sidepeek-btn-reset-width" title="${t("resetWidth")}">${ICONS.resetWidth}</button>
             <a href="#" target="_blank" class="sidepeek-icon-btn sidepeek-btn-external" title="${t("openOnX")}" style="display:none;">${ICONS.external}</a>
+            <button type="button" class="sidepeek-icon-btn sidepeek-btn-pin" title="${t("pinPanel")}" aria-label="${t("pinPanel")}" aria-pressed="false">${PIN_ICONS.unpinned}</button>
             <button type="button" class="sidepeek-icon-btn sidepeek-btn-photo-collapse" style="display:none;" aria-label="${getLocale() === "zh" ? "收起评论，查看大图" : "Collapse comments to view the full image"}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${PHOTO_COLLAPSE_PATH}"></path></svg></button>
             <button type="button" class="sidepeek-icon-btn sidepeek-btn-close" aria-label="${t("closeSidebar")}">${ICONS.close}</button>
           </div>
@@ -1254,6 +1297,11 @@
 
       root.querySelector(".sidepeek-btn-close")?.addEventListener("click", closeDrawer);
       root.querySelector(".sidepeek-btn-photo-collapse")?.addEventListener("click", () => findPhotoCollapseButton()?.click());
+      root.querySelector(".sidepeek-btn-pin")?.addEventListener("click", () => {
+        state.pinned = !state.pinned;
+        syncPinnedFocalHighlight();
+        syncPhotoHeader(root);
+      });
       root.querySelector(".sidepeek-back-btn")?.addEventListener("click", () => {
         state.activeView = "root";
         state.replyTarget = null;
@@ -4022,6 +4070,32 @@
     }) || null;
   }
 
+  function findPinnedFocalArticle(tweetId) {
+    if (!tweetId) return null;
+    return [...document.querySelectorAll('article[data-testid="tweet"]')].find(article => {
+      if (article.closest(`#${ROOT_ID}`)) return false;
+      const timeLink = [...article.querySelectorAll('time')].map(time => time.closest('a[href*="/status/"]')).find(Boolean);
+      return timeLink && Core.postIdFromUrl(timeLink.href) === String(tweetId);
+    }) || null;
+  }
+
+  function syncPinnedFocalHighlight() {
+    const shouldHighlight = settingsLoaded && isSideXEnabled && state.open && state.pinned &&
+      !isPhotoViewerRoute() && Boolean(state.focalTweetId);
+    const article = shouldHighlight ? findPinnedFocalArticle(state.focalTweetId) : null;
+    const previous = state.pinnedFocalArticle;
+    if (previous && previous !== article) previous.removeAttribute("data-sidex-pinned-active");
+    if (!article) {
+      state.pinnedFocalArticle = null;
+      return;
+    }
+    const theme = currentThemeClass().replace("sidepeek-theme-", "");
+    if (article.getAttribute("data-sidex-pinned-active") !== theme) {
+      article.setAttribute("data-sidex-pinned-active", theme);
+    }
+    state.pinnedFocalArticle = article;
+  }
+
   function expandFocalShowMore(tweetId) {
     let focalArticle = findDetailFocalArticle(tweetId);
     if (focalArticle) {
@@ -4044,6 +4118,7 @@
   }
 
   async function checkDetailPageAutoOpen() {
+    if (!settingsLoaded) return;
     if (syncPhotoViewer()) return;
     // Pickers such as GIF search temporarily use /i/foundmedia/search. They
     // are overlays on the current post, not navigation away from its thread.
@@ -4062,13 +4137,13 @@
 
       // If already open for this tweet, nothing to do
       if (state.open && state.focalTweetId === tweetId) return;
-
       lastHandledDetailTweetId = tweetId;
       if (state.focalTweetId !== tweetId) preserveReplyText();
       const generation = ++state.threadGeneration;
       if (state.open) {
         clearCommentNodes();
         state.focalTweetId = tweetId;
+        syncPinnedFocalHighlight();
         state.focalModel = null;
         state.replies = [];
         state.tree = null;
@@ -4094,15 +4169,17 @@
       try {
         const json = await requestPage("READ_THREAD", { tweetId });
         if (generation !== state.threadGeneration) return;
-        // Native quick tools cover the current thread without abandoning it.
-        const hasNativeOverlay = nativeReplyOpening || document.querySelector('#layers [role="dialog"]');
-        if (Core.postIdFromUrl(location.href) !== tweetId && !(state.open && state.focalTweetId === tweetId && hasNativeOverlay)) return;
+        // A retained panel still owns its request after navigating away or
+        // unpinning. Closing or switching it already invalidates generation.
+        if (Core.postIdFromUrl(location.href) !== tweetId && !(state.open && state.focalTweetId === tweetId)) return;
         if (userClosedTweetId === tweetId) return;
 
         const { focal, replies, cursor, pagination, unavailableIds } = Core.parseTweetDetail(json, tweetId);
 
         // 如果完全没有下一级回复，绝对不弹出右侧抽屉，保持完全静默
-        if ((!replies || replies.length === 0) && !cursor && !pagination.gated && !pagination.inlineCursors.length) {
+        const hasThreadContent = replies.length > 0 || cursor || pagination.gated || pagination.inlineCursors.length > 0;
+        const keepEmptyPanel = state.open && state.focalTweetId === tweetId && isPinProtectionActive();
+        if (!hasThreadContent && !keepEmptyPanel) {
           if (state.open && state.focalTweetId === tweetId) {
             closeDrawer();
           }
@@ -4115,12 +4192,14 @@
           state.focalArticle.classList.remove("sidepeek-focal-active");
         }
         state.focalArticle = focalArticle;
-        state.focalArticle?.classList.add("sidepeek-focal-active");
+        if (hasThreadContent) state.focalArticle?.classList.add("sidepeek-focal-active");
 
         const wasOpenForTweet = state.open && state.focalTweetId === tweetId;
+        if (!state.open) state.pinned = autoPinDefault;
         state.open = true;
         clearCommentNodes();
         state.focalTweetId = tweetId;
+        syncPinnedFocalHighlight();
         state.focalModel = focal;
         state.replies = replies;
         state.unavailableReplyIds = new Set(unavailableIds);
@@ -4156,7 +4235,7 @@
       userClosedTweetId = null;
       if (lastHandledDetailTweetId) {
         lastHandledDetailTweetId = null;
-        if (state.open) {
+        if (state.open && !isPinProtectionActive()) {
           closeDrawer();
         }
       }
@@ -4165,6 +4244,7 @@
 
   function openDrawerForTweet(tweetId, articleNode) {
     preserveReplyText();
+    if (!state.open) state.pinned = autoPinDefault;
     userClosedTweetId = null;
     lastHandledDetailTweetId = tweetId;
 
@@ -4184,6 +4264,7 @@
     // 3. Open drawer & fetch replies
     state.open = true;
     state.focalTweetId = tweetId;
+    syncPinnedFocalHighlight();
     state.resetScrollOnRender = true;
     state.activeView = "root";
     state.replyTarget = null;
@@ -4208,6 +4289,8 @@
     closeShareMenu();
     hideUserHoverCard();
     state.open = false;
+    state.pinned = false;
+    syncPinnedFocalHighlight();
     state.replyTarget = null;
     state.resetScrollOnRender = true;
     userClosedTweetId = state.focalTweetId;
@@ -4326,6 +4409,7 @@
 
   function handleTimelineClick(event) {
     if (!isSideXEnabled) return;
+    if (!settingsLoaded) return;
     if (state.isResizing) return;
     if (event.target.closest?.('[data-sidex-native-reply-link]')) return;
     if (event.target.closest?.("#layers, #sidepeek-user-hovercard, .sidepeek-more-menu, .sidepeek-share-menu, .sidepeek-repost-menu")) return;
@@ -4341,7 +4425,7 @@
     const article = event.target.closest?.('article[data-testid="tweet"]');
     if (!article) {
       // Clicked blank space outside drawer -> close drawer
-      if (state.open && drawer && !drawer.contains(event.target)) {
+      if (state.open && drawer && !drawer.contains(event.target) && !isPinProtectionActive()) {
         closeDrawer();
       }
       return;
@@ -4382,10 +4466,18 @@
   // scrolling. Attach to that copy when it appears instead of keeping a snapshot.
   let nativeSyncScheduled = false;
   new MutationObserver(records => {
-    if (nativeSyncScheduled || records.every(record => record.target.closest?.(`#${ROOT_ID}, #sidepeek-user-hovercard`))) return;
+    const relevantRecords = records.filter(record => {
+      if (record.target.closest?.(`#${ROOT_ID}, #sidepeek-user-hovercard`)) return false;
+      if (record.type === "attributes") {
+        return record.attributeName === "href" && Boolean(record.target.closest?.('article[data-testid="tweet"]'));
+      }
+      return true;
+    });
+    if (nativeSyncScheduled || !relevantRecords.length) return;
     nativeSyncScheduled = true;
     requestAnimationFrame(() => {
       nativeSyncScheduled = false;
+      syncPinnedFocalHighlight();
       if (syncPhotoViewer()) return;
       if (!state.open) return;
       nativeLayers?.sync(document.getElementById(ROOT_ID));
@@ -4395,7 +4487,26 @@
         if (article) watchNativeActions(entry.model, article);
       }
     });
-  }).observe(document.getElementById("react-root") || document.body, { childList: true, subtree: true });
+  }).observe(document.getElementById("react-root") || document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["href"]
+  });
+
+  let pinnedThemeSyncScheduled = false;
+  const schedulePinnedThemeSync = () => {
+    if (pinnedThemeSyncScheduled) return;
+    pinnedThemeSyncScheduled = true;
+    requestAnimationFrame(() => {
+      pinnedThemeSyncScheduled = false;
+      syncPinnedFocalHighlight();
+    });
+  };
+  const pinnedThemeObserver = new MutationObserver(schedulePinnedThemeSync);
+  for (const target of [document.documentElement, document.body]) {
+    if (target) pinnedThemeObserver.observe(target, { attributes: true, attributeFilter: ["class", "style"] });
+  }
 
   // ESC key to close (Lightbox first, then Menus, then Hover Card, then Drawer)
   document.addEventListener("keydown", (event) => {
@@ -4425,6 +4536,7 @@
         return;
       }
       if (state.open) {
+        if (isPinProtectionActive()) return;
         closeDrawer();
       }
     }
