@@ -1,6 +1,6 @@
 # Privacy Policy for SideX
 
-**Last updated:** October 9, 2026
+**Last updated:** October 17, 2026
 
 Thank you for choosing **SideX** ("the Extension"). We respect your privacy and are committed to protecting it. This Privacy Policy explains our practices regarding user data and permissions.
 
@@ -10,6 +10,7 @@ Thank you for choosing **SideX** ("the Extension"). We respect your privacy and 
 SideX is a completely client-side productivity extension:
 - **Data Used for Features:** SideX processes the X posts and profiles you open, relationship information shown in profile cards, and text/media you choose to submit as replies. It uses the current X session for authenticated requests. It does not build a browsing-history log, run analytics, or read your password.
 - **No SideX Servers:** SideX does not operate remote servers, analytics, or telemetry services. Requests go directly from the browser to X, media hosts, and, when selected, Google Translation. These services receive the network information required to serve a request.
+- **Text Drafts:** Unsent quick-reply text is kept separately per post and reply target in the current page's memory. It is not synced or saved to disk by SideX and is cleared when the page is refreshed or the tab is closed. Images and native tool selections are not saved as SideX drafts. Selected reply images are uploaded directly to X while editing.
 
 ---
 

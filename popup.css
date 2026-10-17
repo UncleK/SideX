@@ -152,6 +152,11 @@ body {
   font-weight: 600;
 }
 
+.sidex-reply-settings-card .sidex-switch-title {
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .sidex-switch-desc {
   font-size: 12px;
   color: var(--sidex-muted);
