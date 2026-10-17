@@ -310,8 +310,24 @@
     return models;
   }
 
-  function replyPagination(value) {
-    const page = { cursor: null, gated: null, ended: false, sectionLabel: "" };
+  function replyPagination(value, requestTweetId, byId, gateScopeId = requestTweetId) {
+    const page = { cursor: null, gated: null, ended: false, sectionLabel: "", inlineCursors: [], inlineModules: [] };
+    function modulePagination(moduleId, items) {
+      const branchRootId = /^conversationthread-(\d+)$/.exec(moduleId || "")?.[1];
+      if (!branchRootId || !byId.has(branchRootId)) return;
+      const branch = byId.get(branchRootId);
+      const scope = { moduleId, branchRootId, requestTweetId,
+        gateFor: branch._gateFor || "" };
+      page.inlineModules.push(scope);
+      let folded = Boolean(scope.gateFor);
+      for (const item of items || []) {
+        const content = item.item?.itemContent || item.itemContent;
+        if ((content?.itemType || content?.__typename) === "TimelineLabel") folded = true;
+        if (content?.cursorType === "ShowMore" && typeof content.value === "string" && content.value) {
+          page.inlineCursors.push({ ...scope, gateFor: scope.gateFor || (folded ? gateScopeId : ""), cursor: content.value });
+        }
+      }
+    }
     const seen = new Set();
     function visit(node) {
       if (!node || typeof node !== "object" || seen.has(node)) return;
@@ -319,9 +335,16 @@
       if (node.promotedMetadata || node.promoted_metadata || node.tweet_results || node.tweetResult ||
           /^tweetdetailrelatedtweets-/i.test(node.entryId || "")) return;
       if (node.type === "TimelineTerminateTimeline" && node.direction === "Bottom") page.ended = true;
-      // Inline module cursors belong to another conversation.
+      if (node.type === "TimelineAddToModule") {
+        modulePagination(node.moduleEntryId, node.moduleItems);
+        return;
+      }
+      // Inline cursors have their own scope and must not replace Bottom/Spam.
       if (node.entryType === "TimelineTimelineModule" || node.__typename === "TimelineTimelineModule" ||
-          /^conversationthread-/i.test(String(node.entryId || ""))) return;
+          /^conversationthread-/i.test(String(node.entryId || ""))) {
+        modulePagination(node.entryId, node.content?.items || node.items);
+        return;
+      }
       if (node.cursorType === "Bottom" && typeof node.value === "string") page.cursor = node.value;
       if (/^ShowMoreThreads?$/i.test(node.cursorType || "") && typeof node.value === "string") {
         page.gated = { cursor: node.value, label: node.displayTreatment?.actionText || "" };
@@ -337,17 +360,18 @@
 
   // Retain the timeline boundary instead of flattening a folded section into
   // normal replies. Request context carries it across subsequent cursor pages.
-  function sectionedTweetModels(value, focalId, section) {
+  function sectionedTweetModels(value, focalId, section, unavailableIds = new Set()) {
     const models = [];
-    function visit(node, label = section || "") {
+    function visit(node, label = section || "", sourceEntryId = "") {
       if (!node || typeof node !== "object" || node.promotedMetadata || node.promoted_metadata) return;
       if (/^tweetdetailrelatedtweets-/i.test(node.entryId || "")) return;
+      sourceEntryId = node.entryId || sourceEntryId;
       if (Array.isArray(node)) {
         let current = label;
         for (const child of node) {
-          const item = child?.content?.itemContent;
+          const item = child?.content?.itemContent || child?.item?.itemContent || child?.itemContent;
           if ((item?.itemType || item?.__typename) === "TimelineLabel") current = item.text || current;
-          visit(child, current);
+          visit(child, current, sourceEntryId);
         }
         return;
       }
@@ -357,10 +381,13 @@
         if (model) {
           if (label && model.id !== focalId) { model._gateFor = focalId; model._sectionLabel = label; }
           models.push(model);
+        } else {
+          const id = result.rest_id || result.tweet?.rest_id || /(?:^tweet-|-tweet-)(\d+)$/.exec(sourceEntryId)?.[1];
+          if (id) unavailableIds.add(String(id));
         }
         return;
       }
-      Object.values(node).forEach(child => visit(child, label));
+      Object.values(node).forEach(child => visit(child, label, sourceEntryId));
     }
     visit(value);
     return [...new Map(models.map(model => [model.id, model])).values()];
@@ -368,10 +395,44 @@
 
   function parseTweetDetail(json, focalTweetId, knownModels = [], section = "") {
     const focalId = String(focalTweetId || "");
-    const models = sectionedTweetModels(json?.data || json, focalId, section);
-    const pagination = replyPagination(json);
+    const observed = (json?.sidepeekObservedThreads || []).slice(-12);
+    const merged = new Map();
+    const unavailable = new Set();
+    // Native X may have loaded descendants absent from a later, shorter child
+    // request (even when that request reports zero replies and no cursor).
+    for (const snapshot of [...observed, { json }]) {
+      const blocked = new Set();
+      const models = sectionedTweetModels(snapshot.json?.data || snapshot.json, focalId,
+        snapshot.json === json ? section : "", blocked);
+      for (const model of models) { merged.set(model.id, model); unavailable.delete(model.id); }
+      for (const id of blocked) { merged.delete(id); unavailable.add(id); }
+    }
+    const models = [...merged.values()];
     // Cursor pages may omit the focal tweet and intermediate parents.
-    const byId = new Map([...knownModels, ...models].filter(Boolean).map((model) => [model.id, model]));
+    const byId = new Map([...knownModels, ...models].filter(model => model && !unavailable.has(model.id)).map((model) => [model.id, model]));
+    const pagination = replyPagination(json?.data || json, focalId, byId);
+    const nativeContinuations = new Map();
+    const nativeModules = new Map();
+    const liveModules = new Set(pagination.inlineModules.map(entry => `${entry.requestTweetId}:${entry.moduleId}`));
+    for (const snapshot of observed) {
+      for (const [key, entry] of nativeContinuations) {
+        if (entry.requestTweetId === snapshot.requestTweetId && entry.cursor === snapshot.cursor) nativeContinuations.delete(key);
+      }
+      const nativePage = replyPagination(snapshot.json?.data || snapshot.json, snapshot.requestTweetId, byId, focalId);
+      for (const scope of nativePage.inlineModules) {
+        const key = `${scope.requestTweetId}:${scope.moduleId}`;
+        nativeModules.set(key, scope);
+        nativeContinuations.delete(key);
+        const next = nativePage.inlineCursors.find(entry => entry.moduleId === scope.moduleId);
+        if (next) nativeContinuations.set(key, next);
+      }
+    }
+    for (const [key, scope] of nativeModules) if (!liveModules.has(key)) pagination.inlineModules.push(scope);
+    for (const entry of nativeContinuations.values()) {
+      if (!liveModules.has(`${entry.requestTweetId}:${entry.moduleId}`)) {
+        pagination.inlineCursors.push(entry);
+      }
+    }
     const focal = byId.get(focalId) || null;
 
     if (!focal) return { focal: null, replies: [], cursor: null, pagination };
@@ -402,6 +463,9 @@
     }
 
     const replies = models.filter(descendsFromFocal);
+    const inScope = entry => entry.branchRootId === focalId || descendsFromFocal(byId.get(entry.branchRootId));
+    pagination.inlineCursors = pagination.inlineCursors.filter(inScope);
+    pagination.inlineModules = pagination.inlineModules.filter(inScope);
     return { focal, replies, cursor: pagination.cursor, pagination };
   }
 

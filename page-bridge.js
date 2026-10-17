@@ -29,6 +29,9 @@
     translationTemplate: null
   };
   const operationCache = new Map();
+  const observedThreadCache = new Map();
+  const observedCursorScopes = new Map();
+  const OBSERVED_THREAD_TTL = 5 * 60 * 1000;
   let webpackRuntime = null;
   let transactionIdFunction = null;
 
@@ -99,10 +102,14 @@
     XMLHttpRequest.prototype.send = function sidePeekSend(body) {
       const request = requests.get(this);
       if (request) rememberRequest(request.url, request.method, request.headers, body);
-      if (request && /\/(?:CreateTweet|CreateNoteTweet)(?:[?#]|$)/.test(request.url)) {
+      if (request && /\/(?:TweetDetail|CreateTweet|CreateNoteTweet)(?:[?#]|$)/.test(request.url)) {
         this.addEventListener("load", () => {
           if (this.status < 200 || this.status >= 300) return;
-          try { observeCreatedReply(request.url, this.responseType === "json" ? this.response : JSON.parse(this.responseText)); }
+          try {
+            const json = this.responseType === "json" ? this.response : JSON.parse(this.responseText);
+            if (/\/TweetDetail(?:[?#]|$)/.test(request.url)) observeNativeThread(request.url, json, body);
+            else observeCreatedReply(request.url, json);
+          }
           catch { /* Observing must never affect X's own request. */ }
         }, { once: true });
       }
@@ -123,11 +130,14 @@
       }
       const result = Reflect.apply(originalFetch, this, [input, init]);
       const url = input instanceof Request ? input.url : String(input);
-      if (/\/(?:CreateTweet|CreateNoteTweet)(?:[?#]|$)/.test(url)) {
+      if (/\/(?:TweetDetail|CreateTweet|CreateNoteTweet)(?:[?#]|$)/.test(url)) {
         result.then(response => {
           try {
             if (response.ok && typeof response.clone === "function") {
-              response.clone().json().then(json => observeCreatedReply(url, json)).catch(() => {});
+              response.clone().json().then(json => {
+                if (/\/TweetDetail(?:[?#]|$)/.test(url)) observeNativeThread(url, json, init?.body);
+                else observeCreatedReply(url, json);
+              }).catch(() => {});
             }
           } catch { /* Never affect the native response reader. */ }
         }, () => {});
@@ -141,6 +151,58 @@
     try { url = new URL(urlValue, location.origin); } catch { return; }
     if (!/^(?:api\.)?(?:x|twitter)\.com$/.test(url.hostname) || !json?.data || json.errors?.length) return;
     window.postMessage({ source: PAGE_SOURCE, type: "REPLY_CREATED", payload: json }, location.origin);
+  }
+
+  function observedThreads() {
+    const now = Date.now();
+    for (const [key, entry] of observedThreadCache) if (now - entry.at > OBSERVED_THREAD_TTL) observedThreadCache.delete(key);
+    return [...observedThreadCache.values()].map(({ requestTweetId, cursor, json }) => ({ requestTweetId, cursor, json }));
+  }
+
+  function observeNativeThread(urlValue, json, body) {
+    let url, variables;
+    try {
+      url = new URL(urlValue, location.origin);
+      if (!/^(?:api\.)?(?:x|twitter)\.com$/.test(url.hostname) || !/\/TweetDetail$/.test(url.pathname)) return;
+      variables = JSON.parse(url.searchParams.get("variables") || "null") || JSON.parse(body || "{}").variables;
+    } catch { return; }
+    cacheThreadResponse(String(variables?.focalTweetId || ""), variables?.cursor || "", json, true);
+  }
+
+  function cacheThreadResponse(requestTweetId, cursor, json, notify = false) {
+    if (!/^\d+$/.test(requestTweetId) || !json?.data || json.errors?.length) return;
+    // Unknown cursor responses may belong to an already opened Spam section.
+    // Only replay continuation pages whose normal boundary we actually observed.
+    const boundary = observedCursorScopes.get(`${requestTweetId}:${cursor}`);
+    if (cursor && (!boundary || boundary.gated || Date.now() - boundary.at > OBSERVED_THREAD_TTL)) return;
+    if (JSON.stringify(json).length > 1000000) return;
+    function visit(node, gated = false) {
+      if (!node || typeof node !== "object" || node.tweet_results || node.tweetResult ||
+          node.promotedMetadata || node.promoted_metadata || /^tweetdetailrelatedtweets-/i.test(node.entryId || "")) return;
+      if (Array.isArray(node)) {
+        let folded = gated;
+        for (const child of node) {
+          const item = child?.content?.itemContent || child?.item?.itemContent || child?.itemContent;
+          if ((item?.itemType || item?.__typename) === "TimelineLabel") folded = true;
+          visit(child, folded);
+        }
+        return;
+      }
+      if (node.cursorType && typeof node.value === "string") {
+        observedCursorScopes.set(`${requestTweetId}:${node.value}`, {
+          at: Date.now(), gated: gated || !/^(?:Bottom|ShowMore)$/.test(node.cursorType)
+        });
+      }
+      Object.values(node).forEach(child => visit(child, gated));
+    }
+    visit(json.data);
+    while (observedCursorScopes.size > 256) observedCursorScopes.delete(observedCursorScopes.keys().next().value);
+    const key = `${requestTweetId}:${cursor}`;
+    observedThreadCache.delete(key);
+    observedThreadCache.set(key, { requestTweetId, cursor, json, at: Date.now() });
+    while (observedThreadCache.size > 12) observedThreadCache.delete(observedThreadCache.keys().next().value);
+    if (notify) window.postMessage({ source: PAGE_SOURCE, type: "NATIVE_THREAD_OBSERVED",
+      payload: { sidepeekObservedThreads: observedThreads() } }, location.origin);
   }
 
   function getWebpackRuntime() {
@@ -779,7 +841,13 @@
     try {
       let payload;
       if (message.type === "OPEN_NATIVE_REPLY") payload = openNativeReply(tweetId, message.quickTool === true);
-      else if (message.type === "READ_THREAD") payload = await readThread(tweetId, message.cursor);
+      else if (message.type === "READ_THREAD") {
+        payload = await readThread(tweetId, message.cursor);
+        // Preserve replies SideX itself already loaded before switching to a
+        // child panel; that child's fresh response can be shorter as well.
+        cacheThreadResponse(tweetId, message.cursor || "", payload);
+        payload = { ...payload, sidepeekObservedThreads: observedThreads() };
+      }
       else if (message.type === "TOGGLE_ACTION") payload = await toggleAction(message.action, tweetId, Boolean(message.active));
       else if (message.type === "CREATE_REPLY") payload = await createReply(tweetId, message.text, message.mediaIds);
       else throw new Error("未知请求类型");
