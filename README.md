@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-Available-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.24-00b4f8?style=flat-square" alt="Version 1.1.24" />
+    <img src="https://img.shields.io/badge/Version-1.1.25-00b4f8?style=flat-square" alt="Version 1.1.25" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -108,6 +108,8 @@ npm test
 ```
 
 Tests use synthetic X responses and DOM fixtures without performing real account actions. They cover profile parsing, translation requests, long-text chunking, native controls, rollback, retained reading state, scroll reset, and stale responses. X internals and third-party translation extensions may change. Without a matching native profile link, SideX renders a fallback with a full-profile link rather than simulating Grok's Profile Summary button; comments without native nodes are still rendered by SideX.
+
+Version 1.1.25 integrates [PR #5](https://github.com/UncleK/SideX/pull/5) by maxDNA. Returning from a reply to its parent post now preserves the current response's reply order instead of promoting previously visited replies. Cached descendants remain available without duplicates, and current content and visibility updates retain precedence. The combined code passes 172 local regression tests, including the v1.1.24 quote and share cases.
 
 Version 1.1.24 opens quotes in X's official in-page composer with the original-post card. Sharing uses X's loaded menu component, including its account and media-specific options, even for replies absent from the native timeline. Existing drafts are preserved; unavailable native controls show a retry message.
 

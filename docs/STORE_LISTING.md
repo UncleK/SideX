@@ -22,11 +22,11 @@ FEATURES
 • Translation choices: use X official translation, choose Google, or use your existing translation extension's selection/page translation.
 • Appearance: follows X's theme and supports an adjustable sidebar width.
 
-WHAT'S NEW IN 1.1.24
-• Quotes open X's official composer in the current page with the original-post card, replacing the bare-link popup.
-• Sharing uses X's actual menu component; its options follow account permissions and the post's media.
-• Supports replies shown only in SideX, anchors the share menu beside the selected comment, and preserves existing drafts.
-• Dismissed menus cannot reopen after a late response. Unavailable native controls show a retry message.
+WHAT'S NEW IN 1.1.25
+• Fixed reply order changing after opening a reply and returning to its parent post.
+• Keeps replies in the current response's order while retaining previously loaded descendants without duplicates.
+• Previously visited replies no longer jump ahead because of cached visit order; current content and visibility updates retain precedence.
+• Retains the official quote composer and share menu introduced in 1.1.24, along with existing drafts and reply-loading behavior.
 
 PRIVACY
 SideX runs in your browser and has no SideX relay server or analytics service. It processes the X content you open and uses your current X session for authenticated requests. Text drafts stay temporarily in the current page and are not synced. Replies and selected attachments go to X. If you select Google translation and click Translate, the post text is sent directly to Google. X authentication information is not sent to Google. Other translation extensions follow their own settings and privacy policies.
@@ -63,11 +63,11 @@ SideX 把 X 的评论区放到右侧。点击帖子正文或空白处，在保�
 • 默认使用 X 官方翻译，也可选择 Google，或使用已有翻译插件的划词／网页翻译。
 • 跟随 X 主题，支持调整侧栏宽度。
 
-1.1.24 更新
-• 引用在当前页面打开 X 官方编辑器并显示原帖卡片，修复弹窗仅带裸链接的问题。
-• 分享直接使用 X 官方菜单组件，选项跟随账号权限和帖子的媒体类型。
-• 支持只在 SideX 中显示的评论，分享菜单定位在所选评论旁，并保留已有草稿。
-• 关闭菜单后，迟到的请求不会重新打开菜单；官方组件暂不可用时提示重试。
+1.1.25 更新
+• 修复切入某条回复再返回原帖后，侧栏回复顺序发生变化的问题。
+• 按当前响应保留回复顺序，同时保留此前已加载的后代回复并去重。
+• 避免先前浏览过的回复因缓存顺序跳到前面，保持当前内容和可见性更新的优先级。
+• 保留 1.1.24 的官方引用编辑器、官方分享菜单，以及已有草稿和回复加载行为。
 
 隐私说明
 SideX 在浏览器中运行，没有 SideX 中转或统计服务器。扩展处理你打开的 X 内容，并复用当前 X 会话；文字草稿仅在当前页面暂存，不参与同步，回复及选择的附件发送给 X。只有选择 Google 翻译并点击翻译时，正文才会直接发送给 Google，X 认证信息不会发给 Google。已有翻译插件遵循各自的设置和隐私政策。
