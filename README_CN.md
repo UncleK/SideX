@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-官方商店上架-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.25-00b4f8?style=flat-square" alt="Version 1.1.25" />
+    <img src="https://img.shields.io/badge/Version-1.1.26-00b4f8?style=flat-square" alt="Version 1.1.26" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -108,6 +108,8 @@ npm test
 ```
 
 回归检查使用合成 X 响应和 DOM，覆盖新旧用户资料结构、官方翻译请求、Google 长文分段、原生按钮复用、失败回滚、翻译/展开状态保留、切帖滚动重置和过期请求隔离。测试不会对真实 X 账号执行操作。
+
+1.1.26 将分支续载和展开按钮与回复正文左边缘对齐，头像下方竖线延伸到加载入口旁，并以小圆点提示后续回复。展开后的“加载更多回复”和“收起回复”放在同一行，加载完后只保留收起。使用实际渲染出的 DOM 在 Chrome 中检查了普通分页、内联分页、加载中和失败重试状态，以及 320px 窄面板的中英文布局。源码通过全部 172 项本地回归；浏览器布局检查使用本地样例，没有重新安装商店包。
 
 1.1.25 整合 maxDNA 的 [PR #5](https://github.com/UncleK/SideX/pull/5)，修复切入某条回复再返回原帖后，先前浏览过的回复被移到前面的问题。按当前响应保留回复顺序，同时保留已加载的后代回复并去重，保持当前内容和可见性更新的优先级。组合代码通过 172 项本地回归，包含 1.1.24 的引用与分享用例。
 

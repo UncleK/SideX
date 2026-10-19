@@ -1511,7 +1511,6 @@
             const collapseRow = document.createElement("div");
             collapseRow.className = "sidepeek-expand-btn-row";
             collapseRow.innerHTML = `
-              <div class="sidepeek-thread-line-col"></div>
               <button type="button" class="sidepeek-collapse-btn">
                 <span>▲ ${t("collapseReplies")}</span>
               </button>
@@ -1546,6 +1545,7 @@
               });
               row.appendChild(button);
               threadGroup.appendChild(row);
+              connectReplyContinuation(row);
             } else {
               appendReplyPagination(threadGroup, rootReply.id);
               appendUnfetchedReplies(threadGroup, rootReply);
@@ -1559,6 +1559,7 @@
     }
 
     appendInlinePaginations(body);
+    groupReplyActions(body);
     updateQuotePreviews(root);
 
     // 恢复滚动条位置，彻底解决“点击展开回复后页面跳回顶部”的问题
@@ -1899,6 +1900,40 @@
     return ids;
   }
 
+  function groupReplyActions(body) {
+    for (const group of body.querySelectorAll(".sidepeek-thread-group")) {
+      const collapse = group.querySelector(".sidepeek-collapse-btn");
+      if (!collapse) continue;
+      const load = [...group.querySelectorAll(".sidepeek-load-more-btn, .sidepeek-inline-load-more-btn, .sidepeek-fetch-replies-btn")].at(-1);
+      if (!load) continue;
+      const collapseRow = collapse.parentElement;
+      const actions = document.createElement("div");
+      actions.className = "sidepeek-reply-actions";
+      load.replaceWith(actions);
+      actions.append(load, collapse);
+      collapseRow.remove();
+    }
+  }
+
+  function connectReplyContinuation(row) {
+    let anchor = row.previousElementSibling;
+    const gaps = [];
+    while (anchor?.classList.contains("sidepeek-thread-loader-row")) {
+      gaps.push(anchor);
+      anchor = anchor.previousElementSibling;
+    }
+    if (!anchor?.matches("article.sidepeek-comment-item")) return;
+    const avatar = anchor.querySelector(".sidepeek-avatar-col");
+    if (!avatar) return;
+    if (!avatar.querySelector(".sidepeek-thread-line")) {
+      const line = document.createElement("div");
+      line.className = "sidepeek-thread-line";
+      avatar.appendChild(line);
+    }
+    for (const gap of gaps) gap.classList.add("sidepeek-thread-continuation-gap");
+    row.classList.add("sidepeek-thread-continuation-row");
+  }
+
   function appendUnfetchedReplies(container, model) {
     if (state.threadPages.has(model.id) || state.loadedThreadIds.has(model.id)) return;
     if ([...state.inlinePages.values()].some(page => page.branchRootId === model.id && inlinePageVisible(page))) return;
@@ -1910,7 +1945,11 @@
     button.textContent = t("loadMoreThreadReplies");
     button.disabled = state.loadingThreadIds.has(model.id);
     button.addEventListener("click", () => fetchSubReplies(model.id, false, true));
-    container.appendChild(button);
+    const row = document.createElement("div");
+    row.className = "sidepeek-expand-btn-row";
+    row.appendChild(button);
+    container.appendChild(row);
+    connectReplyContinuation(row);
   }
 
   function renderCommentNode(model, hasThreadLine = false, isChild = false) {
@@ -3703,7 +3742,7 @@
       const anchor = nodes.filter(node => ids.has(node.dataset.id)).at(-1);
       if (!anchor) continue;
       const row = document.createElement("div");
-      row.className = "sidepeek-pagination sidepeek-inline-pagination";
+      row.className = "sidepeek-pagination sidepeek-reply-pagination sidepeek-inline-pagination";
       const button = document.createElement("button");
       button.type = "button";
       button.className = "sidepeek-expand-btn sidepeek-inline-load-more-btn";
@@ -3720,6 +3759,7 @@
         row.prepend(status);
       }
       anchor.after(row);
+      connectReplyContinuation(row);
       if (!page.gateFor && !page.loading && !page.error && !page.paused && !page.stalled) {
         observeReplyPage(row, body, () => state.inlinePages.get(key) === page, () => fetchInlineReplies(key));
       }
@@ -3763,6 +3803,7 @@
     const preloaded = state.replies.some(reply => reply._gateFor === tweetId);
     const row = document.createElement("div");
     row.className = "sidepeek-pagination";
+    row.classList.toggle("sidepeek-reply-pagination", tweetId !== state.focalTweetId);
     const busy = state.loadingThreadIds.has(tweetId);
     if (opened) appendSectionLabel(container, { _gateFor: tweetId, _sectionLabel: page.sectionLabel });
     if (!opened && !cursor && (page.gated || preloaded)) {
@@ -3814,6 +3855,7 @@
       row.textContent = getLocale() === "zh" ? "已加载完当前可见回复" : "All currently visible replies loaded";
     } else return;
     container.appendChild(row);
+    if (tweetId !== state.focalTweetId && row.querySelector(".sidepeek-load-more-btn")) connectReplyContinuation(row);
   }
 
   async function fetchThread(tweetId) {

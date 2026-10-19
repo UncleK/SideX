@@ -22,11 +22,11 @@ FEATURES
 • Translation choices: use X official translation, choose Google, or use your existing translation extension's selection/page translation.
 • Appearance: follows X's theme and supports an adjustable sidebar width.
 
-WHAT'S NEW IN 1.1.25
-• Fixed reply order changing after opening a reply and returning to its parent post.
-• Keeps replies in the current response's order while retaining previously loaded descendants without duplicates.
-• Previously visited replies no longer jump ahead because of cached visit order; current content and visibility updates retain precedence.
-• Retains the official quote composer and share menu introduced in 1.1.24, along with existing drafts and reply-loading behavior.
+WHAT'S NEW IN 1.1.26
+• Aligns Load more replies and branch expansion controls with the reply text.
+• Extends the avatar thread line to the load-more control, with a small endpoint dot to show the conversation continues.
+• Places Load more replies and Collapse replies on the same row. Once a branch finishes loading, only Collapse remains.
+• Keeps the layout consistent for normal and inline pagination, loading and retry states, including narrow panels in Chinese and English.
 
 PRIVACY
 SideX runs in your browser and has no SideX relay server or analytics service. It processes the X content you open and uses your current X session for authenticated requests. Text drafts stay temporarily in the current page and are not synced. Replies and selected attachments go to X. If you select Google translation and click Translate, the post text is sent directly to Google. X authentication information is not sent to Google. Other translation extensions follow their own settings and privacy policies.
@@ -63,11 +63,11 @@ SideX 把 X 的评论区放到右侧。点击帖子正文或空白处，在保�
 • 默认使用 X 官方翻译，也可选择 Google，或使用已有翻译插件的划词／网页翻译。
 • 跟随 X 主题，支持调整侧栏宽度。
 
-1.1.25 更新
-• 修复切入某条回复再返回原帖后，侧栏回复顺序发生变化的问题。
-• 按当前响应保留回复顺序，同时保留此前已加载的后代回复并去重。
-• 避免先前浏览过的回复因缓存顺序跳到前面，保持当前内容和可见性更新的优先级。
-• 保留 1.1.24 的官方引用编辑器、官方分享菜单，以及已有草稿和回复加载行为。
+1.1.26 更新
+• “加载更多回复”和分支展开按钮与回复正文左边缘对齐。
+• 头像下方的竖线延伸到加载入口旁，以小圆点提示这条回复链还有后续内容。
+• “加载更多回复”和“收起回复”放在同一行；分支加载完后，只保留收起。
+• 统一普通分页、内联分页、加载中和失败重试时的布局，兼顾中英文窄面板。
 
 隐私说明
 SideX 在浏览器中运行，没有 SideX 中转或统计服务器。扩展处理你打开的 X 内容，并复用当前 X 会话；文字草稿仅在当前页面暂存，不参与同步，回复及选择的附件发送给 X。只有选择 Google 翻译并点击翻译时，正文才会直接发送给 Google，X 认证信息不会发给 Google。已有翻译插件遵循各自的设置和隐私政策。

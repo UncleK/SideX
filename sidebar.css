@@ -775,10 +775,12 @@ body:has(#sidepeek-drawer-root.sidepeek-open) #layers {
 }
 
 .sidepeek-expand-btn-row {
+  --sp-reply-row-bottom: 8px;
   display: flex;
   align-items: center;
   position: relative;
-  padding: 2px 16px 8px 16px;
+  /* 16px inset + 36px avatar + 12px gap, less the button's 10px padding. */
+  padding: 2px 16px 8px 54px;
   gap: 12px;
 }
 
@@ -841,6 +843,69 @@ body:has(#sidepeek-drawer-root.sidepeek-open) #layers {
   display: flex;
   justify-content: center;
   padding: 12px 16px;
+}
+
+.sidepeek-reply-pagination {
+  --sp-reply-row-bottom: 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-left: 54px;
+}
+
+.sidepeek-reply-pagination > .sidepeek-pagination-error,
+.sidepeek-reply-pagination > .sidepeek-pagination-paused {
+  padding-left: 10px;
+  text-align: left;
+}
+
+.sidepeek-reply-pagination.sidepeek-pagination-paused {
+  padding-left: 64px;
+  text-align: left;
+}
+
+.sidepeek-reply-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidepeek-reply-actions > button {
+  white-space: nowrap;
+}
+
+/* Continue the avatar rail to the final button's center, including statuses
+   above it. The button is 13px / 1.4 with 4px vertical padding. */
+.sidepeek-thread-continuation-row,
+.sidepeek-thread-continuation-gap {
+  position: relative;
+}
+
+.sidepeek-thread-continuation-row::before,
+.sidepeek-thread-continuation-gap::before {
+  content: "";
+  position: absolute;
+  left: 33px;
+  top: 0;
+  bottom: calc(var(--sp-reply-row-bottom) + 0.7 * 13px + 4px);
+  width: 2px;
+  background: var(--sp-border);
+  pointer-events: none;
+}
+
+.sidepeek-thread-continuation-gap::before {
+  bottom: 0;
+}
+
+.sidepeek-thread-continuation-row::after {
+  content: "";
+  position: absolute;
+  left: 31.5px;
+  bottom: calc(var(--sp-reply-row-bottom) + 0.7 * 13px + 1.5px);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--sp-border);
+  pointer-events: none;
 }
 
 #layers[data-sidex-native-layers]:popover-open {
