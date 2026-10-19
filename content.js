@@ -166,6 +166,14 @@
 
   window.addEventListener("message", (event) => {
     if (event.source !== window || event.origin !== location.origin || event.data?.source !== PAGE_SOURCE) return;
+    if (event.data.type === "NATIVE_SHARE_CLOSED") {
+      if (event.data.menuToken === shareMenuGeneration && event.data.tweetId === activeShareTweetId) {
+        activeShareBtn?.setAttribute("aria-expanded", "false");
+        activeShareBtn = null;
+        activeShareTweetId = null;
+      }
+      return;
+    }
     if (event.data?.type === "URL_CHANGED") {
       checkDetailPageAutoOpen();
       return;
@@ -348,6 +356,8 @@
       undoRepostAction: "撤销转发",
       quoteAction: "引用",
       quoteOpenedToast: "正在打开引用推文",
+      nativeQuoteNotReady: "官方引用暂时不可用，请稍后重试。",
+      nativeShareNotReady: "官方分享菜单暂时不可用，请稍后重试。",
       followBtn: "关注",
       followingBtn: "正在关注",
       unfollowBtn: "取消关注",
@@ -501,6 +511,8 @@
       undoRepostAction: "Undo Repost",
       quoteAction: "Quote",
       quoteOpenedToast: "Opening quote tweet",
+      nativeQuoteNotReady: "Official quote is unavailable. Please try again shortly.",
+      nativeShareNotReady: "Official share menu is unavailable. Please try again shortly.",
       followBtn: "Follow",
       followingBtn: "Following",
       unfollowBtn: "Unfollow",
@@ -2979,113 +2991,45 @@
   // ==========================================================================
   // Share Menu (分享菜单)
   // ==========================================================================
-  let activeShareMenu = null;
   let activeShareBtn = null;
+  let activeShareTweetId = null;
+  let shareMenuGeneration = 0;
 
   function closeShareMenu() {
-    if (activeShareMenu) {
-      activeShareMenu.remove();
-      activeShareMenu = null;
-      activeShareBtn = null;
-    }
+    shareMenuGeneration++;
+    activeShareBtn?.setAttribute("aria-expanded", "false");
+    const tweetId = activeShareTweetId;
+    activeShareBtn = null;
+    activeShareTweetId = null;
+    if (tweetId) requestPage("CLOSE_NATIVE_SHARE", { tweetId }).catch(() => {});
   }
 
-  function openShareMenu(model, actShare) {
-    if (openNativeMenu(model, 'button[aria-label="Share post"], button[aria-label="分享帖子"], button[aria-label="分享推文"]')) return;
-    if (activeShareBtn === actShare) {
+  async function openShareMenu(model, actShare) {
+    if (activeShareBtn === actShare && document.querySelector('[data-sidex-native-share]')) {
       closeShareMenu();
       return;
     }
     closeShareMenu();
     closeMoreMenu();
     closeRepostMenu();
-
-    const menu = document.createElement("div");
-    menu.className = `sidepeek-share-menu ${currentThemeClass()}`;
-
-    const hasNavShare = Boolean(navigator.share);
-
-    menu.innerHTML = `
-      <button type="button" class="sidepeek-menu-item sidepeek-menu-copy-link">
-        <span class="sidepeek-menu-item-icon">${ICONS.copy}</span>
-        <span>${t("copyLink")}</span>
-      </button>
-      <button type="button" class="sidepeek-menu-item sidepeek-menu-copy-text">
-        <span class="sidepeek-menu-item-icon">${ICONS.copy}</span>
-        <span>${t("copyText")}</span>
-      </button>
-      <button type="button" class="sidepeek-menu-item sidepeek-menu-open-x">
-        <span class="sidepeek-menu-item-icon">${ICONS.external}</span>
-        <span>${t("openOnXDirect")}</span>
-      </button>
-      ${hasNavShare ? `
-      <button type="button" class="sidepeek-menu-item sidepeek-menu-nav-share">
-        <span class="sidepeek-menu-item-icon">${ICONS.webShare}</span>
-        <span>${t("shareVia")}</span>
-      </button>
-      ` : ""}
-    `;
-
-    // Position menu near button
-    const rect = actShare.getBoundingClientRect();
-    const menuWidth = 180;
-    const menuHeight = hasNavShare ? 175 : 130;
-
-    let top = rect.bottom + 6;
-    if (top + menuHeight > window.innerHeight - 8) {
-      top = rect.top - menuHeight - 6;
-    }
-    let left = rect.left - 20;
-    if (left + menuWidth > window.innerWidth - 8) {
-      left = window.innerWidth - menuWidth - 8;
-    }
-    if (left < 8) left = 8;
-
-    menu.style.top = `${Math.round(top)}px`;
-    menu.style.left = `${Math.round(left)}px`;
-
-    menu.querySelector(".sidepeek-menu-copy-link")?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      closeShareMenu();
-      if (model.url) {
-        navigator.clipboard?.writeText(model.url).then(() => {
-          showToast(t("linkCopied"));
-        });
-      }
-    });
-
-    menu.querySelector(".sidepeek-menu-copy-text")?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      closeShareMenu();
-      const rawText = model.text || "";
-      if (rawText) {
-        navigator.clipboard?.writeText(rawText).then(() => {
-          showToast(t("textCopied"));
-        });
-      }
-    });
-
-    menu.querySelector(".sidepeek-menu-open-x")?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      closeShareMenu();
-      if (model.url) window.open(model.url, "_blank");
-    });
-
-    menu.querySelector(".sidepeek-menu-nav-share")?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      closeShareMenu();
-      if (navigator.share) {
-        navigator.share({
-          title: model.author?.name ? `${model.author.name} on X` : "X",
-          text: model.text || "",
-          url: model.url
-        }).catch(() => {});
-      }
-    });
-
-    document.body.appendChild(menu);
-    activeShareMenu = menu;
+    const generation = shareMenuGeneration;
     activeShareBtn = actShare;
+    activeShareTweetId = model.id;
+    actShare.setAttribute("aria-haspopup", "menu");
+    const rect = actShare.getBoundingClientRect();
+    try {
+      const result = await requestPage("OPEN_NATIVE_SHARE", { tweetId: model.id, menuToken: generation,
+        anchor: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } });
+      if (generation !== shareMenuGeneration) return;
+      if (!result?.opened) {
+        closeShareMenu();
+        if (!openNativeMenu(model, 'button[aria-label="Share post"], button[aria-label="分享帖子"], button[aria-label="分享推文"]')) showToast(t("nativeShareNotReady"));
+        return;
+      }
+      actShare.setAttribute("aria-expanded", "true");
+    } catch {
+      if (generation === shareMenuGeneration) { closeShareMenu(); showToast(t("nativeShareNotReady")); }
+    }
   }
 
   // ==========================================================================
@@ -3167,54 +3111,17 @@
     activeRepostBtn = actRepost;
   }
 
-  function handleQuoteAction(model) {
-    const targetId = model.id;
-    const handle = model.author?.handle || "i";
-    const tweetUrl = model.url || `https://x.com/${handle}/status/${targetId}`;
-
-    // 1. Try finding native tweet article on timeline
-    let article = findDetailFocalArticle(targetId);
-    if (!article && state.focalTweetId === targetId) {
-      article = findDetailFocalArticle(targetId);
-    }
-
-    if (article) {
-      const nativeRepostBtn = article.querySelector('[data-testid="retweet"]') || article.querySelector('[data-testid="unretweet"]');
-      if (nativeRepostBtn) {
-        nativeRepostBtn.click();
-        setTimeout(() => {
-          const menuItems = document.querySelectorAll('[role="menu"] [role="menuitem"], [data-testid="Dropdown"] [role="menuitem"], [data-testid="Dropdown"] a[href*="/compose/post"]');
-          let quoteMenuItem = null;
-          for (const item of menuItems) {
-            const text = item.textContent || "";
-            if (item.getAttribute("href")?.includes("/compose/post") || /引用|Quote/i.test(text)) {
-              quoteMenuItem = item;
-              break;
-            }
-          }
-          if (quoteMenuItem) {
-            quoteMenuItem.click();
-            showToast(t("quoteOpenedToast"));
-            return;
-          }
-          openQuoteIntent(tweetUrl);
-        }, 70);
-        return;
-      }
-    }
-
-    // 2. Fallback to Twitter Web Intent
-    openQuoteIntent(tweetUrl);
-  }
-
-  function openQuoteIntent(tweetUrl) {
-    const intentUrl = `https://x.com/intent/tweet?url=${encodeURIComponent(tweetUrl)}`;
-    const popupWidth = 600;
-    const popupHeight = 520;
-    const left = Math.max(0, Math.round((window.screen.width - popupWidth) / 2));
-    const top = Math.max(0, Math.round((window.screen.height - popupHeight) / 2));
-    window.open(intentUrl, "_blank", `width=${popupWidth},height=${popupHeight},left=${left},top=${top},scrollbars=yes,resizable=yes`);
-    showToast(t("quoteOpenedToast"));
+  let nativeQuoteOpening = false;
+  async function handleQuoteAction(model) {
+    if (nativeQuoteOpening) return;
+    if (nativeReplyEditors().length) { showToast(t("nativeDraftAlreadyOpen")); return; }
+    nativeQuoteOpening = true;
+    try {
+      const result = await requestPage("OPEN_NATIVE_QUOTE", { tweetId: model.id });
+      showToast(t(result?.opened ? "quoteOpenedToast" : "nativeQuoteNotReady"));
+    } catch (error) {
+      showToast(t(error.message === "NATIVE_DRAFT_ALREADY_OPEN" ? "nativeDraftAlreadyOpen" : "nativeQuoteNotReady"));
+    } finally { nativeQuoteOpening = false; }
   }
 
   // ==========================================================================
@@ -4412,7 +4319,7 @@
     if (!settingsLoaded) return;
     if (state.isResizing) return;
     if (event.target.closest?.('[data-sidex-native-reply-link]')) return;
-    if (event.target.closest?.("#layers, #sidepeek-user-hovercard, .sidepeek-more-menu, .sidepeek-share-menu, .sidepeek-repost-menu")) return;
+    if (event.target.closest?.("#layers, [data-sidex-native-share], #sidepeek-user-hovercard, .sidepeek-more-menu, .sidepeek-repost-menu")) return;
     if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
 
     // If clicked inside our drawer or lightbox, don't handle as timeline click
@@ -4523,7 +4430,7 @@
         closeMoreMenu();
         return;
       }
-      if (activeShareMenu) {
+      if (activeShareBtn) {
         closeShareMenu();
         return;
       }
@@ -4550,7 +4457,7 @@
     if (activeMoreMenu && !activeMoreMenu.contains(e.target) && (!activeMoreBtn || !activeMoreBtn.contains(e.target))) {
       closeMoreMenu();
     }
-    if (activeShareMenu && !activeShareMenu.contains(e.target) && (!activeShareBtn || !activeShareBtn.contains(e.target))) {
+    if (activeShareBtn && !activeShareBtn.contains(e.target) && !e.target.closest?.("#layers, [data-sidex-native-share]")) {
       closeShareMenu();
     }
   }, true);

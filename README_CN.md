@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-官方商店上架-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.23-00b4f8?style=flat-square" alt="Version 1.1.23" />
+    <img src="https://img.shields.io/badge/Version-1.1.24-00b4f8?style=flat-square" alt="Version 1.1.24" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -46,7 +46,7 @@
 * 📌 **可选固定面板**：固定后，点击外部、按 Esc 和 X 站内导航会保留面板，并高亮对应帖子；仍可切帖或手动关闭。自动固定默认关闭，仅影响新打开的面板。
 * 💬 **快捷回复与官方弹窗**：快捷栏固定为紧凑样式，保留图片、GIF、投票、表情、定时、位置和内容披露（旗帜）7 个入口。文字、表情和最多 4 张 JPG/PNG/WebP 可快捷发送；高级工具在当前页打开 X 官方弹层。选择“官方弹窗”后，点击评论下方的回复图标直接打开官方回复框，不新开浏览器窗口。
 * ✍️ **多条文字草稿**：按帖子和回复对象分别暂存未发送的文字，切回时恢复。切帖和关闭评论区直接响应，不弹出拦截提示。草稿仅在当前标签页保留，刷新页面或关闭标签页后清空；关闭或切换回复后不恢复图片附件。
-* 🔄 **官方交互优先**：同一帖子已在页面原生渲染时，优先使用官方点赞、收藏和菜单，并同步原生状态；其余评论通过 X 会话请求处理。
+* 🔄 **官方交互优先**：引用在当前页面打开 X 官方编辑器并显示原帖卡片；分享复用官方菜单，选项随账号权限和媒体类型变化，也支持主页面未渲染的评论。同一帖子已在页面原生渲染时，优先使用官方点赞、收藏并同步状态；其余评论通过 X 会话请求处理。
 * 🌐 **可选翻译方式**：默认使用 X 官方翻译；可在扩展设置中选择 Google，或隐藏 SideX 翻译按钮，使用已有翻译插件的划词/网页翻译。
 * 👤 **用户悬浮卡**：页面存在对应原生用户入口时，保留官方卡片及其交互，并在侧栏旁显示；其余情况使用包含简介、关注关系和共同关注的后备卡片。
 * 🎨 **主题自适应 & 自由拉伸**：完美自适应浅色（Light）、暗色（Dim）与黑色（Dark）主题；可随意拖拽右边缘调节抽屉宽度。
@@ -108,6 +108,8 @@ npm test
 ```
 
 回归检查使用合成 X 响应和 DOM，覆盖新旧用户资料结构、官方翻译请求、Google 长文分段、原生按钮复用、失败回滚、翻译/展开状态保留、切帖滚动重置和过期请求隔离。测试不会对真实 X 账号执行操作。
+
+1.1.24 修复引用与分享：引用在当前页面打开 X 官方编辑器并显示原帖卡片；分享复用 X 当前加载的官方菜单组件，选项跟随账号权限和帖子媒体类型，也支持主页面未渲染的评论。保留已有草稿；官方组件暂不可用时提示重试。
 
 1.1.23 整合 [PR #2](https://github.com/UncleK/SideX/pull/2)、[PR #3](https://github.com/UncleK/SideX/pull/3) 和 [PR #4](https://github.com/UncleK/SideX/pull/4)，增加可选的面板固定与当前帖高亮、已加载／总回复计数、滚动到底部自动加载、作者串文展开和嵌套分支续载。自动固定和长正文自动展开默认关闭，自动加载默认开启，折叠回复需要主动展开。补充修复普通分页被 Spam 覆盖、导航和原生更新打断在途请求，以及缓存回复及其后续回复未同步可见性的问题。整合后的源码通过 162 项本地回归，保留 v1.1.22 的多条文字草稿行为。中英文弹窗布局与设置写回还通过了使用本地扩展 API 模拟的 Chromium 检查。
 

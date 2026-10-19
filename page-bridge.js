@@ -764,6 +764,195 @@
     return { opened: false };
   }
 
+  // Use X's loaded schemas and React components. Do not copy a timeline
+  // button's handlers: those closures would still act on the timeline post.
+  function nativePostRuntime() {
+    const modules = Object.values(getWebpackRuntime()?.c || {}).map(module => module?.exports).filter(Boolean);
+    let normalize, denormalize, tweetSchema, tweetApi, react, reactDom;
+    for (const exports of modules) {
+      if (Object.hasOwn(exports, "createElement") && typeof exports.createElement === "function" && typeof exports.useState === "function") react = exports;
+      if (Object.hasOwn(exports, "createRoot") && typeof exports.createRoot === "function") reactDom = exports;
+      const values = Object.values(exports);
+      tweetApi ||= values.find(value => value && Object.hasOwn(value, "addTweet") && value.namespace === "tweets" &&
+        typeof value.add === "function" && typeof value.selectHydrated === "function");
+      const normalizer = values.find(value => typeof value === "function" &&
+        Function.prototype.toString.call(value).includes("Unexpected input given to normalize"));
+      if (normalizer) {
+        normalize = normalizer;
+        denormalize = values.find(value => typeof value === "function" && value.length === 3 && value !== normalize);
+      }
+      tweetSchema ||= values.find(value => value?.key === "tweets" && value._idAttribute === "rest_id" &&
+        typeof value.normalize === "function" && typeof value.denormalize === "function");
+    }
+    return { normalize, denormalize, tweetSchema, tweetApi, react, reactDom };
+  }
+
+  function nativeActionTemplate(tweetId) {
+    let fallback = null;
+    for (const button of document.querySelectorAll('article[data-testid="tweet"] button[aria-haspopup="menu"]')) {
+      const key = Object.keys(button).find(name => name.startsWith("__reactFiber$"));
+      let template = null;
+      const providers = [];
+      for (let fiber = key && button[key], depth = 0; fiber && depth < 800; fiber = fiber.return, depth++) {
+        if (!template && typeof fiber.stateNode?._renderShareAction === "function" &&
+            typeof fiber.stateNode?._getShareMenuActionItems === "function") template = fiber;
+        if (fiber.tag === 10 && fiber.memoizedProps && "value" in fiber.memoizedProps) {
+          providers.push({ type: fiber.type, value: fiber.memoizedProps.value });
+        }
+      }
+      if (!template) continue;
+      const found = { template, providers };
+      if (String(template.memoizedProps?.tweet?.id_str) === tweetId) return found;
+      fallback ||= found;
+    }
+    return fallback;
+  }
+
+  function cachedRawTweet(tweetId) {
+    const seen = new Set();
+    function visit(value) {
+      if (!value || typeof value !== "object" || seen.has(value)) return null;
+      seen.add(value);
+      if (value.tweet && String(value.tweet.rest_id) === tweetId && value.tweet.legacy && value.tweet.core) {
+        return { ...value.tweet, limitedActionResults: value.limitedActionResults || value.tweet.limitedActionResults,
+          mediaVisibilityResults: value.mediaVisibilityResults || value.tweet.mediaVisibilityResults };
+      }
+      if (String(value.rest_id || value.legacy?.id_str || "") === tweetId && value.legacy && value.core) return value;
+      for (const child of Object.values(value)) {
+        const found = visit(child);
+        if (found) return found;
+      }
+      return null;
+    }
+    for (const entry of [...observedThreadCache.values()].reverse()) {
+      const found = visit(entry.json);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  async function nativeTweet(tweetId, template, runtime) {
+    const existing = template?.memoizedProps?.tweet;
+    if (String(existing?.id_str) === tweetId) return existing;
+    const store = template?.stateNode?.context?.store;
+    const hydrated = store && runtime.tweetApi?.selectHydrated(store.getState(), tweetId);
+    if (String(hydrated?.id_str) === tweetId && hydrated.user?.screen_name) return hydrated;
+    let raw = cachedRawTweet(tweetId);
+    if (!raw) {
+      const json = await readThread(tweetId);
+      cacheThreadResponse(tweetId, "", json);
+      raw = cachedRawTweet(tweetId);
+    }
+    if (!raw || !runtime.normalize || !runtime.denormalize || !runtime.tweetSchema) return null;
+    // Import real source entities through X's own cache action. Its Quote and
+    // Chat previews select the target from that cache, even with router data.
+    const result = runtime.normalize(raw, runtime.tweetSchema);
+    if (store && runtime.tweetApi) {
+      store.dispatch({ ...runtime.tweetApi.add({}), payload: result.entities });
+      const tweet = runtime.tweetApi.selectHydrated(store.getState(), tweetId);
+      if (String(tweet?.id_str) === tweetId && tweet.user?.screen_name) return tweet;
+    }
+    const tweet = runtime.denormalize(result.result, runtime.tweetSchema, result.entities);
+    if (String(tweet?.id_str) !== tweetId || !tweet.user?.screen_name) return null;
+    // The normalizer supplies entities; X's hydrated selector adds this link.
+    // Quote previews and Copy link both require it even with a complete tweet.
+    return { ...tweet, permalink: tweet.permalink || `/${tweet.user.screen_name}/status/${tweetId}` };
+  }
+
+  function hasNativeComposer() {
+    return [...document.querySelectorAll('#layers [role="dialog"] [data-testid="tweetTextarea_0"]')]
+      .some(editor => !editor.closest('[role="dialog"]')?.querySelector('[data-testid="swipe-to-dismiss"]'));
+  }
+
+  async function openNativeQuote(tweetId) {
+    if (hasNativeComposer()) throw new Error("NATIVE_DRAFT_ALREADY_OPEN");
+    const { template } = nativeActionTemplate(tweetId) || {};
+    const tweet = await nativeTweet(tweetId, template, nativePostRuntime());
+    if (!tweet) return { opened: false };
+    // This is the state used by X's actual Quote menu item, rather than a
+    // Web Intent URL which pastes a bare link into the editable text.
+    const router = template?.memoizedProps?.history;
+    if (typeof router?.push !== "function") return { opened: false };
+    // A composer may have opened while the target was being read.
+    if (hasNativeComposer()) throw new Error("NATIVE_DRAFT_ALREADY_OPEN");
+    router.push("/compose/post", { quotedStatus: tweet, fromApp: true, previousPath: location.pathname + location.search });
+    return { opened: true };
+  }
+
+  let nativeShareSession = null;
+  let nativeShareGeneration = 0;
+  function closeNativeShare() {
+    nativeShareGeneration++;
+    nativeShareSession?.close();
+    nativeShareSession = null;
+    return { closed: true };
+  }
+
+  async function openNativeShare(tweetId, anchor, menuToken) {
+    closeNativeShare();
+    const generation = nativeShareGeneration;
+    if (!anchor || ![anchor.left, anchor.top, anchor.width, anchor.height].every(Number.isFinite)) return { opened: false };
+    const found = nativeActionTemplate(tweetId);
+    const runtime = nativePostRuntime();
+    if (!found || !runtime.react || !runtime.reactDom) return { opened: false };
+    const { template, providers } = found;
+    const tweet = await nativeTweet(tweetId, template, runtime);
+    if (!tweet || generation !== nativeShareGeneration) return { opened: false };
+    const React = runtime.react;
+    const Base = template.type;
+    class NativeShare extends Base {
+      render() { return this._renderShareAction({ color: "gray700", iconSize: "normal", withCount: false }); }
+    }
+    const host = document.createElement("div");
+    host.dataset.sidexNativeShare = tweetId;
+    Object.assign(host.style, { position: "fixed", left: `${anchor.left}px`, top: `${anchor.top}px`,
+      width: `${anchor.width}px`, height: `${anchor.height}px`, zIndex: "2147483646" });
+    // The drawer is transformed, so a fixed child would add the drawer's
+    // offset a second time. Keep the native anchor in viewport coordinates.
+    document.body.append(host);
+    return new Promise(resolve => {
+      let root, observer, timer, clicked = false, opened = false, settled = false, closed = false;
+      const finish = value => { if (!settled) { settled = true; resolve({ opened: value }); } };
+      const close = () => {
+        if (closed) return;
+        closed = true;
+        clearTimeout(timer);
+        observer?.disconnect();
+        root?.unmount();
+        host.remove();
+        if (nativeShareSession?.close === close) nativeShareSession = null;
+        window.postMessage({ source: PAGE_SOURCE, type: "NATIVE_SHARE_CLOSED", tweetId, menuToken }, location.origin);
+        finish(false);
+      };
+      nativeShareSession = { close };
+      try {
+        // Replace every target-specific prop. Retain X's providers and bound
+        // session actions so folders, Chat and media use their official flows.
+        let tree = React.createElement(NativeShare, { ...template.memoizedProps, ref: undefined,
+          id: tweetId, tweet, isFocalTweet: false, liveCounts: {}, promotedContent: undefined,
+          socialContext: undefined, forwardPivotInfo: undefined, nudges: undefined,
+          bookmarkFolderId: undefined, withRemoveFromBookmarks: false });
+        for (const { type, value } of providers) tree = React.createElement(type, { value }, tree);
+        observer = new MutationObserver(() => {
+          if (!host.isConnected || generation !== nativeShareGeneration) { close(); return; }
+          const button = host.querySelector('button[aria-haspopup="menu"]');
+          if (!button) return;
+          if (!clicked) {
+            if (button.disabled || button.getAttribute("aria-disabled") === "true") { close(); return; }
+            clicked = true;
+            button.click();
+          } else if (button.getAttribute("aria-expanded") === "true" && document.querySelector('#layers [role="menu"]')) {
+            opened = true; clearTimeout(timer); finish(true);
+          } else if (opened && button.getAttribute("aria-expanded") !== "true") close();
+        });
+        observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["aria-expanded"] });
+        timer = setTimeout(close, 2500);
+        root = runtime.reactDom.createRoot(host, { onUncaughtError: () => setTimeout(close, 0) });
+        root.render(tree);
+      } catch { close(); }
+    });
+  }
+
   window.addEventListener("message", async (event) => {
     if (event.source !== window || event.origin !== location.origin) return;
     const message = event.data;
@@ -841,6 +1030,9 @@
     try {
       let payload;
       if (message.type === "OPEN_NATIVE_REPLY") payload = openNativeReply(tweetId, message.quickTool === true);
+      else if (message.type === "OPEN_NATIVE_QUOTE") payload = await openNativeQuote(tweetId);
+      else if (message.type === "OPEN_NATIVE_SHARE") payload = await openNativeShare(tweetId, message.anchor, message.menuToken);
+      else if (message.type === "CLOSE_NATIVE_SHARE") payload = closeNativeShare();
       else if (message.type === "READ_THREAD") {
         payload = await readThread(tweetId, message.cursor);
         // Preserve replies SideX itself already loaded before switching to a

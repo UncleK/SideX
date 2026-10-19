@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-Available-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.23-00b4f8?style=flat-square" alt="Version 1.1.23" />
+    <img src="https://img.shields.io/badge/Version-1.1.24-00b4f8?style=flat-square" alt="Version 1.1.24" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -46,7 +46,7 @@
 * 📌 **Optional panel pinning**: Keep the panel open across outside clicks, Esc and X navigation, with the active post highlighted. You can still switch posts or close the panel manually. Automatic pinning defaults to off and applies to newly opened panels.
 * 💬 **Quick replies and official dialogs**: The compact quick toolbar has seven entries: images, GIFs, polls, emoji, scheduling, location and content disclosure (flag). Send text, emoji and up to four JPG/PNG/WebP images directly. Advanced tools open X's actual dialogs above the sidebar. In Official mode, clicking a comment's reply icon opens the official reply dialog in the current page without another browser window.
 * ✍️ **Separate text drafts**: Switch posts and close comments freely without a prompt. Unsent text is kept separately per post and reply target in the current tab and restored on return. Refreshing the page or closing the tab clears these drafts; image attachments are not retained after closing or switching replies.
-* 🔄 **Native interactions first**: Reuse native like, bookmark, and menu controls when the same post is rendered on the page; other comments use X session requests.
+* 🔄 **Native interactions first**: Quotes open X's official in-page composer with the original-post card. Sharing uses X's official menu with account and media-specific options, even for replies absent from the native timeline. Reuse native like and bookmark controls when the same post is rendered on the page; other comments use X session requests.
 * 🌐 **Translation options**: Use X official translation by default, choose Google, or hide SideX translation controls and use your existing translator's selection/page translation.
 * 👤 **Profile hover cards**: Reuse the actual X card next to the sidebar when a matching native profile link exists; otherwise show a fallback with biography, relationship counts, and followers you know.
 * 🎨 **Adaptive Themes & Resizable**: Matches X's Light, Dim, and Dark themes. Drag the right edge to adjust sidebar width.
@@ -108,6 +108,8 @@ npm test
 ```
 
 Tests use synthetic X responses and DOM fixtures without performing real account actions. They cover profile parsing, translation requests, long-text chunking, native controls, rollback, retained reading state, scroll reset, and stale responses. X internals and third-party translation extensions may change. Without a matching native profile link, SideX renders a fallback with a full-profile link rather than simulating Grok's Profile Summary button; comments without native nodes are still rendered by SideX.
+
+Version 1.1.24 opens quotes in X's official in-page composer with the original-post card. Sharing uses X's loaded menu component, including its account and media-specific options, even for replies absent from the native timeline. Existing drafts are preserved; unavailable native controls show a retry message.
 
 Version 1.1.23 integrates [PR #2](https://github.com/UncleK/SideX/pull/2), [PR #3](https://github.com/UncleK/SideX/pull/3) and [PR #4](https://github.com/UncleK/SideX/pull/4): optional panel pinning with an active-post marker, loaded/total reply counts, near-bottom loading, author-thread unfolding and scoped nested pagination. Auto-pin and automatic long-text expansion default to off; automatic pagination defaults to on. Folded replies require an explicit reveal action. Additional fixes preserve normal pagination before Spam, retain pending requests through navigation and native observations, and apply visibility updates to cached replies and their descendants. The combined source passes 162 local regression cases and keeps the v1.1.22 text-only draft behavior. Chinese and English popup layouts and setting writes were also checked in Chromium using a local extension-API fixture.
 

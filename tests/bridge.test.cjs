@@ -201,6 +201,147 @@ test('native replies use X router state for the exact target without navigation,
   assert.equal(modal.textContent, 'Other draft');
 });
 
+function nativeMenuFixture(w) {
+  const routed = [], normalized = [], rendered = [], copied = [], imports = [];
+  const store = { state: { tweets: {} }, getState() { return this.state; },
+    dispatch(action) { imports.push(action); this.state.tweets = { ...this.state.tweets, ...action.payload.tweets }; } };
+  const original = { id_str: '100', user: { screen_name: 'timeline' }, permalink: '/timeline/status/100' };
+  class NativeActions {
+    constructor(props) { this.props = props; this.context = { store }; }
+    _getShareMenuActionItems() {}
+    _renderShareAction() { return this.props.tweet; }
+  }
+  const props = { tweet: original, id: '100', history: { push: (...args) => routed.push(args) }, promotedContent: { id: 'original-ad' } };
+  const Provider = {};
+  const react = { useState() {}, createElement: (type, props, children) => ({ type, props, children }) };
+  const reactDom = { createRoot(host) {
+    let menu;
+    return {
+      render(tree) {
+        queueMicrotask(() => {
+          const providers = [];
+          while (tree.type === Provider) { providers.push(tree.props.value); tree = tree.children; }
+          const instance = new tree.type(tree.props);
+          const target = instance.render();
+          rendered.push({ props: tree.props, target, providers });
+          const button = w.document.createElement('button');
+          button.setAttribute('aria-haspopup', 'menu'); button.setAttribute('aria-expanded', 'false');
+          button.addEventListener('click', () => {
+            menu = w.document.createElement('div'); menu.setAttribute('role', 'menu');
+            const copy = w.document.createElement('button'); copy.textContent = 'Copy link';
+            copy.addEventListener('click', () => { copied.push(target.permalink); menu.remove(); button.setAttribute('aria-expanded', 'false'); });
+            menu.append(copy); w.document.querySelector('#layers').append(menu); button.setAttribute('aria-expanded', 'true');
+          });
+          host.append(button);
+        });
+      },
+      unmount() { menu?.remove(); host.replaceChildren(); }
+    };
+  } };
+  const schema = { key: 'tweets', _idAttribute: 'rest_id', normalize() {}, denormalize() {} };
+  function normalize(raw) {
+    // Unexpected input given to normalize: match the loaded normalizr API.
+    normalized.push(raw);
+    const value = { ...raw.legacy, id_str: raw.rest_id, note_tweet: raw.note_tweet,
+      limited_action_results: raw.limitedActionResults, extended_entities: raw.legacy.extended_entities,
+      user: { screen_name: raw.core.user_results.result.core.screen_name } };
+    return { result: raw.rest_id, entities: { tweets: { [raw.rest_id]: value } } };
+  }
+  function denormalize(id, schema, entities) { return entities.tweets[id]; }
+  const tweetApi = { namespace: 'tweets', addTweet() {}, add: tweets => ({ type: 'native/add-entities', payload: { tweets } }),
+    selectHydrated: (state, id) => {
+      const value = state.tweets[id];
+      return value && { ...value, permalink: `/${value.user.screen_name}/status/${id}` };
+    } };
+  const runtime = { c: { react: { exports: react }, dom: { exports: reactDom }, schema: { exports: { schema } },
+    normalizer: { exports: { normalize, denormalize } }, api: { exports: { tweetApi } } }, m: {} };
+  w.webpackChunkMenuFixture = [];
+  w.webpackChunkMenuFixture.push = entry => entry[2](runtime);
+  w.document.body.innerHTML = '<main><article data-testid="tweet"><button aria-haspopup="menu">Native share</button></article></main>' +
+    '<div id="layers"></div><aside id="sidepeek-drawer-root"></aside>';
+  let parent = { tag: 10, type: Provider, memoizedProps: { value: 'outer-X-context' } };
+  for (let i = 0; i < 350; i++) parent = { return: parent };
+  w.document.querySelector('button').__reactFiber$fixture = { return: { type: NativeActions,
+    stateNode: new NativeActions(props), memoizedProps: props, return: parent } };
+  return { routed, normalized, rendered, copied, original, props, imports };
+}
+
+test('quoting a sidebar-only reply uses native schemas and a hydrated permalink for the exact post', async t => {
+  let fixture;
+  const raw = tweet('123', '100', 'Source text');
+  raw.note_tweet = { note_tweet_results: { result: { id: 'note', text: 'Long source text' } } };
+  raw.legacy.extended_entities = { media: [{ type: 'video', media_key: 'source-media' }] };
+  const restrictions = { limited_actions: [{ action: 'SendViaDm' }] };
+  const b = bridge(() => ({ ok: true, json: async () => ({ data: { result: { tweet: raw, limitedActionResults: restrictions } } }) }),
+    w => { fixture = nativeMenuFixture(w); });
+  t.after(() => b.w.close());
+  await b.w.fetch('/i/api/graphql/observed/TweetDetail?variables=%7B%7D');
+  assert.equal((await b.send({ type: 'OPEN_NATIVE_QUOTE', tweetId: '123' })).opened, true);
+  const [path, state] = fixture.routed[0];
+  assert.equal(path, '/compose/post');
+  assert.equal(state.quotedStatus.id_str, '123');
+  assert.equal(state.quotedStatus.permalink, '/reader/status/123');
+  assert.equal(state.quotedStatus.note_tweet, raw.note_tweet);
+  assert.equal(state.quotedStatus.extended_entities, raw.legacy.extended_entities);
+  assert.equal(state.quotedStatus.limited_action_results, restrictions);
+  assert.equal(fixture.imports.length, 1);
+  assert.equal(fixture.imports[0].payload.tweets['123'].id_str, '123');
+  assert.equal(state.previousPath, '/home');
+  assert.equal(fixture.props.tweet, fixture.original);
+  assert.equal(fixture.original.id_str, '100');
+  assert.equal(b.requests.every(request => !request.method || request.method === 'GET'), true);
+});
+
+test('native share targets the sidebar reply, inherits the full provider chain and cleans up after Copy link', async t => {
+  let fixture;
+  const b = bridge(() => ({ ok: true, json: async () => ({ data: tweet('123') }) }), w => { fixture = nativeMenuFixture(w); });
+  t.after(() => b.w.close());
+  await b.w.fetch('/i/api/graphql/observed/TweetDetail?variables=%7B%7D');
+  assert.equal((await b.send({ type: 'OPEN_NATIVE_SHARE', tweetId: '123', menuToken: 7,
+    anchor: { left: 800, top: 300, width: 34, height: 34 } })).opened, true);
+  assert.equal(fixture.rendered[0].target.id_str, '123');
+  assert.deepEqual(fixture.rendered[0].providers, ['outer-X-context']);
+  assert.equal(fixture.rendered[0].props.promotedContent, undefined);
+  assert.equal(fixture.props.promotedContent.id, 'original-ad');
+  const host = b.w.document.querySelector('[data-sidex-native-share]');
+  assert.equal(host.parentElement, b.w.document.body, 'viewport anchor must stay outside the transformed drawer');
+  assert.equal(host.style.left, '800px');
+  b.w.document.querySelector('[role="menu"] button').click(); await tick();
+  assert.deepEqual(fixture.copied, ['/reader/status/123']);
+  assert.equal(b.w.document.querySelector('[data-sidex-native-share]'), null);
+  assert.equal(fixture.props.tweet, fixture.original);
+});
+
+test('canceling a pending native share prevents a late target read from reopening its menu', async t => {
+  let fixture, finish, waiting = false;
+  const b = bridge(() => waiting ? new Promise(resolve => { finish = resolve; }) : { ok: true, json: async () => ({ data: {} }) },
+    w => { fixture = nativeMenuFixture(w); });
+  t.after(() => b.w.close());
+  await b.w.fetch('/i/api/graphql/observed/TweetDetail?variables=%7B%7D'); waiting = true;
+  const pending = b.send({ type: 'OPEN_NATIVE_SHARE', tweetId: '123', anchor: { left: 0, top: 0, width: 34, height: 34 } });
+  await tick();
+  await b.send({ type: 'CLOSE_NATIVE_SHARE', tweetId: '123' });
+  finish({ ok: true, json: async () => ({ data: tweet('123') }) });
+  assert.equal((await pending).opened, false);
+  assert.equal(fixture.rendered.length, 0);
+});
+
+test('an official composer opened during quote loading keeps its draft and prevents a second composer', async t => {
+  let fixture, finish, waiting = false;
+  const b = bridge(() => waiting ? new Promise(resolve => { finish = resolve; }) : { ok: true, json: async () => ({ data: {} }) },
+    w => { fixture = nativeMenuFixture(w); });
+  t.after(() => b.w.close());
+  await b.w.fetch('/i/api/graphql/observed/TweetDetail?variables=%7B%7D'); waiting = true;
+  const pending = b.send({ type: 'OPEN_NATIVE_QUOTE', tweetId: '123' });
+  const checked = assert.rejects(pending, /NATIVE_DRAFT_ALREADY_OPEN/);
+  await tick();
+  b.w.document.querySelector('#layers').innerHTML = '<div role="dialog"><div data-testid="tweetTextarea_0">Keep my draft</div></div>';
+  finish({ ok: true, json: async () => ({ data: tweet('123') }) });
+  await checked;
+  assert.equal(fixture.routed.length, 0);
+  assert.equal(b.w.document.querySelector('[data-testid="tweetTextarea_0"]').textContent, 'Keep my draft');
+});
+
 test('an ambiguous long-post failure never retries through another publication operation', async t => {
   const b = bridge(() => ({ ok: false, status: 503, json: async () => ({ errors: [{ message: 'Temporary failure' }] }) }));
   t.after(() => b.w.close());

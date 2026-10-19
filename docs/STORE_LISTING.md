@@ -16,16 +16,17 @@ FEATURES
 • Text drafts: keep separate drafts per post and reply target, restored on return. Switch posts or close comments freely without a prompt. Drafts last until you refresh the page or close the tab; images are not saved with drafts.
 • Photo comments: choose SideX or Official comments beside photos, independently of reply mode. Collapse for a full-width image and expand with reading position and drafts retained.
 • Quoted posts: expand and collapse quoted text in place from a three-line preview.
+• Quote and share: open X's official quote composer with the original-post card, and use X's official share menu with account and media-specific options, including for replies absent from the native timeline.
 • Native interactions: reuse X controls when the matching native post is present. Other comments use your active X session.
 • Profile cards: show the actual X hover card when a matching native profile link is available. Otherwise, show a fallback with biography, relationship counts and followers you know.
 • Translation choices: use X official translation, choose Google, or use your existing translation extension's selection/page translation.
 • Appearance: follows X's theme and supports an adjustable sidebar width.
 
-WHAT'S NEW IN 1.1.23
-• Added optional panel pinning, active-post highlighting, automatic reply loading and author-thread unfolding.
-• Added loaded/total reply counts, an optional long-text expansion setting and independent continuation controls for nested reply branches.
-• Fixed ordinary pagination being replaced by Spam pagination, pending loads being interrupted by navigation or native updates, and cached replies not following X's updated visibility.
-• Keeps separate text-only drafts and free post switching. Auto-pin and long-text expansion are off by default; automatic pagination is on. Images and native tool selections are not saved as drafts.
+WHAT'S NEW IN 1.1.24
+• Quotes open X's official composer in the current page with the original-post card, replacing the bare-link popup.
+• Sharing uses X's actual menu component; its options follow account permissions and the post's media.
+• Supports replies shown only in SideX, anchors the share menu beside the selected comment, and preserves existing drafts.
+• Dismissed menus cannot reopen after a late response. Unavailable native controls show a retry message.
 
 PRIVACY
 SideX runs in your browser and has no SideX relay server or analytics service. It processes the X content you open and uses your current X session for authenticated requests. Text drafts stay temporarily in the current page and are not synced. Replies and selected attachments go to X. If you select Google translation and click Translate, the post text is sent directly to Google. X authentication information is not sent to Google. Other translation extensions follow their own settings and privacy policies.
@@ -56,16 +57,17 @@ SideX 把 X 的评论区放到右侧。点击帖子正文或空白处，在保�
 • 按帖子和回复对象分别保留文字草稿，切回时恢复；切帖、关闭直接响应，不弹出拦截提示。草稿在刷新页面或关闭标签页后清空，不保存图片附件。
 • 图片旁评论区可选 SideX 或官方样式，与回复模式分别设置；收起看大图，展开保留评论位置和草稿。
 • 引用正文默认最多 3 行，可就地展开和收起。
+• 引用操作在当前页面打开 X 官方编辑器并显示原帖卡片；分享使用 X 官方菜单，选项跟随账号权限和媒体类型，也支持主页面未渲染的评论。
 • 页面有对应原生帖子时，优先复用官方交互；其余评论通过当前 X 会话处理。
 • 页面有对应原生用户入口时，显示完整官方悬浮卡；否则显示包含简介、关注数字和共同关注的后备卡片。
 • 默认使用 X 官方翻译，也可选择 Google，或使用已有翻译插件的划词／网页翻译。
 • 跟随 X 主题，支持调整侧栏宽度。
 
-1.1.23 更新
-• 新增可选的面板固定、当前帖高亮、自动加载评论和作者串文展开。
-• 新增已加载／总回复计数、长正文自动展开选项，以及嵌套分支独立续载入口。
-• 修复普通分页被 Spam 覆盖、导航或原生更新打断加载，以及缓存回复未同步 X 可见性的问题。
-• 保留多条文字草稿和自由切帖。自动固定、长正文自动展开默认关闭，自动加载默认开启；图片和官方工具选项不存入草稿。
+1.1.24 更新
+• 引用在当前页面打开 X 官方编辑器并显示原帖卡片，修复弹窗仅带裸链接的问题。
+• 分享直接使用 X 官方菜单组件，选项跟随账号权限和帖子的媒体类型。
+• 支持只在 SideX 中显示的评论，分享菜单定位在所选评论旁，并保留已有草稿。
+• 关闭菜单后，迟到的请求不会重新打开菜单；官方组件暂不可用时提示重试。
 
 隐私说明
 SideX 在浏览器中运行，没有 SideX 中转或统计服务器。扩展处理你打开的 X 内容，并复用当前 X 会话；文字草稿仅在当前页面暂存，不参与同步，回复及选择的附件发送给 X。只有选择 Google 翻译并点击翻译时，正文才会直接发送给 Google，X 认证信息不会发给 Google。已有翻译插件遵循各自的设置和隐私政策。

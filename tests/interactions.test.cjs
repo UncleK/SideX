@@ -266,6 +266,64 @@ test('native buttons and menus are reused, and native rollback updates the sideb
   assert.equal(p.query('.sidepeek-more-menu'), null);
 });
 
+test('Quote opens the exact sidebar target in the official composer once and preserves the quick draft', async t => {
+  let finish;
+  const p = createPage({ request: m => m.type === 'OPEN_NATIVE_QUOTE' ? new Promise(resolve => { finish = resolve; }) : thread(m.tweetId) });
+  t.after(() => p.w.close());
+  p.w.open = () => assert.fail('Quote must not open a Web Intent popup');
+  await tick(); p.clickPost(0); await tick();
+  const editor = p.query('.sidepeek-footer-textarea'); editor.value = 'Keep this reply';
+  editor.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+  for (let i = 0; i < 2; i++) {
+    p.query('.sidepeek-act-repost').click(); p.query('.sidepeek-menu-act-quote').click();
+  }
+  await tick();
+  assert.equal(p.calls.filter(m => m.type === 'OPEN_NATIVE_QUOTE').length, 1);
+  assert.equal(p.calls.find(m => m.type === 'OPEN_NATIVE_QUOTE').tweetId, '101');
+  finish({ opened: true }); await tick();
+  assert.equal(editor.value, 'Keep this reply');
+  assert.equal(p.w.location.pathname, '/home');
+  assert.equal(p.calls.some(m => m.type === 'CREATE_REPLY' || m.type === 'TOGGLE_ACTION'), false);
+});
+
+test('an unavailable native quote reports the failure without pasting a URL or opening another window', async t => {
+  const p = createPage({ request: m => m.type === 'OPEN_NATIVE_QUOTE' ? { opened: false } : thread(m.tweetId) });
+  t.after(() => p.w.close()); p.w.open = () => assert.fail('No bare-link fallback');
+  await tick(); p.clickPost(0); await tick();
+  p.query('.sidepeek-act-repost').click(); p.query('.sidepeek-menu-act-quote').click(); await tick();
+  assert.match(p.query('#sidepeek-toast').textContent, /官方引用暂时不可用/);
+  assert.equal(p.query('.sidepeek-footer-textarea').value, '');
+});
+
+test('Share uses the official menu at the sidebar anchor and stale dismissal cannot clear a newer menu', async t => {
+  const p = createPage({ request: m => /NATIVE_SHARE$/.test(m.type) ? { opened: true } : thread(m.tweetId) });
+  t.after(() => p.w.close());
+  await tick(); p.clickPost(0); await tick();
+  const button = p.query('.sidepeek-act-share');
+  button.getBoundingClientRect = () => ({ left: 700, top: 200, width: 40, height: 34 });
+  button.click(); await tick();
+  const first = p.calls.find(m => m.type === 'OPEN_NATIVE_SHARE');
+  assert.equal(first.tweetId, '101');
+  assert.deepEqual({ ...first.anchor }, { left: 700, top: 200, width: 40, height: 34 });
+  assert.equal(button.getAttribute('aria-expanded'), 'true');
+  assert.equal(p.query('.sidepeek-share-menu'), null);
+  const host = p.w.document.createElement('div'); host.dataset.sidexNativeShare = '101';
+  const native = p.w.document.createElement('button'); host.append(native); p.w.document.body.append(host);
+  native.click();
+  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), true);
+  host.remove();
+  button.click(); await tick();
+  const second = p.calls.filter(m => m.type === 'OPEN_NATIVE_SHARE').at(-1);
+  const notify = menuToken => p.w.dispatchEvent(new p.w.MessageEvent('message', { source: p.w, origin: p.w.location.origin,
+    data: { source: 'sidepeek-page', type: 'NATIVE_SHARE_CLOSED', tweetId: '101', menuToken } }));
+  notify(first.menuToken);
+  assert.equal(button.getAttribute('aria-expanded'), 'true');
+  notify(second.menuToken);
+  assert.equal(button.getAttribute('aria-expanded'), 'false');
+  p.w.document.dispatchEvent(new p.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), false);
+});
+
 test('an absent native reply never clicks an unrelated post containing its quoted link', async t => {
   const p = createPage({ settings: { sidex_reply_mode: 'native' } }); t.after(() => p.w.close());
   const article = p.w.document.querySelector('article');
