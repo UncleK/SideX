@@ -427,7 +427,7 @@
     else delete variables.cursor;
     url.searchParams.set("variables", JSON.stringify(variables));
     const headers = { ...template.headers, ...await requestHeaders(url.pathname, template.method, false) };
-    const response = await fetch(url.toString(), {
+    const response = await nativeFetch(url.toString(), {
       method: template.method,
       headers,
       credentials: "include",

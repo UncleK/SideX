@@ -337,7 +337,49 @@ function observers() {
   } }, all };
 }
 
-test('automatic outer and inline pages are single-flight and respond immediately to the preference', async t => {
+test('a branch click loads one scoped page without prefetching siblings or following visible cursors', async t => {
+  const io = observers();
+  const first = detail([
+    moduleEntry('101', [tweet('101', '100'), tweet('102', '101')], 'a'),
+    moduleEntry('110', [tweet('110', '100'), tweet('111', '110', 'UNCHANGED_SIBLING')], 'b')
+  ], { bottom: 'outer', end: false });
+  const p = await open(t, m => !m.cursor ? first : detail([
+    moduleEntry('101', [tweet('103', '102')], 'a-next'),
+    moduleEntry('110', [tweet('111', '110', 'UNRELATED_UPDATE'), tweet('112', '110')], 'b-unrelated')
+  ], { posts: [tweet('120', '100')], bottom: 'unrelated-outer', end: false }),
+    { sidex_sub_reply_limit: 3 }, io.setup);
+  assert.equal(p.calls.length, 1, 'preview limits do not fetch other branches');
+  p.query('.sidepeek-inline-load-more-btn').click(); await tick();
+  assert.equal(p.calls.length, 2);
+  assert.equal(p.calls.at(-1).tweetId, '100', 'the opaque cursor keeps its original request scope');
+  assert.equal(p.calls.at(-1).cursor, 'a');
+  assert.ok(p.query('[data-id="103"]'));
+  assert.match(p.query('[data-id="111"]').textContent, /UNCHANGED_SIBLING/);
+  assert.equal(p.query('[data-id="112"]'), null);
+  assert.equal(p.query('[data-id="120"]'), null);
+  io.fire(); io.fire(); await tick();
+  assert.equal(p.calls.length, 2, 'no automatic next page, sibling page or outer page while reading this branch');
+  p.w.document.querySelectorAll('.sidepeek-inline-load-more-btn')[1].click(); await tick();
+  assert.equal(p.calls.at(-1).cursor, 'b', 'an unrelated response cannot replace the sibling cursor');
+});
+
+test('branch pagination ignores sibling unavailability and unrelated progress', async t => {
+  const first = detail([
+    moduleEntry('101', [tweet('101', '100'), tweet('102', '101')], 'a'),
+    moduleEntry('110', [tweet('110', '100'), tweet('111', '110')], 'b')
+  ]);
+  const next = detail([moduleEntry('101', [], 'a-next')], { posts: [tweet('120', '100')] });
+  next.data.instructions[0].entries.push({ entryId: 'tweet-110',
+    content: { itemContent: { tweet_results: { result: { __typename: 'TweetUnavailable' } } } } });
+  const p = await open(t, m => m.cursor ? next : first);
+  p.query('.sidepeek-inline-load-more-btn').click(); await tick();
+  assert.ok(p.query('[data-id="110"]'));
+  assert.ok(p.query('[data-id="111"]'));
+  assert.equal(p.query('[data-id="120"]'), null);
+  assert.ok(p.query('.sidepeek-inline-pagination .sidepeek-pagination-paused'), 'only progress in the selected branch counts');
+});
+
+test('automatic outer pages are single-flight and respond immediately to the preference', async t => {
   const io = observers(); let resolve;
   const p = await open(t, m => m.cursor ? new Promise(r => { resolve = r; })
     : detail([moduleEntry('101', [tweet('101', '100'), tweet('102', '101')], 'a')], { bottom: 'outer', end: false }),
@@ -353,21 +395,21 @@ test('automatic outer and inline pages are single-flight and respond immediately
   assert.equal(p.query('.sidepeek-pagination-end'), null);
 });
 
-test('inline automation only observes visible continuations and ignores late callbacks and responses', async t => {
+test('inline pages stay manual and ignore late responses after switching posts', async t => {
   const io = observers(); let resolve;
   const p = await open(t, m => m.cursor ? new Promise(r => { resolve = r; })
     : m.tweetId === '200' ? detail([], { posts: [tweet('200')] }) : initial(), {}, io.setup);
-  const old = io.all.find(o => o.targets.length); assert.ok(old);
-  io.fire(); await tick();
+  io.fire(); await tick(); assert.equal(p.calls.length, 1);
+  p.query('.sidepeek-inline-load-more-btn').click(); await tick();
   p.clickPost(1); await tick();
-  old.callback([{ isIntersecting: true }]);
+  io.fire();
   resolve(detail([moduleEntry('101', [tweet('103', '102')])], { posts: [] })); await tick();
   assert.equal(p.query('[data-id="103"]'), null);
   assert.equal(p.query('.sidepeek-inline-load-more-btn'), null);
   assert.equal(p.calls.filter(m => m.cursor).length, 1);
 });
 
-test('a folded preview must be expanded before its inline continuation is observed', async t => {
+test('a folded preview must be expanded before its manual inline continuation is available', async t => {
   const io = observers();
   const posts = [tweet('101', '100'), tweet('102', '101'), tweet('103', '102')];
   for (const post of posts) post.core.user_results.result.rest_id = 'other-author';
@@ -376,6 +418,7 @@ test('a folded preview must be expanded before its inline continuation is observ
   io.fire(); await tick(); assert.equal(p.calls.length, 1);
   p.query('.sidepeek-thread-group .sidepeek-expand-btn').click(); await tick();
   assert.ok(p.query('.sidepeek-inline-load-more-btn'));
+  io.fire(); await tick(); assert.equal(p.calls.length, 1);
 });
 
 test('gated inline continuations are not exposed or fetched before explicit expansion', async t => {

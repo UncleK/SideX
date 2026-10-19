@@ -69,6 +69,57 @@ test('inline completion stays hidden while the outer list has more pages, and br
   assert.ok(p.query('.sidepeek-body > .sidepeek-pagination .sidepeek-load-more-btn'));
 });
 
+test('a clicked subthread loads one page and collapsing it never starts another page', async t => {
+  const io = observers();
+  const p = await open(t, m => m.tweetId === '101'
+    ? page({ focal: false, replies: [tweet('101', '100'), tweet('102', '101')], cursor: 'branch-next' })
+    : m.cursor ? page({ replies: [tweet('120', '100')], end: 'Bottom' })
+      : page({ replies: [tweet('101', '100'), tweet('110', '100')], cursor: 'outer-next' }), io.setup);
+  p.query('.sidepeek-fetch-replies-btn').click(); await tick();
+  assert.equal(p.calls.length, 2);
+  assert.equal(p.calls.at(-1).tweetId, '101');
+  io.fire(); io.fire(); await tick();
+  assert.equal(p.calls.length, 2, 'neither the branch nor the outer list follows another cursor');
+  p.query('.sidepeek-collapse-btn').click(); await tick();
+  io.fire(); await tick();
+  assert.equal(p.calls.length, 2, 'collapsing does not load other posts');
+  p.query('.sidepeek-body > .sidepeek-pagination .sidepeek-load-more-btn').click(); await tick();
+  assert.equal(p.calls.length, 3);
+  assert.equal(p.calls.at(-1).tweetId, '100');
+  assert.equal(p.calls.at(-1).cursor, 'outer-next');
+  io.fire(); await tick(); assert.equal(p.calls.length, 3);
+});
+
+test('an older automatic list response cannot add other posts after a branch is clicked', async t => {
+  const io = observers(); let finish;
+  const p = await open(t, m => m.tweetId === '101'
+    ? page({ focal: false, replies: [tweet('101', '100'), tweet('102', '101')], end: 'Bottom' })
+    : m.cursor ? new Promise(resolve => { finish = resolve; }) : page({ cursor: 'outer-next' }), io.setup);
+  io.fire(); await tick();
+  p.query('.sidepeek-fetch-replies-btn').click(); await tick();
+  assert.ok(p.query('[data-id="102"]'));
+  finish(page({ replies: [tweet('120', '100')], end: 'Bottom' })); await tick();
+  assert.equal(p.query('[data-id="120"]'), null, 'only the manually selected branch changes');
+  io.fire(); await tick(); assert.equal(p.calls.length, 3);
+});
+
+test('a failed first branch page retries only that branch and remains manual', async t => {
+  const io = observers(); let fail = true;
+  const p = await open(t, m => {
+    if (m.tweetId === '100') return page({ cursor: 'outer-next' });
+    if (fail) throw Error('offline');
+    return page({ focal: false, replies: [tweet('101', '100'), tweet('102', '101')], end: 'Bottom' });
+  }, io.setup);
+  p.query('.sidepeek-fetch-replies-btn').click(); await tick();
+  assert.ok(p.query('.sidepeek-fetch-replies-btn'), 'the failed first page retains an explicit retry');
+  io.fire(); await tick(); assert.equal(p.calls.length, 2);
+  fail = false; p.query('.sidepeek-fetch-replies-btn').click(); await tick();
+  assert.equal(p.calls.length, 3);
+  assert.equal(p.calls.at(-1).tweetId, '101');
+  assert.ok(p.query('[data-id="102"]'));
+  io.fire(); await tick(); assert.equal(p.calls.length, 3);
+});
+
 test('an explicit bottom termination wins over an otherwise valid bottom cursor', async t => {
   const p = await open(t, () => page({ cursor: 'still-present', end: 'Bottom' }));
   assert.equal(p.query('.sidepeek-load-more-btn'), null);
@@ -226,7 +277,7 @@ test('late observer callbacks cannot load another page after switching posts', a
   assert.equal(p.calls.filter(m => m.cursor).length, 0);
 });
 
-test('subthread prefetch retains its own folded gate without fetching or exposing it', async t => {
+test('preview settings never prefetch subthreads, and a clicked branch retains its own folded gate', async t => {
   const child = tweet('102', '101', 'FOLDED_CHILD'); child.legacy.conversation_id_str = '100';
   const p = createPage({ settings: { sidex_sub_reply_limit: 3 }, request: m => {
     if (m.tweetId === '100') return page();
@@ -237,6 +288,10 @@ test('subthread prefetch retains its own folded gate without fetching or exposin
   t.after(() => p.w.close());
   await tick(); p.clickPost(0); await tick(); await tick();
   assert.doesNotMatch(p.query('.sidepeek-body').textContent, /FOLDED_CHILD/);
+  assert.equal(p.calls.length, 1);
+  p.change({ sidex_sub_reply_limit: { newValue: 5 } }); await tick();
+  assert.equal(p.calls.length, 1, 'changing the preview limit only reveals cached replies');
+  p.query('.sidepeek-fetch-replies-btn').click(); await tick();
   assert.equal(p.calls.filter(m => m.tweetId === '101').length, 1);
   const gate = p.query('.sidepeek-thread-group .sidepeek-gated-btn'); assert.ok(gate);
   gate.click(); await tick();

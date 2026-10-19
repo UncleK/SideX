@@ -86,6 +86,22 @@ test('comment pagination forwards the focal ID and opaque cursor to TweetDetail'
   assert.equal(variables.cursor, 'opaque+/cursor==');
 });
 
+test('a fallback sidebar read is cached without being broadcast as a separate native observation', async t => {
+  const json = { data: { instructions: [{ entries: [tweet('101', '100'), tweet('102', '101')]
+    .map(result => ({ content: { itemContent: { tweet_results: { result } } } })) }] } };
+  const b = bridge(r => JSON.parse(r.url.searchParams.get('variables') || '{}').rankingMode
+    ? { ok: false, status: 500, json: async () => ({ errors: [{ message: 'retry captured request' }] }) }
+    : { ok: true, json: async () => json, clone: () => ({ json: async () => json }) });
+  t.after(() => b.w.close());
+  await b.w.fetch('/i/api/graphql/observed/TweetDetail?variables=%7B%7D'); await tick();
+  const notifications = [];
+  b.w.addEventListener('message', event => { if (event.data?.type === 'NATIVE_THREAD_OBSERVED') notifications.push(event.data); });
+  const result = await b.send({ type: 'READ_THREAD', tweetId: '101' }); await tick();
+  assert.equal(b.requests.length, 3, 'one failed primary attempt and one captured fallback');
+  assert.equal(notifications.length, 0, 'the caller owns applying the scoped response');
+  assert.ok(result.sidepeekObservedThreads.some(page => page.requestTweetId === '101'));
+});
+
 test('native TweetDetail responses supplement shorter child reads without consuming native bodies', async t => {
   const data = posts => ({ data: { instructions: [{ entries: posts.map(result => ({ content: { itemContent: { tweet_results: { result } } } })) }] } });
   const full = data([tweet('100'), tweet('101', '100'), tweet('102', '101'), tweet('103', '102')]);

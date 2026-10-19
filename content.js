@@ -111,6 +111,7 @@
     loadingThreadIds: new Set(),
     threadCursors: new Map(),
     autoLoadReplies: true,
+    manualReplyLoading: false,
     autoExpandReplyText: false,
     threadPages: new Map(),
     inlinePages: new Map(),
@@ -299,12 +300,7 @@
       }
       if (changes.sidex_sub_reply_limit !== undefined) {
         state.subReplyLimit = Math.max(1, Number(changes.sidex_sub_reply_limit.newValue) || 1);
-        if (state.open) {
-          renderDrawer();
-          if (state.subReplyLimit > 1) {
-            prefetchSubRepliesForRoots();
-          }
-        }
+        if (state.open) renderDrawer();
       }
       if (changes.sidex_reset_width_trigger !== undefined) {
         localStorage.removeItem("sidepeek_custom_width_v2");
@@ -1494,7 +1490,7 @@
                 </div>
               `;
               threadGroup.appendChild(loaderEl);
-            } else if (childrenCount === 0 && !hasFoldedReplies(rootReply.id)) {
+            } else if (childrenCount === 0 && !hasFoldedReplies(rootReply.id) && !state.threadPages.get(rootReply.id)?.error) {
               const emptyTip = document.createElement("div");
               emptyTip.className = "sidepeek-thread-loader-row";
               emptyTip.innerHTML = `
@@ -1539,6 +1535,7 @@
               button.className = "sidepeek-expand-btn";
               button.textContent = t("showMoreReplies", { count: hiddenCount });
               button.addEventListener("click", () => {
+                state.manualReplyLoading = true;
                 state.anchorCommentId = rootReply.id;
                 state.expandedThreadIds.add(rootReply.id);
                 renderDrawer();
@@ -1935,16 +1932,17 @@
   }
 
   function appendUnfetchedReplies(container, model) {
-    if (state.threadPages.has(model.id) || state.loadedThreadIds.has(model.id)) return;
+    const page = state.threadPages.get(model.id);
+    if (state.loadedThreadIds.has(model.id) || (page && (!page.error || state.threadCursors.has(model.id)))) return;
     if ([...state.inlinePages.values()].some(page => page.branchRootId === model.id && inlinePageVisible(page))) return;
     const direct = (state.tree?.childrenMap.get(model.id) || []).filter(child => child.inReplyToId === model.id).length;
     if ((model.counts?.replies || 0) <= direct) return;
     const button = document.createElement("button");
     button.type = "button";
     button.className = "sidepeek-expand-btn sidepeek-fetch-replies-btn";
-    button.textContent = t("loadMoreThreadReplies");
+    button.textContent = page?.error ? t("retryBtn") : t("loadMoreThreadReplies");
     button.disabled = state.loadingThreadIds.has(model.id);
-    button.addEventListener("click", () => fetchSubReplies(model.id, false, true));
+    button.addEventListener("click", () => loadReplyPage(model.id));
     const row = document.createElement("div");
     row.className = "sidepeek-expand-btn-row";
     row.appendChild(button);
@@ -2062,6 +2060,7 @@
 
     // Drilldown click
     item.querySelector(".sidepeek-drilldown-trigger")?.addEventListener("click", () => {
+      state.manualReplyLoading = true;
       state.activeView = { type: "drilldown", parentId: model.id };
       state.replyTarget = null;
       renderDrawer();
@@ -3717,11 +3716,13 @@
   }
 
   function observeReplyPage(row, body, isCurrent, load) {
-    if (!state.autoLoadReplies || typeof IntersectionObserver !== "function") return;
+    // After a manual load, every subsequent page in this thread is manual too.
+    // Rerenders and collapsing a branch must not load unrelated posts.
+    if (!state.autoLoadReplies || state.manualReplyLoading || typeof IntersectionObserver !== "function") return;
     const generation = state.threadGeneration;
     const observer = new IntersectionObserver(entries => {
       if (replyObservers.has(observer) && generation === state.threadGeneration && state.open &&
-          state.autoLoadReplies && row.isConnected && isCurrent() &&
+          state.autoLoadReplies && !state.manualReplyLoading && row.isConnected && isCurrent() &&
           !state.loadingThreadIds.size && ![...state.inlinePages.values()].some(page => page.loading) &&
           entries.some(entry => entry.isIntersecting)) load();
     }, { root: body, rootMargin: "200px 0px" });
@@ -3760,31 +3761,46 @@
       }
       anchor.after(row);
       connectReplyContinuation(row);
-      if (!page.gateFor && !page.loading && !page.error && !page.paused && !page.stalled) {
-        observeReplyPage(row, body, () => state.inlinePages.get(key) === page, () => fetchInlineReplies(key));
-      }
     }
+  }
+
+  function scopeReplyPage(tweetId, parsed) {
+    if (tweetId === state.focalTweetId) return parsed;
+    const byId = new Map([...state.replies, ...parsed.replies].map(reply => [reply.id, reply]));
+    const tree = Core.buildConversationTree([...byId.values()], state.focalTweetId);
+    const ids = new Set([tweetId, ...tree.getSubtree(tweetId).map(reply => reply.id)]);
+    // X's cursor belongs to its original request. Keep that request identity,
+    // but accept only this branch's models, restrictions and continuations.
+    return { ...parsed, focal: parsed.focal?.id === tweetId ? parsed.focal : null,
+      replies: parsed.replies.filter(reply => ids.has(reply.id)),
+      unavailableIds: parsed.unavailableIds.filter(id => ids.has(id)),
+      pagination: { ...parsed.pagination,
+        inlineModules: parsed.pagination.inlineModules.filter(scope => ids.has(scope.branchRootId)),
+        inlineCursors: parsed.pagination.inlineCursors.filter(scope => ids.has(scope.branchRootId)) }
+    };
   }
 
   async function fetchInlineReplies(key) {
     const page = state.inlinePages.get(key);
     if (!page || page.loading || page.stalled || !state.open) return;
     const generation = state.threadGeneration;
+    state.manualReplyLoading = true;
     page.loading = true;
+    for (const root of state.tree.rootReplies) {
+      if (root.id === page.branchRootId || state.tree.getSubtree(root.id).some(reply => reply.id === page.branchRootId)) {
+        state.expandedThreadIds.add(root.id);
+      }
+    }
     renderDrawer();
     try {
       const json = await requestPage("READ_THREAD", { tweetId: page.requestTweetId, cursor: page.cursor });
       if (!state.open || generation !== state.threadGeneration || state.inlinePages.get(key) !== page) return;
       const section = page.gateFor ? state.threadPages.get(page.gateFor)?.sectionLabel || foldedText() : "";
-      const { focal, replies, pagination, unavailableIds } = Core.parseTweetDetail(json, page.requestTweetId, [state.focalModel, ...state.replies], section);
+      const { focal, replies, pagination, unavailableIds } = scopeReplyPage(page.branchRootId,
+        Core.parseTweetDetail(json, page.requestTweetId, [state.focalModel, ...state.replies], section));
       const { added } = mergeReplyModels(replies, unavailableIds);
       if (focal?.id === state.focalTweetId) state.focalModel = focal;
       state.tree = Core.buildConversationTree(visibleReplies(), state.focalTweetId);
-      for (const root of state.tree.rootReplies) {
-        if (root.id === page.branchRootId || state.tree.getSubtree(root.id).some(reply => reply.id === page.branchRootId)) {
-          state.expandedThreadIds.add(root.id);
-        }
-      }
       rememberInlinePages(pagination, key);
       const next = state.inlinePages.get(key);
       if (next && !added && !next.stalled) next.paused = true;
@@ -3813,11 +3829,12 @@
       button.textContent = page.gated?.label || foldedText();
       button.disabled = busy;
       button.addEventListener("click", () => {
+        state.manualReplyLoading = true;
         state.openGatedThreads.add(tweetId);
         page.sectionLabel ||= page.gated?.label || foldedText();
         if (page.gated?.cursor) {
           state.threadCursors.set(tweetId, page.gated.cursor);
-          fetchSubReplies(tweetId, false, true, page.gated.cursor);
+          loadReplyPage(tweetId, page.gated.cursor);
         } else {
           state.tree = Core.buildConversationTree(visibleReplies(), state.focalTweetId);
           renderDrawer();
@@ -3830,14 +3847,14 @@
       button.className = "sidepeek-expand-btn sidepeek-load-more-btn";
       button.disabled = busy;
       button.textContent = busy ? t("loadingReplies") : t(tweetId === state.focalTweetId ? "loadMoreComments" : "loadMoreThreadReplies");
-      button.addEventListener("click", () => fetchSubReplies(tweetId, false, true, cursor));
+      button.addEventListener("click", () => loadReplyPage(tweetId, cursor));
       row.appendChild(button);
       if (page.error || page.paused) {
         const status = document.createElement("div");
         status.className = page.error ? "sidepeek-pagination-error" : "sidepeek-pagination-paused";
         status.textContent = page.error ? t("loadRepliesFailed") : (getLocale() === "zh" ? "本页没有新增回复，可手动继续加载" : "No new replies on this page. Continue manually.");
         row.prepend(status);
-      } else if (!opened && !busy && container.classList.contains("sidepeek-body")) {
+      } else if (!opened && !busy && tweetId === state.focalTweetId && container.classList.contains("sidepeek-body")) {
         observeReplyPage(row, container, () => state.threadCursors.get(tweetId) === cursor,
           () => fetchSubReplies(tweetId, false, true, cursor));
       }
@@ -3865,6 +3882,7 @@
     state.replies = [];
     state.tree = null;
     state.loading = true;
+    state.manualReplyLoading = false;
     state.error = "";
     state.resetScrollOnRender = true;
     state.expandedThreadIds.clear();
@@ -3893,7 +3911,6 @@
       state.loading = false;
       state.resetScrollOnRender = true;
       renderDrawer();
-      prefetchSubRepliesForRoots();
     } catch (err) {
       if (!state.open || state.focalTweetId !== tweetId || generation !== state.threadGeneration) return;
       state.loading = false;
@@ -3902,13 +3919,17 @@
     }
   }
 
+  function loadReplyPage(tweetId, cursor = null) {
+    state.manualReplyLoading = true;
+    return fetchSubReplies(tweetId, false, true, cursor);
+  }
+
   async function fetchSubReplies(commentId, isSilent = false, expandOnSuccess = true, cursor = null) {
     const generation = state.threadGeneration;
     if (!commentId) return;
-    if (state.loadingThreadIds.has(commentId)) {
-      if (expandOnSuccess && commentId !== state.focalTweetId) state.expandedThreadIds.add(commentId);
-      return;
-    }
+    const automaticPage = commentId === state.focalTweetId && !state.manualReplyLoading;
+    if (expandOnSuccess && commentId !== state.focalTweetId) state.expandedThreadIds.add(commentId);
+    if (state.loadingThreadIds.has(commentId)) return;
     state.loadingThreadIds.add(commentId);
     if (!isSilent) {
       renderDrawer();
@@ -3917,11 +3938,13 @@
     try {
       const currentFocal = state.focalTweetId;
       const json = await requestPage("READ_THREAD", { tweetId: commentId, ...(cursor ? { cursor } : {}) });
-      if (!state.open || state.focalTweetId !== currentFocal || generation !== state.threadGeneration) return;
+      if (!state.open || state.focalTweetId !== currentFocal || generation !== state.threadGeneration ||
+          (automaticPage && state.manualReplyLoading)) return;
 
       const previousPage = state.threadPages.get(commentId) || {};
       const gated = state.openGatedThreads.has(commentId);
-      const { focal, replies, cursor: nextCursor, pagination, unavailableIds } = Core.parseTweetDetail(json, commentId, [state.focalModel, ...state.replies], gated ? previousPage.sectionLabel || foldedText() : "");
+      const { focal, replies, cursor: nextCursor, pagination, unavailableIds } = scopeReplyPage(commentId,
+        Core.parseTweetDetail(json, commentId, [state.focalModel, ...state.replies], gated ? previousPage.sectionLabel || foldedText() : ""));
       const beforeIds = new Set(state.replies.map(reply => reply.id));
 
       mergeReplyModels(replies, unavailableIds, commentId !== state.focalTweetId ? commentId : null);
@@ -3947,11 +3970,8 @@
       // 重新构建对话树结构
       state.tree = Core.buildConversationTree(visibleReplies(), state.focalTweetId);
       state.loadedThreadIds.add(commentId);
-      if (expandOnSuccess && commentId !== state.focalTweetId) {
-        state.expandedThreadIds.add(commentId);
-      }
     } catch (err) {
-      if (!state.open || generation !== state.threadGeneration) return;
+      if (!state.open || generation !== state.threadGeneration || (automaticPage && state.manualReplyLoading)) return;
       const page = state.threadPages.get(commentId) || {};
       state.threadPages.set(commentId, { ...page, error: true });
       console.warn("[SideX] 读取回复失败:", err);
@@ -3967,6 +3987,7 @@
   }
 
   async function handleExpandThread(rootReplyId) {
+    state.manualReplyLoading = true;
     const children = state.tree?.getSubtree ? state.tree.getSubtree(rootReplyId) : (state.tree?.childrenMap.get(rootReplyId) || []);
     const rootModel = state.tree?.byId?.get(rootReplyId);
     const totalReplies = rootModel?.counts?.replies || 0;
@@ -3980,31 +4001,6 @@
 
     // 否则发起请求拉取完整的二级回复
     await fetchSubReplies(rootReplyId, /* isSilent */ false, /* expandOnSuccess */ true);
-  }
-
-  async function prefetchSubRepliesForRoots() {
-    if (!state.open || !state.tree) return;
-    const limit = state.subReplyLimit || 1;
-    // 如果默认仅展示 1 条，X 原生数据已附带首条回复，无需在后台额外预取，彻底杜绝首次加载后的二次闪烁/重绘
-    if (limit <= 1) return;
-
-    const currentFocal = state.focalTweetId;
-    const generation = state.threadGeneration;
-    const roots = state.tree.rootReplies || [];
-    const candidates = roots.filter((r) => {
-      const total = r.counts?.replies || 0;
-      const current = state.tree.childrenMap.get(r.id)?.length || 0;
-      return total > 0 && current < total && current < limit &&
-             !state.loadedThreadIds.has(r.id) &&
-             !state.loadingThreadIds.has(r.id);
-    }).slice(0, 3);
-
-    for (const r of candidates) {
-      if (!state.open || state.focalTweetId !== currentFocal || generation !== state.threadGeneration) break;
-      try {
-        await fetchSubReplies(r.id, /* isSilent */ true, /* expandOnSuccess */ false);
-      } catch {}
-    }
   }
 
   let userClosedTweetId = null;
@@ -4092,6 +4088,7 @@
       if (state.open) {
         clearCommentNodes();
         state.focalTweetId = tweetId;
+        state.manualReplyLoading = false;
         syncPinnedFocalHighlight();
         state.focalModel = null;
         state.replies = [];
@@ -4171,7 +4168,6 @@
         state.loading = false;
         state.error = "";
         renderDrawer();
-        prefetchSubRepliesForRoots();
       } catch (err) {
         if (generation === state.threadGeneration && state.open && state.focalTweetId === tweetId) {
           state.loading = false;

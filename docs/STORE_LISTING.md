@@ -9,7 +9,7 @@ FEATURES
 • Docked comments: read replies beside the timeline without opening a separate detail page.
 • Long-post reading: automatically open the post's native Show more control when available.
 • Conversation threads: expand and collapse reply branches, with configurable reply previews and automatic unfolding of loaded author self-replies.
-• Reply loading: see loaded direct replies alongside X's reported total. Near-bottom loading is on by default and can be disabled. Nested branches keep separate continuation controls; folded replies require an explicit reveal action.
+• Reply loading: see loaded direct replies alongside X's reported total. Main-list automatic loading is on by default and can be disabled. Each branch click loads one page for that branch, with no sibling prefetch or automatic branch pagination. After a manual load, this open conversation stays in click-to-load mode. Folded replies require an explicit reveal action.
 • Optional pinning: keep the panel open across outside clicks, Esc and X navigation, with the active post highlighted. Manual close and post switching remain available. Auto-pin is off by default and applies to new panels.
 • Reply text: optionally expand long reply text automatically; off by default.
 • Reply options: use the inline composer with image attachments, or open X's official reply dialog.
@@ -22,11 +22,11 @@ FEATURES
 • Translation choices: use X official translation, choose Google, or use your existing translation extension's selection/page translation.
 • Appearance: follows X's theme and supports an adjustable sidebar width.
 
-WHAT'S NEW IN 1.1.26
-• Aligns Load more replies and branch expansion controls with the reply text.
-• Extends the avatar thread line to the load-more control, with a small endpoint dot to show the conversation continues.
-• Places Load more replies and Collapse replies on the same row. Once a branch finishes loading, only Collapse remains.
-• Keeps the layout consistent for normal and inline pagination, loading and retry states, including narrow panels in Chinese and English.
+WHAT'S NEW IN 1.1.27
+• Each Load more replies click loads one page only for the selected tweet branch.
+• Stops automatic loading of visible branch cursors and background prefetching caused by preview settings.
+• Ignores unrelated branch content, visibility changes and cursors included in a branch response.
+• Stops automatic loading in this open conversation after a manual click; collapsing does not fetch other posts. Keeps the aligned controls, continued thread line and same-row Load more/Collapse layout.
 
 PRIVACY
 SideX runs in your browser and has no SideX relay server or analytics service. It processes the X content you open and uses your current X session for authenticated requests. Text drafts stay temporarily in the current page and are not synced. Replies and selected attachments go to X. If you select Google translation and click Translate, the post text is sent directly to Google. X authentication information is not sent to Google. Other translation extensions follow their own settings and privacy policies.
@@ -50,7 +50,7 @@ SideX 把 X 的评论区放到右侧。点击帖子正文或空白处，在保�
 • 评论原位停靠在右侧，减少主信息流与详情页之间的来回切换。
 • 帖子存在官方“显示更多”入口时，自动展开长文。
 • 展开、收起回复分支，自定义二级回复默认展示数量，自动展示已加载的作者连续自回复。
-• 同时显示已加载的一级回复数和 X 报告的总数；滚动到底部自动加载默认开启，可在设置中关闭。嵌套分支分别续载，折叠回复需要主动展开。
+• 同时显示已加载的一级回复数和 X 报告的总数；主列表自动加载默认开启，可在设置中关闭。每次点击只加载所选分支的一页，不自动遍历或预取其他分支；手动加载后，本次打开的帖子改为逐次点击加载，收起也不会触发其他加载。折叠回复需要主动展开。
 • 可选固定面板并高亮当前帖；固定后，点击外部、按 Esc 和站内导航会保留面板，仍可手动关闭或切帖。自动固定默认关闭，仅影响新打开的面板。
 • 可开启回复长正文自动展开，该选项默认关闭。
 • 支持侧栏回复、图片附件，以及打开 X 官方回复框。
@@ -63,11 +63,11 @@ SideX 把 X 的评论区放到右侧。点击帖子正文或空白处，在保�
 • 默认使用 X 官方翻译，也可选择 Google，或使用已有翻译插件的划词／网页翻译。
 • 跟随 X 主题，支持调整侧栏宽度。
 
-1.1.26 更新
-• “加载更多回复”和分支展开按钮与回复正文左边缘对齐。
-• 头像下方的竖线延伸到加载入口旁，以小圆点提示这条回复链还有后续内容。
-• “加载更多回复”和“收起回复”放在同一行；分支加载完后，只保留收起。
-• 统一普通分页、内联分页、加载中和失败重试时的布局，兼顾中英文窄面板。
+1.1.27 更新
+• 每次点击“加载更多回复”，只加载所选推文分支的一页。
+• 停止自动续载可见分支，并移除预览数量设置触发的后台分支预取。
+• 分支响应即使夹带其他分支的内容、可见性变化和游标，也只应用所选分支的数据。
+• 手动加载后，本次打开的帖子不再自动续载，收起也不会加载其他回复；保留正文对齐、竖线延伸和加载／收起同行布局。
 
 隐私说明
 SideX 在浏览器中运行，没有 SideX 中转或统计服务器。扩展处理你打开的 X 内容，并复用当前 X 会话；文字草稿仅在当前页面暂存，不参与同步，回复及选择的附件发送给 X。只有选择 Google 翻译并点击翻译时，正文才会直接发送给 Google，X 认证信息不会发给 Google。已有翻译插件遵循各自的设置和隐私政策。

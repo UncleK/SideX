@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-Available-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.26-00b4f8?style=flat-square" alt="Version 1.1.26" />
+    <img src="https://img.shields.io/badge/Version-1.1.27-00b4f8?style=flat-square" alt="Version 1.1.27" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -42,7 +42,7 @@
 * 🚀 **In-Place Drawer**: Click any tweet to dock its replies directly in the 3rd column—zero page redirects or reload.
 * 📖 **Auto-Unroll Long Posts**: Automatically expands "Show more" on focal posts.
 * 🧵 **Conversation Tree & Drill-down**: Reconstructs nested replies with clean thread lines; configurable sub-reply previews (1, 2, 3, 5) with zero-jump smooth in-place expansion. Loaded consecutive self-replies by the original author unfold automatically. Full reply text can also expand automatically when enabled; this option defaults to off.
-* 📚 **Reply loading**: Shows loaded direct replies alongside the total reported by X. Near-bottom automatic loading defaults to on and can be disabled. Nested branches retain their own continuation controls; replies folded by X require an explicit reveal action.
+* 📚 **Reply loading**: Shows loaded direct replies alongside the total reported by X. Main-list automatic loading defaults to on and can be disabled. Each branch click loads only one page for that branch, with no sibling prefetch or automatic branch pagination. After a manual load, this open conversation stays in click-to-load mode. Replies folded by X require an explicit reveal action.
 * 📌 **Optional panel pinning**: Keep the panel open across outside clicks, Esc and X navigation, with the active post highlighted. You can still switch posts or close the panel manually. Automatic pinning defaults to off and applies to newly opened panels.
 * 💬 **Quick replies and official dialogs**: The compact quick toolbar has seven entries: images, GIFs, polls, emoji, scheduling, location and content disclosure (flag). Send text, emoji and up to four JPG/PNG/WebP images directly. Advanced tools open X's actual dialogs above the sidebar. In Official mode, clicking a comment's reply icon opens the official reply dialog in the current page without another browser window.
 * ✍️ **Separate text drafts**: Switch posts and close comments freely without a prompt. Unsent text is kept separately per post and reply target in the current tab and restored on return. Refreshing the page or closing the tab clears these drafts; image attachments are not retained after closing or switching replies.
@@ -108,6 +108,8 @@ npm test
 ```
 
 Tests use synthetic X responses and DOM fixtures without performing real account actions. They cover profile parsing, translation requests, long-text chunking, native controls, rollback, retained reading state, scroll reset, and stale responses. X internals and third-party translation extensions may change. Without a matching native profile link, SideX renders a fallback with a full-profile link rather than simulating Grok's Profile Summary button; comments without native nodes are still rendered by SideX.
+
+Version 1.1.27 makes branch loading explicit: each click loads one page only for the selected tweet branch. Visible branch cursors no longer auto-load, and preview settings no longer prefetch siblings. After a manual load, this open conversation stays in click-to-load mode; collapsing never loads other posts. Responses keep their original cursor ownership while only the selected branch's models, visibility restrictions and continuation positions are applied. All 178 local regression tests pass, including the new request-count and scope-isolation cases.
 
 Version 1.1.26 aligns branch loading and expansion controls with reply text. The avatar thread line continues to the load-more control and ends with a small dot. Expanded branches place Load more replies and Collapse replies on the same row; once loading finishes, only Collapse remains. Normal and inline pagination, loading and retry states were checked using the actual rendered DOM in Chrome, including Chinese and English at a 320px panel width. The source passes all 172 local regression tests; browser layout checks used local fixtures rather than a fresh store installation.
 
