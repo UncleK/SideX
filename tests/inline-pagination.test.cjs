@@ -37,6 +37,53 @@ function observeNative(p, json) {
       payload: { sidepeekObservedThreads: [{ requestTweetId: '100', json }] } } }));
 }
 
+test('switching to a reply and returning preserves the current response order and cached descendants', async t => {
+  let visitedChild = false;
+  const current = detail([], { posts: [tweet('100'), tweet('101', '100', 'CURRENT_A'),
+    tweet('102', '100'), tweet('103', '100')] });
+  const child = detail([], { posts: [tweet('100'), tweet('103', '100'), tweet('104', '103')] });
+  const p = await open(t, m => {
+    if (m.tweetId === '103') { visitedChild = true; return child; }
+    return visitedChild ? { ...current, sidepeekObservedThreads: [{ requestTweetId: '103', json: child }] } : current;
+  }, { sidex_auto_load_replies: false }, w => {
+    w.document.querySelector('a[href="/reader/status/200"]').href = '/reader/status/103';
+  });
+  const roots = () => [...p.w.document.querySelectorAll('.sidepeek-comment-item:not(.sidepeek-child-comment)')]
+    .map(node => node.dataset.id);
+  assert.deepEqual(roots(), ['101', '102', '103']);
+  p.clickPost(1); await tick();
+  assert.ok(p.query('[data-id="104"]'));
+  p.clickPost(0); await tick();
+  assert.deepEqual(roots(), ['101', '102', '103']);
+  assert.ok(p.query('[data-id="104"]'), 'the cached descendant is retained after returning');
+  assert.equal(p.w.document.querySelectorAll('[data-id="103"]').length, 1);
+});
+
+test('current response order and model updates win over multiple cached reply visits', t => {
+  const dom = new JSDOM('', { runScripts: 'outside-only' }); t.after(() => dom.window.close());
+  dom.window.eval(source('core.js'));
+  const json = detail([], { posts: [tweet('100'), tweet('101', '100'),
+    tweet('102', '100', 'CURRENT_B'), tweet('103', '100')] });
+  json.sidepeekObservedThreads = [
+    { requestTweetId: '103', json: detail([], { posts: [tweet('100'), tweet('103', '100'), tweet('104', '103')] }) },
+    { requestTweetId: '102', json: detail([], { posts: [tweet('100'), tweet('102', '100', 'STALE_B')] }) }
+  ];
+  const core = dom.window.SidePeekCore;
+  const parsed = core.parseTweetDetail(json, '100');
+  assert.deepEqual(Array.from(core.buildConversationTree(parsed.replies, '100').rootReplies, r => r.id), ['101', '102', '103']);
+  assert.equal(parsed.replies.find(r => r.id === '102').text, 'CURRENT_B');
+  assert.deepEqual(Array.from(parsed.replies, r => r.id), ['101', '102', '103', '104']);
+});
+
+test('an observation-only update retains cached reply order when the current response has no models', t => {
+  const dom = new JSDOM('', { runScripts: 'outside-only' }); t.after(() => dom.window.close());
+  dom.window.eval(source('core.js'));
+  const parsed = dom.window.SidePeekCore.parseTweetDetail({ data: {}, sidepeekObservedThreads: [
+    { requestTweetId: '100', json: detail([], { posts: [tweet('100'), tweet('103', '100'), tweet('101', '100')] }) }
+  ] }, '100');
+  assert.deepEqual(Array.from(parsed.replies, r => r.id), ['103', '101']);
+});
+
 for (const addsReply of [false, true]) {
   test('native observations preserve an in-flight inline request, with a new reply ' + addsReply, async t => {
     let finish;

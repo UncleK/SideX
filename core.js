@@ -398,16 +398,22 @@
     const observed = (json?.sidepeekObservedThreads || []).slice(-12);
     const merged = new Map();
     const unavailable = new Set();
+    let currentOrder = [];
     // Native X may have loaded descendants absent from a later, shorter child
     // request (even when that request reports zero replies and no cursor).
     for (const snapshot of [...observed, { json }]) {
       const blocked = new Set();
       const models = sectionedTweetModels(snapshot.json?.data || snapshot.json, focalId,
         snapshot.json === json ? section : "", blocked);
+      if (snapshot.json === json) currentOrder = models.map(model => model.id);
       for (const model of models) { merged.set(model.id, model); unavailable.delete(model.id); }
       for (const id of blocked) { merged.delete(id); unavailable.add(id); }
     }
-    const models = [...merged.values()];
+    // Cache insertion order must not move a previously visited reply ahead of
+    // the current timeline. Keep cached-only descendants after live models,
+    // without changing the content or visibility precedence above.
+    const orderedIds = new Set([...currentOrder, ...merged.keys()]);
+    const models = [...orderedIds].map(id => merged.get(id)).filter(Boolean);
     // Cursor pages may omit the focal tweet and intermediate parents.
     const byId = new Map([...knownModels, ...models].filter(model => model && !unavailable.has(model.id)).map((model) => [model.id, model]));
     const pagination = replyPagination(json?.data || json, focalId, byId);
