@@ -808,6 +808,52 @@
     return fallback;
   }
 
+  function nativeHeaderTemplate(tweetId, kind) {
+    let fallback = null;
+    for (const button of document.querySelectorAll('article[data-testid="tweet"] button[data-testid="caret"], article[data-testid="tweet"] button[aria-label="Grok actions"]')) {
+      const key = Object.keys(button).find(name => name.startsWith("__reactFiber$"));
+      let template = null, owner = null;
+      const providers = [];
+      for (let fiber = key && button[key], depth = 0; fiber && depth < 800; fiber = fiber.return, depth++) {
+        if (!owner && (kind === "grok" ? typeof fiber.stateNode?._renderGrokButton === "function" &&
+            typeof fiber.stateNode?._openGrok === "function" : typeof fiber.stateNode?._renderCurationActionMenu === "function")) {
+          owner = template = fiber;
+        }
+        // Keep the native connected wrapper so its account and author state
+        // is selected again for the requested tweet instead of the source row.
+        if (owner && kind === "more" && fiber.memoizedProps?.tweet === owner.memoizedProps.tweet &&
+            typeof fiber.type?.preload === "function" && typeof fiber.type?.render === "function") {
+          template = fiber;
+          providers.length = 0;
+        }
+        if (fiber.tag === 10 && fiber.memoizedProps && "value" in fiber.memoizedProps) {
+          providers.push({ type: fiber.type, value: fiber.memoizedProps.value });
+        }
+      }
+      if (!template) continue;
+      const found = { template, owner, providers };
+      if (String(template.memoizedProps?.tweet?.id_str) === tweetId) return found;
+      fallback ||= found;
+    }
+    return fallback;
+  }
+
+  async function openNativeGrok(tweetId) {
+    const found = nativeHeaderTemplate(tweetId, "grok");
+    if (!found) return { opened: false };
+    const tweet = await nativeTweet(tweetId, found.owner, nativePostRuntime());
+    if (!tweet) return { opened: false };
+    const target = tweet.retweeted_status || tweet;
+    // This native navigator accepts an explicit analysis entity and prompt;
+    // a copied row's onClick would keep analyzing that row's original tweet.
+    await found.owner.stateNode._openGrok({
+      text: `https://x.com${target.permalink || `/${target.user.screen_name}/status/${target.id_str}`}`,
+      analysisEntityId: target.id_str, autoSubmit: true, source: "post_analysis_timeline",
+      promptMetadata: { promptSource: "GROK_ANALYZE", action: "INPUT", properties: { element: "BUTTON" } }
+    });
+    return { opened: true };
+  }
+
   function cachedRawTweet(tweetId) {
     const seen = new Set();
     function visit(value) {
@@ -888,23 +934,29 @@
     return { closed: true };
   }
 
-  async function openNativeShare(tweetId, anchor, menuToken) {
+  async function openNativeShare(tweetId, anchor, menuToken, kind = "share", focalTweetId) {
     closeNativeShare();
     const generation = nativeShareGeneration;
     if (!anchor || ![anchor.left, anchor.top, anchor.width, anchor.height].every(Number.isFinite)) return { opened: false };
-    const found = nativeActionTemplate(tweetId);
+    const found = kind === "more" ? nativeHeaderTemplate(tweetId, kind) : nativeActionTemplate(tweetId);
     const runtime = nativePostRuntime();
     if (!found || !runtime.react || !runtime.reactDom) return { opened: false };
     const { template, providers } = found;
-    const tweet = await nativeTweet(tweetId, template, runtime);
+    const tweet = await nativeTweet(tweetId, found.owner || template, runtime);
     if (!tweet || generation !== nativeShareGeneration) return { opened: false };
+    const context = found.owner?.stateNode?.context;
+    const focal = context?.store && /^\d+$/.test(focalTweetId || "") &&
+      runtime.tweetApi?.selectHydrated(context.store.getState(), focalTweetId);
+    const canHideReply = Boolean(tweet.in_reply_to_status_id_str && context?.viewerUserId &&
+      focal?.user?.id_str === context.viewerUserId && tweet.user?.id_str !== context.viewerUserId);
     const React = runtime.react;
     const Base = template.type;
-    class NativeShare extends Base {
+    let NativeShare = Base;
+    if (kind === "share") NativeShare = class extends Base {
       render() { return this._renderShareAction({ color: "gray700", iconSize: "normal", withCount: false }); }
-    }
+    };
     const host = document.createElement("div");
-    host.dataset.sidexNativeShare = tweetId;
+    host.setAttribute(`data-sidex-native-${kind}`, tweetId);
     Object.assign(host.style, { position: "fixed", left: `${anchor.left}px`, top: `${anchor.top}px`,
       width: `${anchor.width}px`, height: `${anchor.height}px`, zIndex: "2147483646" });
     // The drawer is transformed, so a fixed child would add the drawer's
@@ -921,21 +973,32 @@
         root?.unmount();
         host.remove();
         if (nativeShareSession?.close === close) nativeShareSession = null;
-        window.postMessage({ source: PAGE_SOURCE, type: "NATIVE_SHARE_CLOSED", tweetId, menuToken }, location.origin);
+        window.postMessage({ source: PAGE_SOURCE, type: kind === "more" ? "NATIVE_MORE_CLOSED" : "NATIVE_SHARE_CLOSED", tweetId, menuToken }, location.origin);
         finish(false);
       };
       nativeShareSession = { close };
       try {
         // Replace every target-specific prop. Retain X's providers and bound
         // session actions so folders, Chat and media use their official flows.
-        let tree = React.createElement(NativeShare, { ...template.memoizedProps, ref: undefined,
-          id: tweetId, tweet, isFocalTweet: false, liveCounts: {}, promotedContent: undefined,
+        const menuProps = { ...template.memoizedProps, ref: undefined,
+          id: tweetId, tweetId, tweet, isFocalTweet: false, liveCounts: {}, promotedContent: undefined,
           socialContext: undefined, forwardPivotInfo: undefined, nudges: undefined,
-          bookmarkFolderId: undefined, withRemoveFromBookmarks: false });
+          bookmarkFolderId: undefined, withRemoveFromBookmarks: false };
+        if (kind === "more") Object.assign(menuProps, {
+          // Timeline feedback and dismiss callbacks close over their source row.
+          feedbackItems: undefined, forwardPivotDisplayType: undefined, forwardPivotLandingUrl: undefined,
+          onMenuClick: undefined, onTweetDismiss: undefined, setLeaveBehindActionItems: undefined,
+          withImmediateDismiss: false, isDisabled: false,
+          isPinned: Boolean(tweet.user?.pinned_tweet_ids_str?.includes(tweetId)),
+          isNsfwUser: Boolean(tweet.user?.possibly_sensitive),
+          withHideReply: canHideReply && !tweet.is_hidden,
+          withUnhideReply: canHideReply && Boolean(tweet.is_hidden), withViewHiddenReplies: true
+        });
+        let tree = React.createElement(NativeShare, menuProps);
         for (const { type, value } of providers) tree = React.createElement(type, { value }, tree);
         observer = new MutationObserver(() => {
           if (!host.isConnected || generation !== nativeShareGeneration) { close(); return; }
-          const button = host.querySelector('button[aria-haspopup="menu"]');
+          const button = host.querySelector(kind === "more" ? 'button[data-testid="caret"]' : 'button[aria-haspopup="menu"]');
           if (!button) return;
           if (!clicked) {
             if (button.disabled || button.getAttribute("aria-disabled") === "true") { close(); return; }
@@ -943,7 +1006,7 @@
             button.click();
           } else if (button.getAttribute("aria-expanded") === "true" && document.querySelector('#layers [role="menu"]')) {
             opened = true; clearTimeout(timer); finish(true);
-          } else if (opened && button.getAttribute("aria-expanded") !== "true") close();
+          } else if (opened && button.getAttribute("aria-expanded") !== "true" && !document.querySelector('#layers [role="dialog"]')) close();
         });
         observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["aria-expanded"] });
         timer = setTimeout(close, 2500);
@@ -1032,6 +1095,9 @@
       if (message.type === "OPEN_NATIVE_REPLY") payload = openNativeReply(tweetId, message.quickTool === true);
       else if (message.type === "OPEN_NATIVE_QUOTE") payload = await openNativeQuote(tweetId);
       else if (message.type === "OPEN_NATIVE_SHARE") payload = await openNativeShare(tweetId, message.anchor, message.menuToken);
+      else if (message.type === "OPEN_NATIVE_MORE") payload = await openNativeShare(tweetId, message.anchor, message.menuToken, "more", message.focalTweetId);
+      else if (message.type === "OPEN_NATIVE_GROK") payload = await openNativeGrok(tweetId);
+      else if (message.type === "CLOSE_NATIVE_MORE") payload = closeNativeShare();
       else if (message.type === "CLOSE_NATIVE_SHARE") payload = closeNativeShare();
       else if (message.type === "READ_THREAD") {
         payload = await readThread(tweetId, message.cursor);

@@ -17,7 +17,7 @@
     function sync(root) {
       const layers = document.getElementById("layers");
       const needsOverlay = root?.classList.contains("sidepeek-open") &&
-        layers?.querySelector('[role="dialog"], [role="menu"], [role="listbox"], [data-testid="Dropdown"]');
+        layers?.querySelector('[role="dialog"], [role="menu"], [role="listbox"], [data-testid="Dropdown"], [data-testid="GrokDrawer"], [data-testid="chat-drawer-root"], [data-testid="DMDrawer"]');
       if (!needsOverlay || !layers.showPopover) { release(); return false; }
       if (session?.node === layers) return true;
       release();
@@ -172,6 +172,14 @@
         activeShareBtn?.setAttribute("aria-expanded", "false");
         activeShareBtn = null;
         activeShareTweetId = null;
+      }
+      return;
+    }
+    if (event.data.type === "NATIVE_MORE_CLOSED") {
+      if (event.data.menuToken === moreMenuGeneration && event.data.tweetId === activeMoreTweetId) {
+        activeMoreBtn?.setAttribute("aria-expanded", "false");
+        activeMoreBtn = null;
+        activeMoreTweetId = null;
       }
       return;
     }
@@ -363,6 +371,9 @@
       opBadge: "作者",
       opBadgeTitle: "原推文作者",
       moreActionsTitle: "更多操作",
+      grokTitle: "使用 Grok 分析",
+      nativeMoreNotReady: "官方更多菜单暂时不可用，请稍后重试。",
+      nativeGrokNotReady: "Grok 暂时不可用，请稍后重试。",
       copyLink: "复制推文链接",
       copyText: "复制正文文本",
       textCopied: "文本已复制到剪贴板",
@@ -518,6 +529,9 @@
       opBadge: "Author",
       opBadgeTitle: "Post author",
       moreActionsTitle: "More",
+      grokTitle: "Analyze with Grok",
+      nativeMoreNotReady: "Official More menu is unavailable. Please try again shortly.",
+      nativeGrokNotReady: "Grok is unavailable. Please try again shortly.",
       copyLink: "Copy link to post",
       copyText: "Copy post text",
       textCopied: "Text copied to clipboard",
@@ -1230,6 +1244,7 @@
 
     updateDrawerPosition();
     root.classList.add("sidepeek-open");
+    nativeLayers?.sync(root);
 
     // Guard: ensure replyTarget belongs to current focal tweet or tree
     if (state.replyTarget) {
@@ -2024,7 +2039,10 @@
           <span class="sidepeek-dot">·</span>
           ${timeHtml}
           <div class="sidepeek-more-col">
-            <button type="button" class="sidepeek-act-more" title="${t("moreActionsTitle")}">
+            <button type="button" class="sidepeek-act-grok" title="${t("grokTitle")}" aria-label="${t("grokTitle")}">
+              <svg viewBox="0 0 33 32" aria-hidden="true"><path d="M12.745 20.54l10.97-8.19c.539-.4 1.307-.244 1.564.38 1.349 3.288.746 7.241-1.938 9.955-2.683 2.714-6.417 3.31-9.83 1.954l-3.728 1.745c5.347 3.697 11.84 2.782 15.898-1.324 3.219-3.255 4.216-7.692 3.284-11.693l.008.009c-1.351-5.878.332-8.227 3.782-13.031L33 0l-4.54 4.59v-.014L12.743 20.544m-2.263 1.987c-3.837-3.707-3.175-9.446.1-12.755 2.42-2.449 6.388-3.448 9.852-1.979l3.72-1.737c-.67-.49-1.53-1.017-2.515-1.387-4.455-1.854-9.789-.931-13.41 2.728-3.483 3.523-4.579 8.94-2.697 13.561 1.405 3.454-.899 5.898-3.22 8.364C1.49 30.2.666 31.074 0 32l10.478-9.466"/></svg>
+            </button>
+            <button type="button" class="sidepeek-act-more" title="${t("moreActionsTitle")}" aria-label="${t("moreActionsTitle")}" aria-haspopup="menu" aria-expanded="false">
               ${ICONS.more}
             </button>
           </div>
@@ -2096,6 +2114,18 @@
     actMore?.addEventListener("click", (e) => {
       e.stopPropagation();
       openMoreMenu(model, actMore);
+    });
+    item.querySelector(".sidepeek-act-grok")?.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const button = e.currentTarget;
+      if (button.disabled) return;
+      closeMoreMenu(); closeShareMenu(); closeRepostMenu();
+      button.disabled = true;
+      try {
+        const result = await requestPage("OPEN_NATIVE_GROK", { tweetId: model.id });
+        if (!result?.opened) showToast(t("nativeGrokNotReady"));
+      } catch { showToast(t("nativeGrokNotReady")); }
+      finally { button.disabled = false; }
     });
 
     syncCommentTextExpansion(item, model);
@@ -2903,127 +2933,39 @@
   // ==========================================================================
   // More Actions Menu (··· 更多操作菜单)
   // ==========================================================================
-  let activeMoreMenu = null;
   let activeMoreBtn = null;
+  let activeMoreTweetId = null;
+  let moreMenuGeneration = 0;
 
   function closeMoreMenu() {
-    if (activeMoreMenu) {
-      activeMoreMenu.remove();
-      activeMoreMenu = null;
-      activeMoreBtn = null;
-    }
+    moreMenuGeneration++;
+    activeMoreBtn?.setAttribute("aria-expanded", "false");
+    const tweetId = activeMoreTweetId;
+    activeMoreBtn = null;
+    activeMoreTweetId = null;
+    if (tweetId) requestPage("CLOSE_NATIVE_MORE", { tweetId }).catch(() => {});
   }
 
-  function openMoreMenu(model, actMore) {
-    if (openNativeMenu(model, '[data-testid="caret"]')) return;
-    if (activeMoreBtn === actMore) {
-      closeMoreMenu();
-      return;
-    }
-    closeMoreMenu();
-    closeShareMenu();
-    closeRepostMenu();
-
-    const menu = document.createElement("div");
-    menu.className = `sidepeek-more-menu ${currentThemeClass()}`;
-
-    const handle = model.author?.handle || "";
-
-    menu.innerHTML = `
-      <button type="button" class="sidepeek-menu-item sidepeek-menu-copy-link">
-        <span class="sidepeek-menu-item-icon">${ICONS.copy}</span>
-        <span>${t("copyLink")}</span>
-      </button>
-      <button type="button" class="sidepeek-menu-item sidepeek-menu-copy-text">
-        <span class="sidepeek-menu-item-icon">${ICONS.copy}</span>
-        <span>${t("copyText")}</span>
-      </button>
-      <button type="button" class="sidepeek-menu-item sidepeek-menu-open-x">
-        <span class="sidepeek-menu-item-icon">${ICONS.external}</span>
-        <span>${t("openOnXDirect")}</span>
-      </button>
-      ${handle ? `
-      <button type="button" class="sidepeek-menu-item sidepeek-menu-mute">
-        <span class="sidepeek-menu-item-icon">${ICONS.mute}</span>
-        <span>${t("muteUser", { handle })}</span>
-      </button>
-      <button type="button" class="sidepeek-menu-item danger sidepeek-menu-block">
-        <span class="sidepeek-menu-item-icon">${ICONS.block}</span>
-        <span>${t("blockUser", { handle })}</span>
-      </button>
-      ` : ""}
-    `;
-
-    // Position menu near button
-    const rect = actMore.getBoundingClientRect();
-    const menuWidth = 190;
-    const menuHeight = handle ? 210 : 130;
-
-    let top = rect.bottom + 4;
-    if (top + menuHeight > window.innerHeight - 8) {
-      top = rect.top - menuHeight - 4;
-    }
-    let left = rect.right - menuWidth;
-    if (left < 8) left = 8;
-    if (left + menuWidth > window.innerWidth - 8) {
-      left = window.innerWidth - menuWidth - 8;
-    }
-
-    menu.style.top = `${Math.round(top)}px`;
-    menu.style.left = `${Math.round(left)}px`;
-
-    menu.querySelector(".sidepeek-menu-copy-link")?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      closeMoreMenu();
-      if (model.url) {
-        navigator.clipboard?.writeText(model.url).then(() => {
-          showToast(t("linkCopied"));
-        });
-      }
-    });
-
-    menu.querySelector(".sidepeek-menu-copy-text")?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      closeMoreMenu();
-      const rawText = model.text || "";
-      if (rawText) {
-        navigator.clipboard?.writeText(rawText).then(() => {
-          showToast(t("textCopied"));
-        });
-      }
-    });
-
-    menu.querySelector(".sidepeek-menu-open-x")?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      closeMoreMenu();
-      if (model.url) window.open(model.url, "_blank");
-    });
-
-    menu.querySelector(".sidepeek-menu-mute")?.addEventListener("click", async (e) => {
-      e.stopPropagation();
-      closeMoreMenu();
-      try {
-        await requestPage("TOGGLE_MUTE", { screenName: handle, active: false });
-        showToast(t("userMuted", { handle }));
-      } catch (err) {
-        showToast(err.message || "Failed");
-      }
-    });
-
-    menu.querySelector(".sidepeek-menu-block")?.addEventListener("click", async (e) => {
-      e.stopPropagation();
-      closeMoreMenu();
-      try {
-        await requestPage("TOGGLE_BLOCK", { screenName: handle, active: false });
-        showToast(t("userBlocked", { handle }));
-      } catch (err) {
-        showToast(err.message || "Failed");
-      }
-    });
-
-    document.body.appendChild(menu);
-    activeMoreMenu = menu;
+  async function openMoreMenu(model, actMore) {
+    if (activeMoreBtn === actMore) { closeMoreMenu(); return; }
+    closeMoreMenu(); closeShareMenu(); closeRepostMenu();
+    const generation = moreMenuGeneration;
     activeMoreBtn = actMore;
+    activeMoreTweetId = model.id;
+    const rect = actMore.getBoundingClientRect();
+    try {
+      const result = await requestPage("OPEN_NATIVE_MORE", { tweetId: model.id, focalTweetId: state.focalTweetId, menuToken: generation,
+        anchor: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } });
+      if (generation !== moreMenuGeneration) return;
+      if (!result?.opened) {
+        closeMoreMenu();
+        if (!openNativeMenu(model, '[data-testid="caret"]')) showToast(t("nativeMoreNotReady"));
+        return;
+      }
+      actMore.setAttribute("aria-expanded", "true");
+    } catch {
+      if (generation === moreMenuGeneration) { closeMoreMenu(); showToast(t("nativeMoreNotReady")); }
+    }
   }
 
   // ==========================================================================
@@ -4357,7 +4299,7 @@
     if (!settingsLoaded) return;
     if (state.isResizing) return;
     if (event.target.closest?.('[data-sidex-native-reply-link]')) return;
-    if (event.target.closest?.("#layers, [data-sidex-native-share], #sidepeek-user-hovercard, .sidepeek-more-menu, .sidepeek-repost-menu")) return;
+    if (event.target.closest?.("#layers, [data-sidex-native-share], [data-sidex-native-more], #sidepeek-user-hovercard, .sidepeek-more-menu, .sidepeek-repost-menu")) return;
     if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
 
     // If clicked inside our drawer or lightbox, don't handle as timeline click
@@ -4458,13 +4400,15 @@
     if (!isSideXEnabled) return;
     if (event.key === "Escape") {
       if (nativeHoverCleanup) { hideUserHoverCard(); return; }
-      if (document.querySelector('#layers [role="dialog"], #layers [role="menu"]')) return;
+      if (document.querySelector('#layers [role="dialog"], #layers [role="menu"]') ||
+          [...document.querySelectorAll('#layers [data-testid="GrokDrawer"], #layers [data-testid="chat-drawer-root"], #layers [data-testid="DMDrawer"]')]
+            .some(panel => panel.getBoundingClientRect().height > 80)) return;
       const lightbox = document.getElementById("sidepeek-lightbox");
       if (lightbox && lightbox.classList.contains("active")) {
         closeLightbox();
         return;
       }
-      if (activeMoreMenu) {
+      if (activeMoreBtn) {
         closeMoreMenu();
         return;
       }
@@ -4492,10 +4436,10 @@
     if (activeRepostMenu && !activeRepostMenu.contains(e.target) && (!activeRepostBtn || !activeRepostBtn.contains(e.target))) {
       closeRepostMenu();
     }
-    if (activeMoreMenu && !activeMoreMenu.contains(e.target) && (!activeMoreBtn || !activeMoreBtn.contains(e.target))) {
+    if (activeMoreBtn && !activeMoreBtn.contains(e.target) && !e.target.closest?.("#layers, [data-sidex-native-more]")) {
       closeMoreMenu();
     }
-    if (activeShareBtn && !activeShareBtn.contains(e.target) && !e.target.closest?.("#layers, [data-sidex-native-share]")) {
+    if (activeShareBtn && !activeShareBtn.contains(e.target) && !e.target.closest?.("#layers, [data-sidex-native-share], [data-sidex-native-more]")) {
       closeShareMenu();
     }
   }, true);

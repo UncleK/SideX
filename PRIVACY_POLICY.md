@@ -1,6 +1,6 @@
 # Privacy Policy for SideX
 
-**Last updated:** October 17, 2026
+**Last updated:** October 20, 2026
 
 Thank you for choosing **SideX** ("the Extension"). We respect your privacy and are committed to protecting it. This Privacy Policy explains our practices regarding user data and permissions.
 
@@ -39,6 +39,7 @@ SideX interacts with X directly within your active browser session:
 SideX does not contain any third-party advertising, trackers, analytics, or remote scripts.
 
 - **X official translation (default):** Uses X's translation service within your current session.
+- **Grok analysis (user initiated):** Clicking Grok opens X's native analysis flow with the selected post's link and identifier. X/Grok processes the analysis through the active X session under its own service terms and privacy policies. SideX does not send it through a SideX server.
 - **Google translation (optional):** When selected and you click Translate, the post text and target language are sent directly to `translate.googleapis.com`. Translation results are cached temporarily in memory. X authentication headers and cookies are not included.
 - **Existing translation extensions:** SideX leaves readable text in the page and hides its own translation controls. Other extensions operate under their own settings and privacy policies; SideX does not automatically invoke arbitrary extensions.
 - **Media:** Displaying X images/videos and browsing the bundled GIF choices requests assets from their hosts, including X media hosts and GIPHY. Reply attachments selected by you are uploaded to X.

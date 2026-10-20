@@ -2483,9 +2483,12 @@ a.sidepeek-handle:hover { text-decoration: underline; }
   margin-left: auto;
   display: flex;
   align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
-.sidepeek-act-more {
+.sidepeek-act-more,
+.sidepeek-act-grok {
   background: transparent;
   border: 0;
   color: var(--sp-muted);
@@ -2498,9 +2501,22 @@ a.sidepeek-handle:hover { text-decoration: underline; }
   transition: background 0.15s, color 0.15s;
 }
 
-.sidepeek-act-more:hover {
+.sidepeek-act-more:hover,
+.sidepeek-act-grok:hover {
   background: rgba(29, 155, 240, 0.1);
   color: var(--sp-accent);
+}
+
+.sidepeek-act-grok svg,
+.sidepeek-act-more svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.sidepeek-act-grok:disabled {
+  opacity: 0.5;
+  cursor: wait;
 }
 
 .sidepeek-more-menu,

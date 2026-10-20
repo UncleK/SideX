@@ -261,9 +261,73 @@ test('native buttons and menus are reused, and native rollback updates the sideb
   nativeLike.dataset.testid = 'like'; nativeLike.textContent = '4'; await tick();
   assert.equal(like.getAttribute('aria-pressed'), 'false');
   assert.equal(like.textContent.trim(), '4');
-  p.query('.sidepeek-act-more').click();
+  p.query('.sidepeek-act-more').click(); await tick();
   assert.equal(menus, 1);
   assert.equal(p.query('.sidepeek-more-menu'), null);
+});
+
+for (const testId of ['GrokDrawer', 'chat-drawer-root', 'DMDrawer']) {
+  test(testId + ' stays above SideX without moving its native editor or swallowing Escape', async t => {
+    const open = new Set();
+    const p = createPage({ setupWindow(w) {
+      w.HTMLElement.prototype.showPopover = function () { open.add(this); };
+      w.HTMLElement.prototype.hidePopover = function () { open.delete(this); };
+      const layers = w.document.createElement('div'); layers.id = 'layers';
+      layers.innerHTML = `<section data-testid="${testId}"><input value="Native draft"><button>Native control</button></section>`;
+      layers.firstElementChild.getBoundingClientRect = () => ({ height: 400 });
+      w.document.body.append(layers);
+    } });
+    t.after(() => p.w.close());
+    await tick(); p.clickPost(0); await tick();
+    const layers = p.query('#layers'), editor = layers.querySelector('input'), parent = editor.parentElement;
+    const quick = p.query('.sidepeek-footer-textarea'); quick.value = 'SideX draft';
+    const reads = p.calls.filter(m => m.type === 'READ_THREAD').length;
+    assert.equal(open.has(layers), true);
+    layers.querySelector('button').click();
+    p.w.document.dispatchEvent(new p.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), true);
+    assert.equal(editor.parentElement, parent);
+    assert.equal(editor.value, 'Native draft');
+    assert.equal(quick.value, 'SideX draft');
+    assert.equal(p.calls.filter(m => m.type === 'READ_THREAD').length, reads);
+    layers.replaceChildren(); await tick();
+    assert.equal(open.has(layers), false);
+    assert.equal(layers.hasAttribute('popover'), false);
+  });
+}
+
+test('the Grok header action is single-flight and preserves the quick reply draft', async t => {
+  let finish;
+  const p = createPage({ request: m => m.type === 'OPEN_NATIVE_GROK' ? new Promise(resolve => { finish = resolve; }) : thread(m.tweetId) });
+  t.after(() => p.w.close());
+  await tick(); p.clickPost(0); await tick();
+  const editor = p.query('.sidepeek-footer-textarea'); editor.value = 'Keep this draft';
+  const grok = p.query('.sidepeek-act-grok'); grok.click(); grok.click(); await tick();
+  assert.equal(p.calls.filter(m => m.type === 'OPEN_NATIVE_GROK').length, 1);
+  assert.equal(p.calls.find(m => m.type === 'OPEN_NATIVE_GROK').tweetId, '101');
+  assert.equal(grok.disabled, true);
+  finish({ opened: true }); await tick();
+  assert.equal(grok.disabled, false);
+  assert.equal(editor.value, 'Keep this draft');
+});
+
+test('a pre-existing native drawer is promoted while replies are still loading, and its collapsed bar does not block Escape', async t => {
+  const open = new Set(); let finish;
+  const p = createPage({ request: () => new Promise(resolve => { finish = resolve; }), setupWindow(w) {
+    w.HTMLElement.prototype.showPopover = function () { open.add(this); };
+    w.HTMLElement.prototype.hidePopover = function () { open.delete(this); };
+    const layers = w.document.createElement('div'); layers.id = 'layers';
+    layers.innerHTML = '<div data-testid="GrokDrawer"></div>';
+    layers.firstElementChild.getBoundingClientRect = () => ({ height: 56 });
+    w.document.body.append(layers);
+  } });
+  t.after(() => p.w.close());
+  await tick(); p.clickPost(0); await tick();
+  assert.equal(open.has(p.query('#layers')), true, 'loading must not leave an existing native panel behind SideX');
+  p.w.document.dispatchEvent(new p.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), false);
+  assert.equal(open.has(p.query('#layers')), false);
+  finish(thread('100')); await tick();
 });
 
 test('Quote opens the exact sidebar target in the official composer once and preserves the quick draft', async t => {

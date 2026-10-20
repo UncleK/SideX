@@ -217,8 +217,8 @@ test('native replies use X router state for the exact target without navigation,
   assert.equal(modal.textContent, 'Other draft');
 });
 
-function nativeMenuFixture(w) {
-  const routed = [], normalized = [], rendered = [], copied = [], imports = [];
+function nativeMenuFixture(w, kind = 'share') {
+  const routed = [], normalized = [], rendered = [], copied = [], imports = [], grok = [];
   const store = { state: { tweets: {} }, getState() { return this.state; },
     dispatch(action) { imports.push(action); this.state.tweets = { ...this.state.tweets, ...action.payload.tweets }; } };
   const original = { id_str: '100', user: { screen_name: 'timeline' }, permalink: '/timeline/status/100' };
@@ -226,6 +226,10 @@ function nativeMenuFixture(w) {
     constructor(props) { this.props = props; this.context = { store }; }
     _getShareMenuActionItems() {}
     _renderShareAction() { return this.props.tweet; }
+    _renderCurationActionMenu() {}
+    _renderGrokButton() {}
+    _openGrok(payload) { grok.push(payload); }
+    render() { return this.props.tweet; }
   }
   const props = { tweet: original, id: '100', history: { push: (...args) => routed.push(args) }, promotedContent: { id: 'original-ad' } };
   const Provider = {};
@@ -241,6 +245,7 @@ function nativeMenuFixture(w) {
           const target = instance.render();
           rendered.push({ props: tree.props, target, providers });
           const button = w.document.createElement('button');
+          if (kind === 'more') button.dataset.testid = 'caret';
           button.setAttribute('aria-haspopup', 'menu'); button.setAttribute('aria-expanded', 'false');
           button.addEventListener('click', () => {
             menu = w.document.createElement('div'); menu.setAttribute('role', 'menu');
@@ -279,7 +284,78 @@ function nativeMenuFixture(w) {
   for (let i = 0; i < 350; i++) parent = { return: parent };
   w.document.querySelector('button').__reactFiber$fixture = { return: { type: NativeActions,
     stateNode: new NativeActions(props), memoizedProps: props, return: parent } };
-  return { routed, normalized, rendered, copied, original, props, imports };
+  if (kind !== 'share') w.document.querySelector('button').dataset.testid = 'caret';
+  return { routed, normalized, rendered, copied, original, props, imports, grok };
+}
+
+test('native More targets a sidebar-only reply, drops source-row callbacks and retains native dialogs until dismissed', async t => {
+  let fixture;
+  const b = bridge(() => ({ ok: true, json: async () => ({ data: tweet('123') }) }), w => { fixture = nativeMenuFixture(w, 'more'); });
+  t.after(() => b.w.close());
+  fixture.props.onTweetDismiss = () => assert.fail('Source row callback must not be copied');
+  await b.w.fetch('/i/api/graphql/observed/TweetDetail?variables=%7B%7D');
+  assert.equal((await b.send({ type: 'OPEN_NATIVE_MORE', tweetId: '123', menuToken: 1,
+    anchor: { left: 900, top: 200, width: 26, height: 26 } })).opened, true);
+  assert.equal(fixture.rendered[0].target.id_str, '123');
+  assert.equal(fixture.rendered[0].props.onTweetDismiss, undefined);
+  assert.equal(fixture.props.tweet.id_str, '100');
+  const host = b.w.document.querySelector('[data-sidex-native-more]');
+  assert.equal(host.parentElement, b.w.document.body);
+  assert.equal(host.style.left, '900px');
+  const dialog = b.w.document.createElement('div'); dialog.setAttribute('role', 'dialog');
+  b.w.document.querySelector('#layers').append(dialog);
+  b.w.document.querySelector('[role="menu"] button').click(); await tick();
+  assert.ok(host.isConnected, 'native Embed and disclosure dialogs keep their owning React root');
+  dialog.remove(); await tick();
+  assert.equal(host.isConnected, false);
+});
+
+test('Grok uses the explicit requested entity and permalink without changing the source row', async t => {
+  let fixture;
+  const b = bridge(() => ({ ok: true, json: async () => ({ data: tweet('123') }) }), w => { fixture = nativeMenuFixture(w, 'more'); });
+  t.after(() => b.w.close());
+  await b.w.fetch('/i/api/graphql/observed/TweetDetail?variables=%7B%7D');
+  assert.equal((await b.send({ type: 'OPEN_NATIVE_GROK', tweetId: '123' })).opened, true);
+  assert.equal(fixture.grok.length, 1);
+  assert.equal(fixture.grok[0].analysisEntityId, '123');
+  assert.equal(fixture.grok[0].text, 'https://x.com/reader/status/123');
+  assert.equal(fixture.grok[0].autoSubmit, true);
+  assert.equal(fixture.original.id_str, '100');
+  assert.equal(fixture.rendered.length, 0);
+});
+
+test('canceling pending More hydration prevents its menu from reopening', async t => {
+  let fixture, finish, waiting = false;
+  const b = bridge(() => waiting ? new Promise(resolve => { finish = resolve; }) : { ok: true, json: async () => ({ data: {} }) },
+    w => { fixture = nativeMenuFixture(w, 'more'); });
+  t.after(() => b.w.close());
+  await b.w.fetch('/i/api/graphql/observed/TweetDetail?variables=%7B%7D'); waiting = true;
+  const pending = b.send({ type: 'OPEN_NATIVE_MORE', tweetId: '123', anchor: { left: 0, top: 0, width: 26, height: 26 } });
+  await tick(); await b.send({ type: 'CLOSE_NATIVE_MORE', tweetId: '123' });
+  finish({ ok: true, json: async () => ({ data: tweet('123') }) });
+  assert.equal((await pending).opened, false);
+  assert.equal(fixture.rendered.length, 0);
+});
+
+for (const ownThread of [true, false]) {
+  test('More derives reply moderation from the selected thread author: ' + ownThread, async t => {
+    let fixture;
+    const b = bridge(() => ({ ok: true, json: async () => ({ data: tweet('123', '100') }) }), w => {
+      fixture = nativeMenuFixture(w, 'more');
+      const owner = w.document.querySelector('article button').__reactFiber$fixture.return;
+      owner.stateNode.context.viewerUserId = 'viewer';
+      owner.stateNode.context.store.state.tweets['100'] = { ...fixture.original,
+        user: { ...fixture.original.user, id_str: ownThread ? 'viewer' : 'other' } };
+      fixture.props.withHideReply = !ownThread;
+    });
+    t.after(() => b.w.close());
+    await b.w.fetch('/i/api/graphql/observed/TweetDetail?variables=%7B%7D');
+    assert.equal((await b.send({ type: 'OPEN_NATIVE_MORE', tweetId: '123', focalTweetId: '100',
+      anchor: { left: 20, top: 20, width: 26, height: 26 } })).opened, true);
+    assert.equal(fixture.rendered[0].props.withHideReply, ownThread);
+    assert.equal(fixture.rendered[0].props.withViewHiddenReplies, true);
+    assert.equal(fixture.props.withHideReply, !ownThread, 'the original row stays unchanged');
+  });
 }
 
 test('quoting a sidebar-only reply uses native schemas and a hydrated permalink for the exact post', async t => {
