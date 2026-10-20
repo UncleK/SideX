@@ -987,9 +987,10 @@ body:has(#sidepeek-drawer-root.sidepeek-open) #layers {
 }
 
 /* ==========================================================================
-   1:1 Action Bar (Reply, Repost, Like, Views, Bookmark, Share)
+   Action Bar (Reply, Repost, Like, Translate, Views, Bookmark, Share)
    ========================================================================== */
 .sidepeek-action-bar {
+  container: sidepeek-actions / inline-size;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1026,6 +1027,40 @@ body:has(#sidepeek-drawer-root.sidepeek-open) #layers {
   height: 18px;
   display: block;
   fill: currentColor;
+}
+
+@container sidepeek-actions (max-width: 300px) {
+  .sidepeek-action-btn,
+  .sidepeek-action-btn-surface {
+    min-width: 0;
+  }
+
+  .sidepeek-action-btn {
+    flex: 1 1 0;
+  }
+
+  .sidepeek-translate-btn,
+  .sidepeek-act-bookmark,
+  .sidepeek-act-share {
+    flex: 0 0 22px;
+  }
+
+  .sidepeek-action-btn-surface {
+    box-sizing: border-box;
+    width: 100%;
+    padding-inline: 2px;
+    gap: 3px;
+  }
+
+  .sidepeek-action-btn svg {
+    flex-shrink: 0;
+  }
+
+  .sidepeek-action-btn-surface > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 /* Action hover & active states */
@@ -2579,27 +2614,18 @@ a.sidepeek-handle:hover { text-decoration: underline; }
 /* ==========================================================================
    5. Translate Post (翻译推文)
    ========================================================================== */
-.sidepeek-translate-btn {
-  background: transparent;
-  border: 0;
-  padding: 0;
-  margin-top: 4px;
-  font-size: 13px;
+.sidepeek-translate-btn:hover,
+.sidepeek-translate-btn.active {
   color: var(--sp-accent);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  transition: opacity 0.15s;
 }
 
-.sidepeek-translate-btn:hover {
-  text-decoration: underline;
+.sidepeek-translate-btn:hover .sidepeek-action-btn-surface {
+  background: rgba(29, 155, 240, 0.1);
 }
 
 .sidepeek-translate-btn:disabled {
   opacity: 0.6;
-  cursor: default;
+  cursor: wait;
 }
 
 .sidepeek-translation-box {

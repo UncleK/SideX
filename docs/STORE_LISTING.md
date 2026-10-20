@@ -20,14 +20,14 @@ FEATURES
 • Grok and More: analyze the selected reply with Grok or open X's official three-dot menu from its header, including replies absent from the native timeline. Grok, Chat and official menus stay in front of the SideX sidebar.
 • Native interactions: reuse X controls when the matching native post is present. Other comments use your active X session.
 • Profile cards: show the actual X hover card when a matching native profile link is available. Otherwise, show a fallback with biography, relationship counts and followers you know.
-• Translation choices: use X official translation, choose Google, or use your existing translation extension's selection/page translation.
+• Translation choices: use the compact translation icon directly after Like to show or hide a reply's translation. Use X official translation, choose Google, or use your existing translation extension's selection/page translation.
 • Appearance: follows X's theme and supports an adjustable sidebar width.
 
-WHAT'S NEW IN 1.1.28
-• Adds Grok and X's official three-dot menu to reply headers, including replies absent from the native timeline.
-• Grok analyzes the selected reply; More opens the official menu for that reply.
-• Fixes Grok and Chat windows appearing behind the SideX sidebar, including while replies are loading or a load has failed.
-• Preserves one-click, one-page branch loading, separate text drafts and the same-row Load more/Collapse layout.
+WHAT'S NEW IN 1.1.29
+• Replaces each reply's Translate post text with a compact translation icon directly after Like.
+• Click to show a translation and click again to hide it; the icon highlights while the translation is visible.
+• Keeps reply action icons on one row in narrow sidebars.
+• Preserves translation providers, cached results and retry behavior.
 
 PRIVACY
 SideX runs in your browser and has no SideX relay server or analytics service. It processes the X content you open and uses your current X session for authenticated requests. Text drafts stay temporarily in the current page and are not synced. Replies and selected attachments go to X. Clicking Grok opens X's native analysis flow for the selected post through X/Grok, under their service terms and privacy policies. If you select Google translation and click Translate, the post text is sent directly to Google. X authentication information is not sent to Google. Other translation extensions follow their own settings and privacy policies.
@@ -62,14 +62,14 @@ SideX 把 X 的评论区放到右侧。点击帖子正文或空白处，在保�
 • 回复右上角提供 Grok 与官方三个点菜单，也支持主页面未渲染的评论；Grok、Chat 和官方菜单显示在 SideX 侧栏前方。
 • 页面有对应原生帖子时，优先复用官方交互；其余评论通过当前 X 会话处理。
 • 页面有对应原生用户入口时，显示完整官方悬浮卡；否则显示包含简介、关注数字和共同关注的后备卡片。
-• 默认使用 X 官方翻译，也可选择 Google，或使用已有翻译插件的划词／网页翻译。
+• 点击点赞后面的翻译图标显示或隐藏译文；默认使用 X 官方翻译，也可选择 Google，或使用已有翻译插件的划词／网页翻译。
 • 跟随 X 主题，支持调整侧栏宽度。
 
-1.1.28 更新
-• 回复右上角新增 Grok 和 X 官方三个点菜单，也支持主页面未渲染的评论。
-• Grok 分析当前点击的回复；三个点打开对应回复的官方操作菜单。
-• 修复 Grok、Chat 窗口被 SideX 侧栏挡住的问题，评论加载中或加载失败时也能正常显示在前方。
-• 保留每次点击只加载当前分支一页、独立文字草稿，以及加载更多／收起同行布局。
+1.1.29 更新
+• 将每条回复下方的“翻译推文”文字精简为图标，放在操作栏点赞后面。
+• 点击显示译文，再次点击隐藏；显示译文时图标高亮。
+• 调整窄侧栏布局，让整排操作图标保持在同一行。
+• 保留翻译方式选择、译文缓存和失败重试。
 
 隐私说明
 SideX 在浏览器中运行，没有 SideX 中转或统计服务器。扩展处理你打开的 X 内容，并复用当前 X 会话；文字草稿仅在当前页面暂存，不参与同步，回复及选择的附件发送给 X。点击 Grok 会通过 X 原生流程分析所选帖子，由 X/Grok 处理并遵循其服务条款与隐私政策。只有选择 Google 翻译并点击翻译时，正文才会直接发送给 Google，X 认证信息不会发给 Google。已有翻译插件遵循各自的设置和隐私政策。

@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-官方商店上架-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.28-00b4f8?style=flat-square" alt="Version 1.1.28" />
+    <img src="https://img.shields.io/badge/Version-1.1.29-00b4f8?style=flat-square" alt="Version 1.1.29" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -48,7 +48,7 @@
 * ✍️ **多条文字草稿**：按帖子和回复对象分别暂存未发送的文字，切回时恢复。切帖和关闭评论区直接响应，不弹出拦截提示。草稿仅在当前标签页保留，刷新页面或关闭标签页后清空；关闭或切换回复后不恢复图片附件。
 * 🔄 **官方交互优先**：引用在当前页面打开 X 官方编辑器并显示原帖卡片；分享复用官方菜单，选项随账号权限和媒体类型变化，也支持主页面未渲染的评论。同一帖子已在页面原生渲染时，优先使用官方点赞、收藏并同步状态；其余评论通过 X 会话请求处理。
 * ✨ **Grok 与官方更多菜单**：从回复右上角调用 Grok 分析当前回复，或打开 X 官方三个点菜单，也支持主页面未渲染的评论。Grok、Chat 和官方菜单显示在 SideX 侧栏前方。
-* 🌐 **可选翻译方式**：默认使用 X 官方翻译；可在扩展设置中选择 Google，或隐藏 SideX 翻译按钮，使用已有翻译插件的划词/网页翻译。
+* 🌐 **可选翻译方式**：翻译入口精简为操作栏中点赞后面的图标，点击显示译文，再次点击隐藏。默认使用 X 官方翻译；可在扩展设置中选择 Google，或隐藏 SideX 翻译按钮，使用已有翻译插件的划词/网页翻译。
 * 👤 **用户悬浮卡**：页面存在对应原生用户入口时，保留官方卡片及其交互，并在侧栏旁显示；其余情况使用包含简介、关注关系和共同关注的后备卡片。
 * 🎨 **主题自适应 & 自由拉伸**：完美自适应浅色（Light）、暗色（Dim）与黑色（Dark）主题；可随意拖拽右边缘调节抽屉宽度。
 * 🛡️ **浏览器内运行**：复用当前 X 会话，无 SideX 中转服务器；选用 Google 翻译时，正文直接发送给 Google。
@@ -109,6 +109,8 @@ npm test
 ```
 
 回归检查使用合成 X 响应和 DOM，覆盖新旧用户资料结构、官方翻译请求、Google 长文分段、原生按钮复用、失败回滚、翻译/展开状态保留、切帖滚动重置和过期请求隔离。测试不会对真实 X 账号执行操作。
+
+1.1.29 将翻译入口移到操作栏点赞后面的图标，移除每条回复单独的“翻译推文”文字。加载中保留图标，显示译文时高亮，再次点击隐藏已缓存的译文，不重复请求；悬停提示和无障碍名称保留状态与重试说明。窄侧栏中操作图标保持一行。全部 188 项本地回归通过，并在 Chrome 的本地源码示例中检查了 320px／520px 面板布局及翻译切换；该检查并非新 ZIP 安装测试。
 
 1.1.28 在回复右上角加入 Grok 分析和 X 官方更多菜单，也支持只在侧栏中显示的回复，操作对应当前点击的回复。修复 Grok、Chat 和官方菜单被侧栏遮挡，评论加载中或加载失败时同样显示在前方；保留原生编辑器所在的 React 容器，收起后的聊天条不会阻止 Esc 关闭侧栏。全部 188 项本地回归通过，并在真实 X 页面使用隔离源码环境验证官方菜单目标及 Grok／Chat 层级；该浏览器验证并非新 ZIP 安装测试。
 

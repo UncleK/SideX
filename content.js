@@ -53,6 +53,8 @@
     quote: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M14.23 2.854c.98-1.008 2.607-1.026 3.615-.04l2.54 2.49c1.008.98 1.026 2.607.04 3.615L9.67 19.884c-.37.38-.85.63-1.37.72l-5.32 1.03c-.61.12-1.18-.34-1.22-.96-.01-.1-.01-.19 0-.29l1.03-5.32c.09-.52.34-1 .72-1.37l10.72-10.84zm.708 2.124L4.85 15.903c-.19.19-.32.44-.36.71l-.66 3.42 3.42-.66c.27-.04.52-.17.71-.36L18.89 7.933l-3.952-3.955z"></path></g></svg>`,
     like: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M12 21.638h-.014C9.403 21.59 1.95 14.856 1.95 8.478c0-3.064 2.525-5.754 5.403-5.754 2.29 0 3.83 1.58 4.646 2.73.814-1.148 2.354-2.73 4.645-2.73 2.88 0 5.404 2.69 5.404 5.755 0 6.376-7.454 13.11-10.037 13.157H12zM7.354 4.225c-2.08 0-3.903 1.988-3.903 4.255 0 5.74 7.034 11.596 8.55 11.658 1.518-.062 8.55-5.917 8.55-11.658 0-2.267-1.823-4.255-3.903-4.255-2.528 0-3.94 2.936-3.952 2.965-.23.562-1.156.562-1.387 0-.014-.03-1.425-2.965-3.954-2.965z"></path></g></svg>`,
     likeSolid: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M20.884 13.19c-1.351 2.48-4.001 5.12-8.379 7.67l-.505.3-.505-.3c-4.379-2.55-7.029-5.19-8.38-7.67-1.36-2.5-1.41-4.86-.514-6.67.887-1.79 2.647-2.91 4.601-3.01 1.651-.09 3.368.56 4.798 2.01 1.429-1.45 3.146-2.1 4.796-2.01 1.954.1 3.714 1.22 4.601 3.01.896 1.81.846 4.17-.514 6.67z"></path></g></svg>`,
+    // Adapted Material Design Icons "translate" path (Apache-2.0); see LICENSE.
+    translate: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12.87 15.07-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8H4.69c.73 1.63 1.73 3.17 2.98 4.56L2.58 17.58 4 19l5-5 3.11 3.11.76-2.04zM18 10h-2l-4.5 12h2l1.12-3h4.75l1.13 3h2L18 10zm-2.62 7L17 12.67 18.62 17h-3.24z"/></svg>`,
     views: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M8.75 21V3h2v18h-2zM18 21V8.5h2V21h-2zM4 21l.004-10h2L6 21H4zm9.248 0v-7h2v7h-2z"></path></g></svg>`,
     bookmark: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M4 4.5C4 3.12 5.119 2 6.5 2h11C18.881 2 20 3.12 20 4.5v18.44l-8-5.71-8 5.71V4.5zM6.5 4c-.276 0-.5.22-.5.5v14.56l6-4.29 6 4.29V4.5c0-.28-.224-.5-.5-.5h-11z"></path></g></svg>`,
     bookmarkSolid: `<svg viewBox="0 0 24 24" aria-hidden="true"><g><path d="M4 4.5C4 3.12 5.119 2 6.5 2h11C18.881 2 20 3.12 20 4.5v18.44l-8-5.71-8 5.71V4.5z"></path></g></svg>`,
@@ -1830,7 +1832,12 @@
     }
     const update = () => {
       button.disabled = Boolean(entry.pending);
-      button.textContent = entry.pending ? t("translating") : entry.error ? t("translationRetry") : entry.showing ? t("hideTranslation") : t("translateAction");
+      const label = entry.pending ? t("translating") : entry.error ? t("translationRetry") : entry.showing ? t("hideTranslation") : t("translateAction");
+      button.title = label;
+      button.setAttribute("aria-label", label);
+      button.setAttribute("aria-expanded", String(Boolean(entry.showing || entry.error)));
+      button.setAttribute("aria-busy", String(Boolean(entry.pending)));
+      button.classList.toggle("active", Boolean(entry.showing && !entry.error));
       box.style.display = entry.showing || entry.error ? "block" : "none";
       if (entry.result) {
         box.innerHTML = `<div class="sidepeek-translation-header">${escapeHtml(t("translatedBy", {
@@ -2019,7 +2026,10 @@
 
     const canTranslate = shouldShowTranslate(model);
     const translateHtml = canTranslate
-      ? `<button type="button" class="sidepeek-translate-btn">${t("translateAction")}</button><div class="sidepeek-translation-box" style="display: none;"></div>`
+      ? `<button type="button" class="sidepeek-action-btn sidepeek-translate-btn" title="${t("translateAction")}" aria-label="${t("translateAction")}" aria-controls="sidepeek-translation-${model.id}" aria-expanded="false"><span class="sidepeek-action-btn-surface">${ICONS.translate}</span></button>`
+      : "";
+    const translationBoxHtml = canTranslate
+      ? `<div id="sidepeek-translation-${model.id}" class="sidepeek-translation-box" style="display: none;"></div>`
       : "";
 
     const quoteHtml = model.quote ? renderQuoteCard(model.quote, model.id) : "";
@@ -2049,7 +2059,7 @@
         </div>
         ${replyToHtml}
         ${textHtml}
-        ${translateHtml}
+        ${translationBoxHtml}
         ${renderMediaBox(model.media)}
         ${quoteHtml}
         ${cardHtml}
@@ -2063,6 +2073,7 @@
           <button type="button" class="sidepeek-action-btn sidepeek-act-like ${model.flags.liked ? "active" : ""}" title="${t("likeAction")}">
             <span class="sidepeek-action-btn-surface">${model.flags.liked ? ICONS.likeSolid : ICONS.like} <span>${formatCount(model.counts.likes)}</span></span>
           </button>
+          ${translateHtml}
           <a class="sidepeek-action-btn sidepeek-act-views" href="${escapeHtml(model.url)}/analytics" target="_blank" title="${t("viewsAction")}">
             <span class="sidepeek-action-btn-surface">${ICONS.views} <span>${formatCount(model.counts.views)}</span></span>
           </a>

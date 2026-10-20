@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-Available-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.28-00b4f8?style=flat-square" alt="Version 1.1.28" />
+    <img src="https://img.shields.io/badge/Version-1.1.29-00b4f8?style=flat-square" alt="Version 1.1.29" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -48,7 +48,7 @@
 * ✍️ **Separate text drafts**: Switch posts and close comments freely without a prompt. Unsent text is kept separately per post and reply target in the current tab and restored on return. Refreshing the page or closing the tab clears these drafts; image attachments are not retained after closing or switching replies.
 * 🔄 **Native interactions first**: Quotes open X's official in-page composer with the original-post card. Sharing uses X's official menu with account and media-specific options, even for replies absent from the native timeline. Reuse native like and bookmark controls when the same post is rendered on the page; other comments use X session requests.
 * ✨ **Grok and official More menu**: Analyze the selected reply with Grok or open X's official three-dot menu from its header, including replies absent from the native timeline. Grok, Chat and official menus appear above the SideX sidebar.
-* 🌐 **Translation options**: Use X official translation by default, choose Google, or hide SideX translation controls and use your existing translator's selection/page translation.
+* 🌐 **Translation options**: Translate from the compact icon directly after Like in each reply's action bar, then click again to hide the translation. Use X official translation by default, choose Google, or hide SideX translation controls and use your existing translator's selection/page translation.
 * 👤 **Profile hover cards**: Reuse the actual X card next to the sidebar when a matching native profile link exists; otherwise show a fallback with biography, relationship counts, and followers you know.
 * 🎨 **Adaptive Themes & Resizable**: Matches X's Light, Dim, and Dark themes. Drag the right edge to adjust sidebar width.
 * 🛡️ **Runs in your browser**: Reuses your X session without a SideX relay server. When Google translation is selected, post text is sent directly to Google.
@@ -109,6 +109,8 @@ npm test
 ```
 
 Tests use synthetic X responses and DOM fixtures without performing real account actions. They cover profile parsing, translation requests, long-text chunking, native controls, rollback, retained reading state, scroll reset, and stale responses. X internals and third-party translation extensions may change. Without a matching native profile link, SideX renders a fallback with a full-profile link rather than simulating Grok's Profile Summary button; comments without native nodes are still rendered by SideX.
+
+Version 1.1.29 moves translation into a compact icon directly after Like, removing the separate Translate post text on each reply. The icon stays visible during loading, highlights while a translation is shown and toggles cached translations without another request. Labels and retry states remain available through tooltips and accessible names. Narrow action bars keep all icons on one row. All 188 local regression tests pass; Chrome layout and toggle checks used a local source fixture at 320px and 520px panel widths, not a fresh ZIP installation.
 
 Version 1.1.28 adds Grok analysis and X's official More menu to reply headers, including sidebar-only replies. Each action targets the selected reply. Grok, Chat and native menus now appear above the sidebar, including during loading or a failed read. Native editors stay in their original React portal, and collapsed chat bars do not block Escape. All 188 local regression tests pass. The official menu target and Grok/Chat foreground behavior were checked on a real X page using an isolated source harness, rather than a fresh ZIP installation.
 
