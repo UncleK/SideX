@@ -443,6 +443,92 @@ test('native hover card keeps the actual component, original handlers and full c
   assert.equal(card.hasAttribute('data-sidex-native-hover'), false);
 });
 
+test('native profile overlays leave the avatar reachable while cards and other dialogs remain interactive', t => {
+  const dom = new JSDOM('<div id="layers" data-sidex-native-layers><div id="hover-overlay" style="pointer-events:auto">'
+    + '<div><div data-testid="hoverCardParent" style="pointer-events:auto"><button>Profile Summary</button></div></div></div>'
+    + '<div id="other-dialog" role="dialog"><button>Close</button></div></div>');
+  t.after(() => dom.window.close());
+  const style = dom.window.document.createElement('style'); style.textContent = source('sidebar.css');
+  dom.window.document.head.append(style);
+  const pointerEvents = selector => dom.window.getComputedStyle(dom.window.document.querySelector(selector)).pointerEvents;
+  assert.equal(pointerEvents('#hover-overlay'), 'none', 'the full-screen transparent wrapper must not steal avatar hover');
+  assert.equal(pointerEvents('[data-testid="hoverCardParent"]'), 'auto');
+  assert.equal(pointerEvents('#other-dialog'), 'auto');
+});
+
+function nativeHoverFixture() {
+  const open = new WeakSet(); let opens = 0, requests = 0;
+  const p = createPage({ setupWindow(w) {
+    const matches = w.HTMLElement.prototype.matches;
+    w.HTMLElement.prototype.matches = function (selector) { return selector === ':popover-open' ? open.has(this) : matches.call(this, selector); };
+    w.HTMLElement.prototype.showPopover = function () { open.add(this); opens++; };
+    w.HTMLElement.prototype.hidePopover = function () { open.delete(this); };
+    const layers = w.document.createElement('div'); layers.id = 'layers'; w.document.body.append(layers);
+    const source = w.document.createElement('a'); source.href = '/reader'; w.document.querySelector('main').append(source);
+    source.addEventListener('mouseover', () => { requests++; layers.append(card); });
+  } });
+  const card = p.w.document.createElement('div'); card.dataset.testid = 'hoverCardParent';
+  card.innerHTML = '<div data-testid="HoverCard"><a href="/reader">Reader</a><button>Profile Summary</button></div>';
+  card.getBoundingClientRect = () => ({ width: 300, height: 300 });
+  return { ...p, card, open, get opens() { return opens; }, get requests() { return requests; } };
+}
+
+for (const native of [false, true]) {
+  test('re-entering the ' + (native ? 'native' : 'fallback') + ' profile card cancels every pending dismissal', async t => {
+    const p = native ? nativeHoverFixture() : createPage({ request: m => m.type === 'FETCH_USER_PROFILE'
+      ? user('reader') : m.type === 'FETCH_MUTUAL_FOLLOWERS' ? { count: 0, users: [] } : thread(m.tweetId) });
+    t.after(() => p.w.close());
+    await tick(); p.clickPost(0); await tick();
+    const avatar = p.query('.sidepeek-avatar-link');
+    avatar.dispatchEvent(new p.w.MouseEvent('mouseenter')); await tick(390);
+    const card = native ? p.card : p.query('#sidepeek-user-hovercard');
+    avatar.dispatchEvent(new p.w.MouseEvent('mouseleave', { relatedTarget: p.w.document.body }));
+    card.dispatchEvent(new p.w.MouseEvent('mouseleave', { relatedTarget: p.w.document.body }));
+    card.dispatchEvent(new p.w.MouseEvent('mouseenter'));
+    await tick(300);
+    assert.equal(native ? p.open.has(card) : card.classList.contains('visible'), true);
+  });
+}
+
+test('moving between the same author avatar and name keeps one native card session', async t => {
+  const p = nativeHoverFixture(); t.after(() => p.w.close());
+  await tick(); p.clickPost(0); await tick();
+  const avatar = p.query('.sidepeek-avatar-link'), name = p.query('.sidepeek-name');
+  avatar.dispatchEvent(new p.w.MouseEvent('mouseenter')); await tick(390);
+  avatar.dispatchEvent(new p.w.MouseEvent('mouseleave', { relatedTarget: name }));
+  name.dispatchEvent(new p.w.MouseEvent('mouseenter', { relatedTarget: avatar })); await tick(390);
+  assert.equal(p.requests, 1, 'moving within one author must not replay native mouseover');
+  assert.equal(p.opens, 1, 'keep the existing top-layer card');
+  assert.equal(p.open.has(p.card), true);
+});
+
+test('a native profile card near the viewport bottom opens above the avatar without covering it', async t => {
+  const p = nativeHoverFixture(); t.after(() => p.w.close());
+  await tick(); p.clickPost(0); await tick();
+  const avatar = p.query('.sidepeek-avatar-link');
+  avatar.getBoundingClientRect = () => ({ left: 700, right: 736, top: 700, bottom: 736, width: 36, height: 36 });
+  avatar.dispatchEvent(new p.w.MouseEvent('mouseenter')); await tick(390);
+  const top = Number(p.card.style.getPropertyValue('--sidex-hover-top').replace('px', ''));
+  assert.ok(top + 300 <= 700 - 4, 'the card must not occlude its own trigger');
+});
+
+test('hydrating an already visible fallback profile does not restart its visibility animation', async t => {
+  let finish;
+  const p = createPage({ request: m => m.type === 'FETCH_USER_PROFILE' ? new Promise(resolve => { finish = resolve; })
+    : m.type === 'FETCH_MUTUAL_FOLLOWERS' ? { count: 0, users: [] } : thread(m.tweetId) });
+  t.after(() => p.w.close());
+  await tick(); p.clickPost(0); await tick();
+  p.query('.sidepeek-avatar-link').dispatchEvent(new p.w.MouseEvent('mouseenter')); await tick(390);
+  const card = p.query('#sidepeek-user-hovercard');
+  assert.equal(card.classList.contains('visible'), true);
+  let becameHidden = false;
+  const observer = new p.w.MutationObserver(() => { if (!card.classList.contains('visible')) becameHidden = true; });
+  observer.observe(card, { attributes: true, attributeFilter: ['class'] });
+  finish(user('reader')); await tick(50); observer.disconnect();
+  assert.equal(becameHidden, false);
+  assert.equal(card.classList.contains('visible'), true);
+});
+
 test('fallback profile preserves bio formatting, expanded links and mutual-follower context', async t => {
   const profile = user('reader', {
     profile_bio: { description: 'Building @friend\n\nhttps://t.co/demo', entities: { description: { urls: [{ url: 'https://t.co/demo', expanded_url: 'https://example.com', display_url: 'example.com' }] } } },

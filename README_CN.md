@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-官方商店上架-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.29-00b4f8?style=flat-square" alt="Version 1.1.29" />
+    <img src="https://img.shields.io/badge/Version-1.1.30-00b4f8?style=flat-square" alt="Version 1.1.30" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -109,6 +109,8 @@ npm test
 ```
 
 回归检查使用合成 X 响应和 DOM，覆盖新旧用户资料结构、官方翻译请求、Google 长文分段、原生按钮复用、失败回滚、翻译/展开状态保留、切帖滚动重置和过期请求隔离。测试不会对真实 X 账号执行操作。
+
+1.1.30 修复鼠标停在头像上时资料卡反复开关、闪烁的问题。X 的透明悬浮外层不再拦截鼠标；在同一用户的头像、昵称和卡片间移动时保留当前卡片，资料补全也不会重新播放显示动画。卡片根据可用空间向上或向侧面展开，避免盖住触发头像。全部 194 项本地回归通过，并在真实 X 页面用当前源码的隔离环境验证持续悬停、移入卡片、移开关闭及切换用户；该浏览器验证并非新 ZIP 安装测试。
 
 1.1.29 将翻译入口移到操作栏点赞后面的图标，移除每条回复单独的“翻译推文”文字。加载中保留图标，显示译文时高亮，再次点击隐藏已缓存的译文，不重复请求；悬停提示和无障碍名称保留状态与重试说明。窄侧栏中操作图标保持一行。全部 188 项本地回归通过，并在 Chrome 的本地源码示例中检查了 320px／520px 面板布局及翻译切换；该检查并非新 ZIP 安装测试。
 

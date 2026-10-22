@@ -928,6 +928,12 @@ body:has(#sidepeek-drawer-root.sidepeek-open) #layers {
   pointer-events: auto;
 }
 
+/* X wraps profile cards in a transparent full-screen layer. Keep that layer
+   click-through so opening a card cannot take hover away from its avatar. */
+#layers[data-sidex-native-layers] > :has([data-testid="hoverCardParent"]) {
+  pointer-events: none !important;
+}
+
 #layers[data-sidex-native-layers]::backdrop {
   background: transparent;
   pointer-events: none;
@@ -2308,8 +2314,9 @@ a.sidepeek-handle:hover { text-decoration: underline; }
   background: transparent !important;
   overflow: visible !important;
   max-width: calc(100vw - 24px);
-  max-height: calc(100vh - 24px);
+  max-height: var(--sidex-hover-max-height, calc(100vh - 24px));
 }
+[data-sidex-native-hover][data-sidex-hover-scroll] { overflow-y: auto !important; }
 [data-sidex-native-hover][popover]::backdrop { background: transparent; pointer-events: none; }
 
 /* ==========================================================================

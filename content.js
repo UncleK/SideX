@@ -3122,12 +3122,30 @@
   let hoverCardTimer = null;
   let hoverCardHideTimer = null;
   let activeHoverAuthor = null;
+  let activeHoverTrigger = null;
+  let nativeHoverCard = null;
   let hoverCardGeneration = 0;
   let nativeHoverCleanup = null;
   const userProfileCache = new Map();
   const userProfileFetchedAt = new Map();
   const userProfileRequests = new Map();
   const pendingFollows = new Set();
+
+  function cancelHoverCardHide() {
+    clearTimeout(hoverCardHideTimer);
+    hoverCardHideTimer = null;
+  }
+
+  function scheduleHoverCardHide(event) {
+    cancelHoverCardHide();
+    const target = event?.relatedTarget;
+    if (target instanceof Element && (hoverCardEl?.contains(target) || nativeHoverCard?.contains(target)
+      || target.closest('[data-sidepeek-hover-author]')?.dataset.sidepeekHoverAuthor === activeHoverAuthor)) return;
+    const generation = hoverCardGeneration;
+    hoverCardHideTimer = setTimeout(() => {
+      if (generation === hoverCardGeneration) hideUserHoverCard();
+    }, 250);
+  }
 
   function ensureHoverCardElement() {
     if (hoverCardEl) return hoverCardEl;
@@ -3136,15 +3154,10 @@
     hoverCardEl.className = "sidepeek-user-hovercard";
     hoverCardEl.style.display = "none";
 
-    hoverCardEl.addEventListener("mouseenter", () => {
-      clearTimeout(hoverCardHideTimer);
-    });
-    hoverCardEl.addEventListener("focusin", () => clearTimeout(hoverCardHideTimer));
-    hoverCardEl.addEventListener("mouseleave", () => {
-      hoverCardHideTimer = setTimeout(() => {
-        hideUserHoverCard();
-      }, 250);
-    });
+    hoverCardEl.addEventListener("mouseenter", cancelHoverCardHide);
+    hoverCardEl.addEventListener("focusin", cancelHoverCardHide);
+    hoverCardEl.addEventListener("mouseleave", scheduleHoverCardHide);
+    hoverCardEl.addEventListener("focusout", scheduleHoverCardHide);
 
     document.body.appendChild(hoverCardEl);
     return hoverCardEl;
@@ -3152,8 +3165,9 @@
 
   function hideUserHoverCard() {
     clearTimeout(hoverCardTimer);
-    clearTimeout(hoverCardHideTimer);
+    cancelHoverCardHide();
     activeHoverAuthor = null;
+    activeHoverTrigger = null;
     hoverCardGeneration++;
     nativeHoverCleanup?.();
     nativeHoverCleanup = null;
@@ -3166,25 +3180,33 @@
     }, 180);
   }
 
-  function positionHoverCard(triggerEl, card) {
+  function hoverCardPlacement(triggerEl, width, height) {
     const rect = triggerEl.getBoundingClientRect();
-    const cardWidth = 300;
-    const cardHeight = card.offsetHeight || 240;
-
-    let left = rect.left - 10;
-    if (left + cardWidth > window.innerWidth - 12) {
-      left = window.innerWidth - cardWidth - 12;
+    const gap = 8, margin = 12;
+    const viewportHeight = window.innerHeight - margin * 2;
+    const below = window.innerHeight - margin - rect.bottom - gap;
+    const above = rect.top - gap - margin;
+    let left = Math.max(margin, Math.min(rect.left - 12, window.innerWidth - width - margin));
+    let top, maxHeight = viewportHeight;
+    if (height <= below) top = rect.bottom + gap;
+    else if (height <= above) top = rect.top - height - gap;
+    else if (rect.left - gap - width >= margin || rect.right + gap + width <= window.innerWidth - margin) {
+      left = rect.left - gap - width >= margin ? rect.left - gap - width : rect.right + gap;
+      top = Math.max(margin, Math.min(rect.top, window.innerHeight - height - margin));
+    } else {
+      // Keep the trigger uncovered even when neither vertical side fits the full card.
+      maxHeight = Math.max(0, Math.max(above, below));
+      top = below >= above ? rect.bottom + gap : margin;
     }
-    if (left < 12) left = 12;
+    return { left, top, maxHeight };
+  }
 
-    let top = rect.bottom + 6;
-    if (top + cardHeight > window.innerHeight - 12) {
-      top = rect.top - cardHeight - 6;
-      if (top < 12) top = 12;
-    }
-
-    card.style.left = `${Math.round(left)}px`;
-    card.style.top = `${Math.round(top)}px`;
+  function positionHoverCard(triggerEl, card) {
+    card.style.maxHeight = "calc(100vh - 24px)";
+    const { left, top, maxHeight } = hoverCardPlacement(triggerEl, card.offsetWidth || 300, card.offsetHeight || 240);
+    card.style.left = `${left}px`;
+    card.style.top = `${top}px`;
+    card.style.maxHeight = `${maxHeight}px`;
   }
 
   function formatBioText(text, urls = []) {
@@ -3204,26 +3226,30 @@
       let parent = null;
       let resizeObserver = null;
       let completed = false;
+      let closed = false;
       let timer;
       const finish = value => { if (!completed) { completed = true; resolve(value); } };
-      const enter = () => clearTimeout(hoverCardHideTimer);
-      const leave = () => { hoverCardHideTimer = setTimeout(hideUserHoverCard, 250); };
+      const enter = cancelHoverCardHide;
+      const leave = scheduleHoverCardHide;
       const position = () => {
         if (!parent || !triggerEl.isConnected) return;
-        const rect = triggerEl.getBoundingClientRect();
+        parent.style.removeProperty("--sidex-hover-max-height");
         const cardRect = parent.getBoundingClientRect();
-        const width = cardRect.width || 300;
-        const height = cardRect.height || 300;
-        const left = Math.max(12, Math.min(rect.left - 12, window.innerWidth - width - 12));
-        const top = Math.max(12, Math.min(rect.bottom + 8, window.innerHeight - height - 12));
+        const { left, top, maxHeight } = hoverCardPlacement(triggerEl, cardRect.width || 300, cardRect.height || 300);
         parent.style.setProperty("--sidex-hover-left", `${left}px`);
         parent.style.setProperty("--sidex-hover-top", `${top}px`);
+        parent.style.setProperty("--sidex-hover-max-height", `${maxHeight}px`);
+        parent.toggleAttribute("data-sidex-hover-scroll", maxHeight < window.innerHeight - 24);
       };
       const observer = new MutationObserver(() => attach());
       const cleanup = () => {
+        if (closed) return;
+        closed = true;
         clearTimeout(timer);
         observer.disconnect();
         resizeObserver?.disconnect();
+        if (nativeHoverCleanup === cleanup) nativeHoverCleanup = null;
+        if (nativeHoverCard === parent) nativeHoverCard = null;
         if (parent) {
           parent.removeEventListener("mouseenter", enter);
           parent.removeEventListener("mouseleave", leave);
@@ -3232,12 +3258,13 @@
           if (parent.matches(":popover-open")) parent.hidePopover();
           parent.removeAttribute("popover");
           parent.removeAttribute("data-sidex-native-hover");
+          parent.removeAttribute("data-sidex-hover-scroll");
           parent.style.removeProperty("--sidex-hover-left");
           parent.style.removeProperty("--sidex-hover-top");
+          parent.style.removeProperty("--sidex-hover-max-height");
           parent.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body }));
         }
         source.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body }));
-        if (nativeHoverCleanup === cleanup) nativeHoverCleanup = null;
         finish(false);
       };
       const attach = () => {
@@ -3247,6 +3274,7 @@
         if (!identityLink || new URL(identityLink.href).pathname.toLowerCase() !== `/${handle}`) return;
         if (parent) return;
         parent = candidate;
+        nativeHoverCard = parent;
         parent.setAttribute("data-sidex-native-hover", "");
         parent.setAttribute("popover", "manual");
         try { parent.showPopover(); } catch { cleanup(); return; }
@@ -3269,13 +3297,16 @@
     });
   }
 
-  async function showUserHoverCard(author, triggerEl) {
+  async function showUserHoverCard(author, triggerEl, force = false) {
     if (!author || !author.handle) return;
+    const handle = author.handle.toLowerCase();
+    cancelHoverCardHide();
+    if (!force && activeHoverAuthor === handle && activeHoverTrigger?.isConnected) return;
     nativeHoverCleanup?.();
     if (hoverCardEl) { hoverCardEl.classList.remove("visible"); hoverCardEl.style.display = "none"; }
-    const handle = author.handle.toLowerCase();
     const generation = ++hoverCardGeneration;
     activeHoverAuthor = handle;
+    activeHoverTrigger = triggerEl;
     if (await showNativeUserHoverCard(author, triggerEl, generation)) return;
     if (generation !== hoverCardGeneration || activeHoverAuthor !== handle || !triggerEl.isConnected) return;
     const cached = userProfileCache.get(handle);
@@ -3320,7 +3351,7 @@
   function renderUserHoverCard(author, triggerEl, status = "") {
 
     const card = ensureHoverCardElement();
-    card.className = `sidepeek-user-hovercard ${currentThemeClass()}`;
+    card.className = `sidepeek-user-hovercard ${currentThemeClass()}${card.classList.contains("visible") ? " visible" : ""}`;
 
     const authorName = escapeHtml(author.name || author.handle);
     const authorHandle = escapeHtml(author.handle);
@@ -3404,32 +3435,32 @@
       e.stopPropagation();
       handleToggleFollow(author, followBtn);
     });
-    card.querySelector(".sidepeek-profile-retry")?.addEventListener("click", () => showUserHoverCard(author, triggerEl));
+    card.querySelector(".sidepeek-profile-retry")?.addEventListener("click", () => showUserHoverCard(author, triggerEl, true));
 
     card.style.display = "block";
     positionHoverCard(triggerEl, card);
+    const generation = hoverCardGeneration;
     requestAnimationFrame(() => {
-      card.classList.add("visible");
+      if (generation === hoverCardGeneration && activeHoverAuthor === author.handle.toLowerCase()) card.classList.add("visible");
     });
 
   }
 
   function attachUserHoverEvents(triggerEl, author) {
     if (!triggerEl || !author || !author.handle) return;
+    triggerEl.dataset.sidepeekHoverAuthor = author.handle.toLowerCase();
 
     const enter = () => {
       clearTimeout(hoverCardTimer);
-      clearTimeout(hoverCardHideTimer);
+      cancelHoverCardHide();
       hoverCardTimer = setTimeout(() => {
         showUserHoverCard(author, triggerEl);
       }, 350);
     };
 
-    const leave = () => {
+    const leave = event => {
       clearTimeout(hoverCardTimer);
-      hoverCardHideTimer = setTimeout(() => {
-        hideUserHoverCard();
-      }, 250);
+      scheduleHoverCardHide(event);
     };
     triggerEl.addEventListener("mouseenter", enter);
     triggerEl.addEventListener("mouseleave", leave);

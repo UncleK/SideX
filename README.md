@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-Available-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.29-00b4f8?style=flat-square" alt="Version 1.1.29" />
+    <img src="https://img.shields.io/badge/Version-1.1.30-00b4f8?style=flat-square" alt="Version 1.1.30" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -109,6 +109,8 @@ npm test
 ```
 
 Tests use synthetic X responses and DOM fixtures without performing real account actions. They cover profile parsing, translation requests, long-text chunking, native controls, rollback, retained reading state, scroll reset, and stale responses. X internals and third-party translation extensions may change. Without a matching native profile link, SideX renders a fallback with a full-profile link rather than simulating Grok's Profile Summary button; comments without native nodes are still rendered by SideX.
+
+Version 1.1.30 fixes profile cards repeatedly opening and closing while the pointer stays on an avatar. X's transparent hover overlay no longer intercepts the pointer, moving between the same author's avatar and name keeps one card session, and profile hydration preserves the visible card. Cards open above or beside the trigger when needed to avoid covering it. All 194 local regression tests pass. A real X page running the current source in an isolated harness confirmed stable hover, card entry, dismissal and author switching; this was not a fresh ZIP installation test.
 
 Version 1.1.29 moves translation into a compact icon directly after Like, removing the separate Translate post text on each reply. The icon stays visible during loading, highlights while a translation is shown and toggles cached translations without another request. Labels and retry states remain available through tooltips and accessible names. Narrow action bars keep all icons on one row. All 188 local regression tests pass; Chrome layout and toggle checks used a local source fixture at 320px and 520px panel widths, not a fresh ZIP installation.
 
