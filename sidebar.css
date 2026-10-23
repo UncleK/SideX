@@ -118,7 +118,6 @@ html[data-sidex-photo-view="native"] #sidepeek-drawer-root {
 
 /* Official menus and dialogs must remain above the docked comments. */
 body:has(#sidepeek-drawer-root.sidepeek-open) #layers {
-  position: relative;
   z-index: 2147483647;
 }
 
@@ -909,11 +908,14 @@ body:has(#sidepeek-drawer-root.sidepeek-open) #layers {
 }
 
 #layers[data-sidex-native-layers]:popover-open {
-  position: fixed !important;
+  /* X positions hover cards in document coordinates, including page scroll.
+     Keep its zero-height document origin when promoting the portal. Native
+     dialogs and drawers still use their own fixed viewport positioning. */
+  position: absolute !important;
   inset: 0 !important;
-  width: 100vw !important;
+  width: 100% !important;
   max-width: none !important;
-  height: 100dvh !important;
+  height: 0 !important;
   max-height: none !important;
   margin: 0 !important;
   padding: 0 !important;

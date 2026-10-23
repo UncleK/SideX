@@ -415,6 +415,45 @@ test('navigating to a quoted post with no replies clears the old conversation', 
   assert.equal(p.query('.sidepeek-comment-item'), null);
 });
 
+for (const path of ['/home', '/reader/status/100']) {
+  test('official profile cards remain above an open sidebar without Grok or Chat on ' + path, async t => {
+    const open = new Set(); let actions = 0;
+    const p = createPage({ setupWindow(w) {
+      w.history.replaceState({}, '', path);
+      w.HTMLElement.prototype.showPopover = function () { open.add(this); };
+      w.HTMLElement.prototype.hidePopover = function () { open.delete(this); };
+      const layers = w.document.createElement('div'); layers.id = 'layers'; w.document.body.append(layers);
+      const mention = w.document.createElement('a'); mention.href = '/mentioned'; mention.textContent = '@mentioned';
+      w.document.querySelector('[data-testid="tweetText"]').append(mention);
+      mention.addEventListener('mouseover', () => {
+        const wrapper = w.document.createElement('div');
+        wrapper.innerHTML = '<div data-testid="hoverCardParent" style="position:absolute;top:1200px;left:600px">'
+          + '<div data-testid="HoverCard"><a href="/mentioned">Mentioned user</a><button>Profile Summary</button></div></div>';
+        wrapper.querySelector('button').addEventListener('click', () => actions++);
+        layers.append(wrapper);
+      });
+    } });
+    t.after(() => p.w.close());
+    await tick(); p.clickPost(0); await tick();
+    const quick = p.query('.sidepeek-footer-textarea'); quick.value = 'Keep my reply';
+    const layers = p.query('#layers');
+    assert.equal(open.has(layers), false);
+    p.query('main a[href="/mentioned"]').dispatchEvent(new p.w.MouseEvent('mouseover', { bubbles: true }));
+    await tick(40);
+    const card = layers.querySelector('[data-testid="hoverCardParent"]'), originalParent = card.parentElement;
+    assert.equal(open.has(layers), true, 'a profile card alone must keep the native portal in front');
+    assert.equal(card.style.top, '1200px', 'keep document coordinates supplied by X');
+    assert.equal(card.hasAttribute('data-sidex-native-hover'), false, 'official cards keep their native positioning');
+    card.querySelector('button').click();
+    assert.equal(actions, 1);
+    assert.equal(card.parentElement, originalParent);
+    assert.equal(quick.value, 'Keep my reply');
+    layers.replaceChildren(); await tick(40);
+    assert.equal(open.has(layers), false);
+    assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), true);
+  });
+}
+
 test('native hover card keeps the actual component, original handlers and full content', async t => {
   const p = createPage(); t.after(() => p.w.close());
   const openPopovers = new WeakSet();
@@ -429,6 +468,9 @@ test('native hover card keeps the actual component, original handlers and full c
   sourceLink.addEventListener('mouseover', () => layers.append(card));
   let actions = 0; card.querySelector('button').addEventListener('click', () => actions++);
   await tick(); p.clickPost(0); await tick();
+  const avatar = p.query('.sidepeek-avatar-link');
+  assert.equal(avatar.hasAttribute('title'), false);
+  assert.equal(avatar.getAttribute('aria-label'), 'Reader (@reader)');
   p.query('.sidepeek-handle').dispatchEvent(new p.w.MouseEvent('mouseenter')); await tick(390);
   card.className = 'native-react-updated-class';
   assert.equal(p.query('[data-sidex-native-hover]'), card);
@@ -489,6 +531,19 @@ for (const native of [false, true]) {
     assert.equal(native ? p.open.has(card) : card.classList.contains('visible'), true);
   });
 }
+
+test('a closing official profile does not block a new sidebar native card', async t => {
+  const p = nativeHoverFixture(); t.after(() => p.w.close());
+  const closing = p.w.document.createElement('div'); closing.dataset.testid = 'hoverCardParent';
+  closing.innerHTML = '<div data-testid="HoverCard"><a href="/previous">Previous user</a></div>';
+  p.query('#layers').append(closing);
+  await tick(); p.clickPost(0); await tick();
+  p.query('.sidepeek-avatar-link').dispatchEvent(new p.w.MouseEvent('mouseenter')); await tick(390);
+  assert.equal(p.query('[data-sidex-native-hover]'), p.card);
+  assert.equal(p.open.has(p.card), true);
+  assert.equal(closing.hasAttribute('popover'), false, 'leave the previous native card to X');
+  assert.equal(p.calls.some(m => m.type === 'FETCH_USER_PROFILE'), false);
+});
 
 test('moving between the same author avatar and name keeps one native card session', async t => {
   const p = nativeHoverFixture(); t.after(() => p.w.close());

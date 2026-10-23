@@ -17,7 +17,7 @@
     function sync(root) {
       const layers = document.getElementById("layers");
       const needsOverlay = root?.classList.contains("sidepeek-open") &&
-        layers?.querySelector('[role="dialog"], [role="menu"], [role="listbox"], [data-testid="Dropdown"], [data-testid="GrokDrawer"], [data-testid="chat-drawer-root"], [data-testid="DMDrawer"]');
+        layers?.querySelector('[role="dialog"], [role="menu"], [role="listbox"], [data-testid="Dropdown"], [data-testid="hoverCardParent"]:not([data-sidex-native-hover]), [data-testid="GrokDrawer"], [data-testid="chat-drawer-root"], [data-testid="DMDrawer"]');
       if (!needsOverlay || !layers.showPopover) { release(); return false; }
       if (session?.node === layers) return true;
       release();
@@ -1996,7 +1996,7 @@
     const authorName = escapeHtml(model.author.name);
     const authorHandle = escapeHtml(model.author.handle);
     const avatarHtml = model.author.handle
-      ? `<a class="sidepeek-avatar-link" href="https://x.com/${authorHandle}" target="_blank" title="${authorName} (@${authorHandle})"><img class="sidepeek-avatar" src="${model.author.avatar}" alt="${authorName}" /></a>`
+      ? `<a class="sidepeek-avatar-link" href="https://x.com/${authorHandle}" target="_blank" aria-label="${authorName} (@${authorHandle})"><img class="sidepeek-avatar" src="${model.author.avatar}" alt="${authorName}" /></a>`
       : `<img class="sidepeek-avatar" src="${model.author.avatar}" alt="${authorName}" />`;
 
     const nameHtml = model.author.handle
@@ -3269,9 +3269,12 @@
       };
       const attach = () => {
         if (generation !== hoverCardGeneration || !triggerEl.isConnected) { cleanup(); return; }
-        const candidate = layers.querySelector('[data-testid="hoverCardParent"]');
-        const identityLink = candidate?.querySelector('[data-testid="HoverCard"] a[href]');
-        if (!identityLink || new URL(identityLink.href).pathname.toLowerCase() !== `/${handle}`) return;
+        // X can retain the previous card while its closing animation finishes.
+        const candidate = [...layers.querySelectorAll('[data-testid="hoverCardParent"]')].find(card => {
+          const identityLink = card.querySelector('[data-testid="HoverCard"] a[href]');
+          return identityLink && new URL(identityLink.href).pathname.toLowerCase() === `/${handle}`;
+        });
+        if (!candidate) return;
         if (parent) return;
         parent = candidate;
         nativeHoverCard = parent;
