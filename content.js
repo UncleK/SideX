@@ -3126,6 +3126,7 @@
   let nativeHoverCard = null;
   let hoverCardGeneration = 0;
   let nativeHoverCleanup = null;
+  const nativeHoverRetirements = new WeakMap();
   const userProfileCache = new Map();
   const userProfileFetchedAt = new Map();
   const userProfileRequests = new Map();
@@ -3213,6 +3214,40 @@
     return formatCommentText({ text, entities: { urls } });
   }
 
+  function retireNativeHoverCard(card, layers, handle) {
+    nativeHoverRetirements.get(card)?.();
+    // X keeps the component mounted during dismissal. Keep it hidden until X
+    // removes it, or a new native hover needs the same component again.
+    card.setAttribute("data-sidex-hover-closing", "");
+    const restore = () => {
+      observer.disconnect();
+      document.removeEventListener("mouseover", onNativeEnter, true);
+      document.removeEventListener("focusin", onNativeEnter, true);
+      nativeHoverRetirements.delete(card);
+      card.removeAttribute("popover");
+      card.removeAttribute("data-sidex-native-hover");
+      card.removeAttribute("data-sidex-hover-scroll");
+      card.style.removeProperty("--sidex-hover-left");
+      card.style.removeProperty("--sidex-hover-top");
+      card.style.removeProperty("--sidex-hover-max-height");
+      card.removeAttribute("data-sidex-hover-closing");
+    };
+    const onNativeEnter = event => {
+      const link = event.target instanceof Element && event.target.closest("a[href]");
+      if (!link || link.closest("#layers, #sidepeek-drawer-root")) return;
+      if (new URL(link.href).pathname.toLowerCase() === `/${handle}`) restore();
+    };
+    const observer = new MutationObserver(() => {
+      const identity = card.querySelector('[data-testid="HoverCard"] a[href]');
+      if (!card.isConnected || (identity && new URL(identity.href).pathname.toLowerCase() !== `/${handle}`)) restore();
+    });
+    nativeHoverRetirements.set(card, restore);
+    if (!card.isConnected) { restore(); return; }
+    observer.observe(layers, { childList: true, subtree: true, attributes: true, attributeFilter: ["href"] });
+    document.addEventListener("mouseover", onNativeEnter, true);
+    document.addEventListener("focusin", onNativeEnter, true);
+  }
+
   function showNativeUserHoverCard(author, triggerEl, generation) {
     const handle = author.handle.toLowerCase();
     const source = [...document.querySelectorAll('#react-root a[href], main a[href]')].find(link => {
@@ -3255,13 +3290,8 @@
           parent.removeEventListener("mouseleave", leave);
           parent.removeEventListener("focusin", enter);
           parent.removeEventListener("focusout", leave);
+          retireNativeHoverCard(parent, layers, handle);
           if (parent.matches(":popover-open")) parent.hidePopover();
-          parent.removeAttribute("popover");
-          parent.removeAttribute("data-sidex-native-hover");
-          parent.removeAttribute("data-sidex-hover-scroll");
-          parent.style.removeProperty("--sidex-hover-left");
-          parent.style.removeProperty("--sidex-hover-top");
-          parent.style.removeProperty("--sidex-hover-max-height");
           parent.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body }));
         }
         source.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body }));
@@ -3277,6 +3307,7 @@
         if (!candidate) return;
         if (parent) return;
         parent = candidate;
+        nativeHoverRetirements.get(parent)?.();
         nativeHoverCard = parent;
         parent.setAttribute("data-sidex-native-hover", "");
         parent.setAttribute("popover", "manual");

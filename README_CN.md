@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-官方商店上架-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.31-00b4f8?style=flat-square" alt="Version 1.1.31" />
+    <img src="https://img.shields.io/badge/Version-1.1.32-00b4f8?style=flat-square" alt="Version 1.1.32" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -109,6 +109,8 @@ npm test
 ```
 
 回归检查使用合成 X 响应和 DOM，覆盖新旧用户资料结构、官方翻译请求、Google 长文分段、原生按钮复用、失败回滚、翻译/展开状态保留、切帖滚动重置和过期请求隔离。测试不会对真实 X 账号执行操作。
+
+1.1.32 修复鼠标移开侧栏头像后，资料卡短暂闪回原帖头像旁的问题。资料卡在 X 完成退场期间保持隐藏，原生组件移除、复用或再次悬停时恢复，保留左侧正常悬停和侧栏快速重新悬停。全部 204 项本地回归通过；已在真实 X 页面使用隔离源码环境检查退场、左侧原生悬停和侧栏重新悬停。
 
 1.1.31 修复侧栏打开后，X 官方区域的作者和正文 @提及资料卡无法正常显示的问题，覆盖时间线和帖子详情。弹层保留 X 的页面坐标，滚动后卡片仍显示在用户入口旁。去掉侧栏头像重复的浏览器黑底提示，并处理旧卡片退场动画干扰新用户资料卡的问题。全部 197 项本地回归通过；已在真实 X 页面用当前源码的隔离环境检查滚动后的时间线和帖子详情，该验证并非新 ZIP 安装测试。
 

@@ -23,11 +23,10 @@ FEATURES
 • Translation choices: use the compact translation icon directly after Like to show or hide a reply's translation. Use X official translation, choose Google, or use your existing translation extension's selection/page translation.
 • Appearance: follows X's theme and supports an adjustable sidebar width.
 
-WHAT'S NEW IN 1.1.31
-• Restores X's native profile cards for authors and @mentions while the sidebar is open, in timelines and post details.
-• Keeps official profile cards correctly positioned after scrolling.
-• Removes the duplicate browser tooltip from sidebar avatars while keeping profile cards and accessible labels.
-• Prevents a previous card's closing animation from blocking the next user's native profile card.
+WHAT'S NEW IN 1.1.32
+• Fixes a profile card briefly flashing beside the original post's avatar after leaving a sidebar avatar.
+• Keeps X's normal profile cards available after dismissing a sidebar card.
+• Keeps sidebar profile cards working when you quickly move away and hover again.
 
 PRIVACY
 SideX runs in your browser and has no SideX relay server or analytics service. It processes the X content you open and uses your current X session for authenticated requests. Text drafts stay temporarily in the current page and are not synced. Replies and selected attachments go to X. Clicking Grok opens X's native analysis flow for the selected post through X/Grok, under their service terms and privacy policies. If you select Google translation and click Translate, the post text is sent directly to Google. X authentication information is not sent to Google. Other translation extensions follow their own settings and privacy policies.
@@ -65,11 +64,10 @@ SideX 把 X 的评论区放到右侧。点击帖子正文或空白处，在保�
 • 点击点赞后面的翻译图标显示或隐藏译文；默认使用 X 官方翻译，也可选择 Google，或使用已有翻译插件的划词／网页翻译。
 • 跟随 X 主题，支持调整侧栏宽度。
 
-1.1.31 更新
-• 修复侧栏打开时，时间线和帖子详情中官方作者、正文 @提及的资料卡无法正常显示的问题。
-• 修正滚动后的资料卡位置，让卡片显示在对应用户入口旁。
-• 去掉侧栏头像重复的黑底默认提示，保留资料卡和无障碍名称。
-• 修复旧卡片退场动画干扰下一个用户原生资料卡的问题。
+1.1.32 更新
+• 修复鼠标移开侧栏头像后，资料卡短暂闪回原帖头像旁的问题。
+• 关闭侧栏资料卡后，左侧 X 官方区域仍可正常悬停查看资料。
+• 保留侧栏头像快速移开、再次悬停时的正常显示。
 
 隐私说明
 SideX 在浏览器中运行，没有 SideX 中转或统计服务器。扩展处理你打开的 X 内容，并复用当前 X 会话；文字草稿仅在当前页面暂存，不参与同步，回复及选择的附件发送给 X。点击 Grok 会通过 X 原生流程分析所选帖子，由 X/Grok 处理并遵循其服务条款与隐私政策。只有选择 Google 翻译并点击翻译时，正文才会直接发送给 Google，X 认证信息不会发给 Google。已有翻译插件遵循各自的设置和隐私政策。

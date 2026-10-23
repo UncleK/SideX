@@ -481,8 +481,11 @@ test('native hover card keeps the actual component, original handlers and full c
   assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), true);
   p.w.document.dispatchEvent(new p.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   assert.equal(openPopovers.has(card), false);
+  assert.equal(card.hasAttribute('data-sidex-hover-closing'), true, 'the retained X component stays hidden during its closing animation');
+  card.remove(); await tick();
   assert.equal(card.hasAttribute('popover'), false);
   assert.equal(card.hasAttribute('data-sidex-native-hover'), false);
+  assert.equal(card.hasAttribute('data-sidex-hover-closing'), false);
 });
 
 test('native profile overlays leave the avatar reachable while cards and other dialogs remain interactive', t => {
@@ -513,6 +516,62 @@ function nativeHoverFixture() {
   card.innerHTML = '<div data-testid="HoverCard"><a href="/reader">Reader</a><button>Profile Summary</button></div>';
   card.getBoundingClientRect = () => ({ width: 300, height: 300 });
   return { ...p, card, open, get opens() { return opens; }, get requests() { return requests; } };
+}
+
+test('a dismissed sidebar profile cannot flash at its original native avatar while X retains it', async t => {
+  const p = nativeHoverFixture(); t.after(() => p.w.close());
+  const style = p.w.document.createElement('style'); style.textContent = source('sidebar.css'); p.w.document.head.append(style);
+  await tick(); p.clickPost(0); await tick();
+  const avatar = p.query('.sidepeek-avatar-link');
+  avatar.dispatchEvent(new p.w.MouseEvent('mouseenter')); await tick(390);
+  avatar.dispatchEvent(new p.w.MouseEvent('mouseleave', { relatedTarget: p.w.document.body })); await tick(300);
+  assert.equal(p.card.isConnected, true, 'simulate the original card remaining mounted during native dismissal');
+  assert.equal(p.open.has(p.card), false);
+  assert.equal(p.w.getComputedStyle(p.card).display, 'none');
+  assert.equal(p.card.hasAttribute('data-sidex-native-hover'), true, 'do not promote the closing card back to the official portal');
+  p.card.remove(); await tick();
+  assert.equal(p.card.hasAttribute('popover'), false);
+  assert.equal(p.card.hasAttribute('data-sidex-hover-closing'), false);
+  assert.equal(p.card.style.getPropertyValue('--sidex-hover-left'), '');
+});
+
+test('dismissal also releases a native profile that X has already unmounted', async t => {
+  const p = nativeHoverFixture(); t.after(() => p.w.close());
+  await tick(); p.clickPost(0); await tick();
+  const avatar = p.query('.sidepeek-avatar-link');
+  avatar.dispatchEvent(new p.w.MouseEvent('mouseenter')); await tick(390);
+  p.card.remove();
+  avatar.dispatchEvent(new p.w.MouseEvent('mouseleave', { relatedTarget: p.w.document.body })); await tick(300);
+  assert.equal(p.open.has(p.card), false);
+  assert.equal(p.card.hasAttribute('popover'), false);
+  assert.equal(p.card.hasAttribute('data-sidex-hover-closing'), false);
+});
+
+for (const target of ['sidebar', 'native avatar', 'native name', 'native focus', 'reused component']) {
+  test('a closing sidebar profile remains usable on the next ' + target, async t => {
+    const p = nativeHoverFixture(); t.after(() => p.w.close());
+    await tick(); p.clickPost(0); await tick();
+    const avatar = p.query('.sidepeek-avatar-link');
+    avatar.dispatchEvent(new p.w.MouseEvent('mouseenter')); await tick(390);
+    avatar.dispatchEvent(new p.w.MouseEvent('mouseleave', { relatedTarget: p.w.document.body })); await tick(300);
+    assert.equal(p.card.hasAttribute('data-sidex-hover-closing'), true);
+    if (target === 'sidebar') {
+      avatar.dispatchEvent(new p.w.MouseEvent('mouseenter')); await tick(390);
+      assert.equal(p.open.has(p.card), true);
+      assert.equal(p.card.hasAttribute('data-sidex-native-hover'), true);
+    } else if (target === 'reused component') {
+      p.card.querySelector('a').href = '/another'; await tick();
+      assert.equal(p.card.hasAttribute('popover'), false, 'X can reuse its own component for another author');
+    } else {
+      const link = target === 'native avatar' ? p.query('main a[href="/reader"]') : p.w.document.createElement('a');
+      if (!link.isConnected) { link.href = '/reader'; link.innerHTML = '<span>Reader name</span>'; p.query('main').append(link); }
+      const event = target === 'native focus' ? new p.w.FocusEvent('focusin', { bubbles: true }) : new p.w.MouseEvent('mouseover', { bubbles: true });
+      (link.firstElementChild || link).dispatchEvent(event); await tick();
+      assert.equal(p.card.hasAttribute('popover'), false, 'restore before X handles real native hover or keyboard focus');
+      assert.equal(p.card.hasAttribute('data-sidex-native-hover'), false);
+    }
+    assert.equal(p.card.hasAttribute('data-sidex-hover-closing'), false);
+  });
 }
 
 for (const native of [false, true]) {

@@ -2320,6 +2320,7 @@ a.sidepeek-handle:hover { text-decoration: underline; }
 }
 [data-sidex-native-hover][data-sidex-hover-scroll] { overflow-y: auto !important; }
 [data-sidex-native-hover][popover]::backdrop { background: transparent; pointer-events: none; }
+[data-sidex-hover-closing] { display: none !important; }
 
 /* ==========================================================================
    1. Quoted Tweet Card (引用推文卡片)
