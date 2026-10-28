@@ -109,6 +109,8 @@
     replies: [],
     tree: null,
     expandedThreadIds: new Set(),
+    previewMoreThreadIds: new Set(),
+    branchLoadJobs: new Map(),
     loadedThreadIds: new Set(),
     loadingThreadIds: new Set(),
     threadCursors: new Map(),
@@ -148,6 +150,7 @@
   const pendingActions = new Set();
   const nativeActionObservers = new Map();
   const nativeActionArticles = new Map();
+  const articleQuoteLayouts = new Map();
   const nativeLayers = globalThis.SidePeekNativeLayers?.createHost({ document });
   let drawerRoot = null;
   let photoViewer = null;
@@ -257,6 +260,7 @@
       if (res.sidex_reply_mode !== undefined) {
         state.replyMode = res.sidex_reply_mode === "native" ? "native" : "drawer";
       }
+      syncArticleQuoteLayouts();
       if (!isSideXEnabled) {
         closeDrawer();
         const root = document.getElementById(ROOT_ID);
@@ -280,6 +284,7 @@
       }
       if (changes.sidex_enabled !== undefined) {
         isSideXEnabled = changes.sidex_enabled.newValue !== false;
+        syncArticleQuoteLayouts();
         const root = document.getElementById(ROOT_ID);
         if (!isSideXEnabled) {
           releasePhotoPanel();
@@ -309,7 +314,13 @@
         if (state.open) renderDrawer(true);
       }
       if (changes.sidex_sub_reply_limit !== undefined) {
-        state.subReplyLimit = Math.max(1, Number(changes.sidex_sub_reply_limit.newValue) || 1);
+        const limit = Math.max(1, Number(changes.sidex_sub_reply_limit.newValue) || 1);
+        if (limit !== state.subReplyLimit) {
+          state.expandedThreadIds.clear();
+          state.previewMoreThreadIds.clear();
+          state.branchLoadJobs.clear();
+        }
+        state.subReplyLimit = limit;
         if (state.open) renderDrawer();
       }
       if (changes.sidex_reset_width_trigger !== undefined) {
@@ -353,7 +364,8 @@
       loadMoreThreadReplies: "加载更多回复",
       retryBtn: "重试",
       showReplies: "展开 {count} 条回复",
-      showMoreReplies: "展开另外 {count} 条已加载回复",
+      showMoreReplies: "加载更多回复（再显示 {count} 条）",
+      loadAllThreadReplies: "展开并加载全部回复",
       collapseReplies: "收起回复",
       loadRepliesFailed: "加载回复失败，请重试",
       replyToTag: "回复",
@@ -511,7 +523,8 @@
       loadMoreThreadReplies: "Load more replies",
       retryBtn: "Retry",
       showReplies: "Show {count} replies",
-      showMoreReplies: "Show {count} more loaded replies",
+      showMoreReplies: "Load more replies (show {count} more)",
+      loadAllThreadReplies: "Expand and load all replies",
       collapseReplies: "Collapse replies",
       loadRepliesFailed: "Failed to load replies",
       replyToTag: "Replying to",
@@ -1520,24 +1533,12 @@
             appendReplyPagination(threadGroup, rootReply.id);
             appendUnfetchedReplies(threadGroup, rootReply);
 
-            // 收起按钮
-            const collapseRow = document.createElement("div");
-            collapseRow.className = "sidepeek-expand-btn-row";
-            collapseRow.innerHTML = `
-              <button type="button" class="sidepeek-collapse-btn">
-                <span>▲ ${t("collapseReplies")}</span>
-              </button>
-            `;
-            collapseRow.querySelector(".sidepeek-collapse-btn")?.addEventListener("click", () => {
-              state.anchorCommentId = rootReply.id;
-              state.expandedThreadIds.delete(rootReply.id);
-              renderDrawer();
-            });
-            threadGroup.appendChild(collapseRow);
+            appendCollapseThread(threadGroup, rootReply.id);
           } else {
             // Author continuations are visible independently of the preview
             // budget for other branches. Count only actually hidden models.
-            const preview = new Set(children.filter(child => !authorChain.has(child.id)).slice(0, INLINE_LIMIT).map(child => child.id));
+            const previewLimit = INLINE_LIMIT + (state.previewMoreThreadIds.has(rootReply.id) ? 2 : 0);
+            const preview = new Set(children.filter(child => !authorChain.has(child.id)).slice(0, previewLimit).map(child => child.id));
             const shown = children.filter(child => authorChain.has(child.id) || preview.has(child.id));
             for (let i = 0; i < shown.length; i++) {
               appendSectionLabel(threadGroup, shown[i]);
@@ -1550,13 +1551,9 @@
               const button = document.createElement("button");
               button.type = "button";
               button.className = "sidepeek-expand-btn";
-              button.textContent = t("showMoreReplies", { count: hiddenCount });
-              button.addEventListener("click", () => {
-                state.manualReplyLoading = true;
-                state.anchorCommentId = rootReply.id;
-                state.expandedThreadIds.add(rootReply.id);
-                renderDrawer();
-              });
+              button.textContent = threadPreviewLabel(rootReply.id, Math.min(2, hiddenCount));
+              button.disabled = state.branchLoadJobs.has(rootReply.id);
+              button.addEventListener("click", () => advanceThreadPreview(rootReply.id));
               row.appendChild(button);
               threadGroup.appendChild(row);
               connectReplyContinuation(row);
@@ -1564,6 +1561,7 @@
               appendReplyPagination(threadGroup, rootReply.id);
               appendUnfetchedReplies(threadGroup, rootReply);
             }
+            if (state.previewMoreThreadIds.has(rootReply.id)) appendCollapseThread(threadGroup, rootReply.id);
           }
 
           body.appendChild(threadGroup);
@@ -1962,14 +1960,101 @@
     const button = document.createElement("button");
     button.type = "button";
     button.className = "sidepeek-expand-btn sidepeek-fetch-replies-btn";
-    button.textContent = page?.error ? t("retryBtn") : t("loadMoreThreadReplies");
-    button.disabled = state.loadingThreadIds.has(model.id);
-    button.addEventListener("click", () => loadReplyPage(model.id));
+    button.textContent = page?.error ? t("retryBtn") : threadPreviewLabel(model.id);
+    button.disabled = state.loadingThreadIds.has(model.id) || state.branchLoadJobs.has(model.id);
+    button.addEventListener("click", () => advanceThreadPreview(model.id));
     const row = document.createElement("div");
     row.className = "sidepeek-expand-btn-row";
     row.appendChild(button);
     container.appendChild(row);
     connectReplyContinuation(row);
+  }
+
+  function rootThreadId(id) {
+    return state.tree?.rootReplies.find(root => root.id === id ||
+      state.tree.getSubtree(root.id).some(reply => reply.id === id))?.id;
+  }
+
+  function appendCollapseThread(container, id) {
+    const row = document.createElement("div");
+    row.className = "sidepeek-expand-btn-row";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "sidepeek-collapse-btn";
+    button.textContent = `▲ ${t("collapseReplies")}`;
+    button.addEventListener("click", () => {
+      state.anchorCommentId = id;
+      state.expandedThreadIds.delete(id);
+      state.previewMoreThreadIds.delete(id);
+      state.branchLoadJobs.delete(id);
+      renderDrawer();
+    });
+    row.appendChild(button);
+    container.appendChild(row);
+  }
+
+  function threadPreviewLabel(id, count = 2) {
+    if (state.branchLoadJobs.has(id)) return t("loadingReplies");
+    if (state.expandedThreadIds.has(id)) return t("loadMoreThreadReplies");
+    return state.previewMoreThreadIds.has(id) ? t("loadAllThreadReplies") : t("showMoreReplies", { count });
+  }
+
+  function nextBranchPage(rootId, retry = false) {
+    const ids = [rootId, ...(state.tree?.getSubtree(rootId) || []).map(reply => reply.id)];
+    const retryable = page => retry || (!page.error && !page.paused);
+    for (const [key, page] of state.inlinePages) {
+      if (ids.includes(page.branchRootId) && inlinePageVisible(page) && !page.loading && !page.stalled && retryable(page)) {
+        return { key, page };
+      }
+    }
+    for (const id of ids) {
+      const page = state.threadPages.get(id) || {};
+      if (state.loadingThreadIds.has(id) || page.stalled || !retryable(page)) continue;
+      const cursor = state.threadCursors.get(id);
+      if (cursor) return { id, cursor, page };
+      if (state.loadedThreadIds.has(id) || (state.threadPages.has(id) && !page.error)) continue;
+      const model = state.tree?.byId.get(id);
+      const direct = (state.tree?.childrenMap.get(id) || []).filter(child => child.inReplyToId === id).length;
+      if ((model?.counts?.replies || 0) > direct) return { id, page };
+    }
+    return null;
+  }
+
+  async function advanceThreadPreview(rootId) {
+    if (!state.open || state.branchLoadJobs.has(rootId)) return;
+    const generation = state.threadGeneration;
+    const firstPage = nextBranchPage(rootId, true);
+    const wasMore = state.previewMoreThreadIds.has(rootId);
+    const all = state.expandedThreadIds.has(rootId) || (wasMore && !firstPage?.page.error);
+    const job = {};
+    state.branchLoadJobs.set(rootId, job);
+    state.manualReplyLoading = true;
+    state.anchorCommentId = rootId;
+    state.previewMoreThreadIds.add(rootId);
+    if (all) state.expandedThreadIds.add(rootId);
+    renderDrawer();
+    const active = () => state.open && state.threadGeneration === generation && state.branchLoadJobs.get(rootId) === job;
+    try {
+      const authors = authorThreadIds();
+      const cached = (state.tree?.getSubtree(rootId) || []).filter(reply => !authors.has(reply.id)).length;
+      // The first click raises the preview budget by two and reads at most one
+      // page if needed. Only the second click drains this branch's known pages.
+      if (!all && cached >= state.subReplyLimit + 2) return;
+      let next = firstPage;
+      while (next && active()) {
+        if (next.key) await fetchInlineReplies(next.key, false);
+        else await fetchSubReplies(next.id, false, false, next.cursor || null);
+        if (!active()) return;
+        const page = next.key ? state.inlinePages.get(next.key) : state.threadPages.get(next.id);
+        if (page?.error || page?.paused || page?.stalled || !all) break;
+        next = nextBranchPage(rootId);
+      }
+    } finally {
+      if (state.branchLoadJobs.get(rootId) === job) {
+        state.branchLoadJobs.delete(rootId);
+        if (state.open && state.threadGeneration === generation) renderDrawer();
+      }
+    }
   }
 
   function renderCommentNode(model, hasThreadLine = false, isChild = false) {
@@ -3765,9 +3850,11 @@
       const button = document.createElement("button");
       button.type = "button";
       button.className = "sidepeek-expand-btn sidepeek-inline-load-more-btn";
-      button.disabled = page.loading || page.stalled;
-      button.textContent = page.loading ? t("loadingReplies") : t("loadMoreThreadReplies");
-      button.addEventListener("click", () => fetchInlineReplies(key));
+      const rootId = rootThreadId(page.branchRootId);
+      button.disabled = page.loading || page.stalled || state.branchLoadJobs.has(rootId);
+      button.textContent = page.loading ? t("loadingReplies") : rootId ? threadPreviewLabel(rootId) : t("loadMoreThreadReplies");
+      button.addEventListener("click", () => rootId && state.activeView === "root"
+        ? advanceThreadPreview(rootId) : fetchInlineReplies(key));
       row.appendChild(button);
       if (page.error || page.paused || page.stalled) {
         const status = document.createElement("div");
@@ -3798,14 +3885,14 @@
     };
   }
 
-  async function fetchInlineReplies(key) {
+  async function fetchInlineReplies(key, expandBranch = true) {
     const page = state.inlinePages.get(key);
     if (!page || page.loading || page.stalled || !state.open) return;
     const generation = state.threadGeneration;
     state.manualReplyLoading = true;
     page.loading = true;
     for (const root of state.tree.rootReplies) {
-      if (root.id === page.branchRootId || state.tree.getSubtree(root.id).some(reply => reply.id === page.branchRootId)) {
+      if (expandBranch && (root.id === page.branchRootId || state.tree.getSubtree(root.id).some(reply => reply.id === page.branchRootId))) {
         state.expandedThreadIds.add(root.id);
       }
     }
@@ -3863,9 +3950,11 @@
       const button = document.createElement("button");
       button.type = "button";
       button.className = "sidepeek-expand-btn sidepeek-load-more-btn";
-      button.disabled = busy;
-      button.textContent = busy ? t("loadingReplies") : t(tweetId === state.focalTweetId ? "loadMoreComments" : "loadMoreThreadReplies");
-      button.addEventListener("click", () => loadReplyPage(tweetId, cursor));
+      const rootId = rootThreadId(tweetId);
+      button.disabled = busy || state.branchLoadJobs.has(rootId);
+      button.textContent = busy ? t("loadingReplies") : rootId ? threadPreviewLabel(rootId) : t("loadMoreComments");
+      button.addEventListener("click", () => rootId && state.activeView === "root"
+        ? advanceThreadPreview(rootId) : loadReplyPage(tweetId, cursor));
       row.appendChild(button);
       if (page.error || page.paused) {
         const status = document.createElement("div");
@@ -3904,6 +3993,8 @@
     state.error = "";
     state.resetScrollOnRender = true;
     state.expandedThreadIds.clear();
+    state.previewMoreThreadIds.clear();
+    state.branchLoadJobs.clear();
     state.loadedThreadIds.clear();
     state.loadingThreadIds.clear();
     state.threadCursors.clear();
@@ -4113,6 +4204,9 @@
         state.tree = null;
         state.threadCursors.clear();
         state.threadPages.clear();
+        state.expandedThreadIds.clear();
+        state.previewMoreThreadIds.clear();
+        state.branchLoadJobs.clear();
         state.inlinePages.clear();
         state.unavailableReplyIds.clear();
         state.openGatedThreads.clear();
@@ -4171,6 +4265,8 @@
         state.tree = Core.buildConversationTree(visibleReplies(), tweetId);
         state.resetScrollOnRender = true;
         state.expandedThreadIds.clear();
+        state.previewMoreThreadIds.clear();
+        state.branchLoadJobs.clear();
         state.loadedThreadIds.clear();
         state.loadingThreadIds.clear();
         state.threadCursors.clear();
@@ -4245,6 +4341,7 @@
       document.documentElement.setAttribute("data-sidex-photo-view", "native");
     }
     state.threadGeneration++;
+    state.branchLoadJobs.clear();
     for (const observer of nativeActionObservers.values()) observer.disconnect();
     nativeActionObservers.clear();
     closeRepostMenu();
@@ -4425,6 +4522,33 @@
   // Capture before X unmounts the native column or opens another modal.
   document.addEventListener("click", rememberPhotoScroll, true);
 
+  // X can give an Article card the entire quote row, leaving its sibling text
+  // at zero width. That invisible text wraps into thousands of pixels of blank
+  // space. Stack only these broken rows; leave healthy native layouts alone.
+  function syncArticleQuoteLayouts() {
+    for (const [row, parts] of articleQuoteLayouts) {
+      if (!isSideXEnabled || !row.isConnected || parts.media.parentElement !== row ||
+          !row.contains(parts.text) || !row.contains(parts.cover)) {
+        row.removeAttribute("data-sidex-article-quote-layout");
+        articleQuoteLayouts.delete(row);
+      }
+    }
+    if (!settingsLoaded || !isSideXEnabled) return;
+    for (const media of document.querySelectorAll('article[data-testid="tweet"] [data-testid="testCondensedMedia"]')) {
+      const row = media.parentElement;
+      if (!row || articleQuoteLayouts.has(row) || row.closest(`#${ROOT_ID}`) || !row.closest('[role="link"]')) continue;
+      const cover = row.querySelector('[data-testid="article-cover-image"]');
+      const text = [...row.children].filter(child => child !== media && !child.contains(cover))
+        .map(child => child.querySelector('[data-testid="tweetText"]')).find(Boolean);
+      if (!cover || !text || row.getBoundingClientRect().width < 200) continue;
+      const rect = text.getBoundingClientRect();
+      const style = getComputedStyle(row);
+      if (rect.width >= 1 || rect.height <= 240 || style.display !== "flex" || style.flexDirection !== "row") continue;
+      articleQuoteLayouts.set(row, { media, text, cover });
+      row.setAttribute("data-sidex-article-quote-layout", "");
+    }
+  }
+
   // X may mount its own copy after the drawer data arrives, or recycle it while
   // scrolling. Attach to that copy when it appears instead of keeping a snapshot.
   let nativeSyncScheduled = false;
@@ -4440,6 +4564,7 @@
     nativeSyncScheduled = true;
     requestAnimationFrame(() => {
       nativeSyncScheduled = false;
+      syncArticleQuoteLayouts();
       syncPinnedFocalHighlight();
       if (syncPhotoViewer()) return;
       if (!state.open) return;
@@ -4522,6 +4647,7 @@
 
   // Window resize to close Repost menu, More menu, Share menu, and hovercard
   window.addEventListener("resize", () => {
+    syncArticleQuoteLayouts();
     closeRepostMenu();
     closeMoreMenu();
     closeShareMenu();

@@ -9,7 +9,7 @@ FEATURES
 • Docked comments: read replies beside the timeline without opening a separate detail page.
 • Long-post reading: automatically open the post's native Show more control when available.
 • Conversation threads: expand and collapse reply branches, with configurable reply previews and automatic unfolding of loaded author self-replies.
-• Reply loading: see loaded direct replies alongside X's reported total. Main-list automatic loading is on by default and can be disabled. Each branch click loads one page for that branch, with no sibling prefetch or automatic branch pagination. After a manual load, this open conversation stays in click-to-load mode. Folded replies require an explicit reveal action.
+• Reply loading: choose a default preview N (1/2/3/5). First click shows up to N+2 and reads at most one page; second click expands and loads the selected ordinary branch. Collapse or change the setting to reset to N. Main-list automatic loading is on by default and pauses after manual loading. Other branches are not fetched; folded replies need a separate reveal. Errors, empty pages and repeated cursors stop continuous branch loading.
 • Optional pinning: keep the panel open across outside clicks, Esc and X navigation, with the active post highlighted. Manual close and post switching remain available. Auto-pin is off by default and applies to new panels.
 • Reply text: optionally expand long reply text automatically; off by default.
 • Reply options: use the inline composer with image attachments, or open X's official reply dialog.
@@ -23,10 +23,10 @@ FEATURES
 • Translation choices: use the compact translation icon directly after Like to show or hide a reply's translation. Use X official translation, choose Google, or use your existing translation extension's selection/page translation.
 • Appearance: follows X's theme and supports an adjustable sidebar width.
 
-WHAT'S NEW IN 1.1.32
-• Fixes a profile card briefly flashing beside the original post's avatar after leaving a sidebar avatar.
-• Keeps X's normal profile cards available after dismissing a sidebar card.
-• Keeps sidebar profile cards working when you quickly move away and hover again.
+WHAT'S NEW IN 1.1.33
+• Repairs long blank areas caused by zero-width captions in native X Article quotes.
+• Applies sub-reply preview limit changes immediately to expanded branches, preserving drafts and scroll.
+• Adds staged reply previews: N by default, N+2 after the first click, then the full selected branch after the second. Author continuations stay visible.
 
 PRIVACY
 SideX runs in your browser and has no SideX relay server or analytics service. It processes the X content you open and uses your current X session for authenticated requests. Text drafts stay temporarily in the current page and are not synced. Replies and selected attachments go to X. Clicking Grok opens X's native analysis flow for the selected post through X/Grok, under their service terms and privacy policies. If you select Google translation and click Translate, the post text is sent directly to Google. X authentication information is not sent to Google. Other translation extensions follow their own settings and privacy policies.
@@ -50,7 +50,7 @@ SideX 把 X 的评论区放到右侧。点击帖子正文或空白处，在保�
 • 评论原位停靠在右侧，减少主信息流与详情页之间的来回切换。
 • 帖子存在官方“显示更多”入口时，自动展开长文。
 • 展开、收起回复分支，自定义二级回复默认展示数量，自动展示已加载的作者连续自回复。
-• 同时显示已加载的一级回复数和 X 报告的总数；主列表自动加载默认开启，可在设置中关闭。每次点击只加载所选分支的一页，不自动遍历或预取其他分支；手动加载后，本次打开的帖子改为逐次点击加载，收起也不会触发其他加载。折叠回复需要主动展开。
+• 默认二级回复数 N 可选 1/2/3/5；首次加载更多最多显示 N+2 条并请求一页，第二次展开并连续加载本条普通分支，收起或修改设置后回到 N。主列表自动加载默认开启，手动加载后暂停；不加载其他分支，折叠回复仍需单独主动展开，失败、空页或重复游标会停止连续加载。
 • 可选固定面板并高亮当前帖；固定后，点击外部、按 Esc 和站内导航会保留面板，仍可手动关闭或切帖。自动固定默认关闭，仅影响新打开的面板。
 • 可开启回复长正文自动展开，该选项默认关闭。
 • 支持侧栏回复、图片附件，以及打开 X 官方回复框。
@@ -64,10 +64,10 @@ SideX 把 X 的评论区放到右侧。点击帖子正文或空白处，在保�
 • 点击点赞后面的翻译图标显示或隐藏译文；默认使用 X 官方翻译，也可选择 Google，或使用已有翻译插件的划词／网页翻译。
 • 跟随 X 主题，支持调整侧栏宽度。
 
-1.1.32 更新
-• 修复鼠标移开侧栏头像后，资料卡短暂闪回原帖头像旁的问题。
-• 关闭侧栏资料卡后，左侧 X 官方区域仍可正常悬停查看资料。
-• 保留侧栏头像快速移开、再次悬停时的正常显示。
+1.1.33 更新
+• 兼容 X 原生文章引用正文被挤为零宽、造成大段空白的布局异常。
+• 修改二级回复默认展示数后立即应用到已展开分支，保留草稿和滚动位置。
+• 二级回复分两次展开：默认 N 条 → 首次 N+2 条 → 再次展开并加载本条全部普通回复；作者连续自回复保持展示。
 
 隐私说明
 SideX 在浏览器中运行，没有 SideX 中转或统计服务器。扩展处理你打开的 X 内容，并复用当前 X 会话；文字草稿仅在当前页面暂存，不参与同步，回复及选择的附件发送给 X。点击 Grok 会通过 X 原生流程分析所选帖子，由 X/Grok 处理并遵循其服务条款与隐私政策。只有选择 Google 翻译并点击翻译时，正文才会直接发送给 Google，X 认证信息不会发给 Google。已有翻译插件遵循各自的设置和隐私政策。

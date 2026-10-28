@@ -409,7 +409,7 @@ test('inline pages stay manual and ignore late responses after switching posts',
   assert.equal(p.calls.filter(m => m.cursor).length, 1);
 });
 
-test('a folded preview must be expanded before its manual inline continuation is available', async t => {
+test('a first preview click fills its larger budget with at most one inline page and does not resume automatically', async t => {
   const io = observers();
   const posts = [tweet('101', '100'), tweet('102', '101'), tweet('103', '102')];
   for (const post of posts) post.core.user_results.result.rest_id = 'other-author';
@@ -418,7 +418,8 @@ test('a folded preview must be expanded before its manual inline continuation is
   io.fire(); await tick(); assert.equal(p.calls.length, 1);
   p.query('.sidepeek-thread-group .sidepeek-expand-btn').click(); await tick();
   assert.ok(p.query('.sidepeek-inline-load-more-btn'));
-  io.fire(); await tick(); assert.equal(p.calls.length, 1);
+  assert.equal(p.calls.at(-1).cursor, 'a');
+  io.fire(); await tick(); assert.equal(p.calls.length, 2);
 });
 
 test('gated inline continuations are not exposed or fetched before explicit expansion', async t => {

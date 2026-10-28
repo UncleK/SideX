@@ -39,10 +39,47 @@ test('non-author continuations and owner replies to other users remain preview-l
   assert.equal(p.query('[data-id="103"]'), null);
   assert.equal(p.query('[data-id="120"]'), null);
   const expand = p.query('.sidepeek-thread-group .sidepeek-expand-btn');
-  assert.equal(expand.textContent, '展开另外 4 条已加载回复');
+  assert.equal(expand.textContent, '加载更多回复（再显示 2 条）');
   expand.click(); await tick();
+  assert.equal(p.query('[data-id="121"]'), null);
+  assert.equal(p.query('.sidepeek-thread-group .sidepeek-expand-btn').textContent, '展开并加载全部回复');
+  p.query('.sidepeek-thread-group .sidepeek-expand-btn').click(); await tick();
   assert.ok(p.query('[data-id="121"]'));
   assert.equal(p.calls.filter(m => m.type === 'READ_THREAD').length, 1, 'revealing loaded replies does not fetch');
+});
+
+test('popup preview changes apply to manually expanded branches and preserve drafts without requests', async t => {
+  const p = await open(t, [post('100'), ...chain(6, 'guest')]);
+  const prefs = {};
+  const popup = new JSDOM(source('popup.html'), { runScripts: 'outside-only' });
+  t.after(() => popup.window.close());
+  popup.window.chrome = { storage: { sync: {
+    get(defaults, cb) { cb({ ...defaults, ...prefs, sidex_lang: 'zh' }); },
+    set(values) { Object.assign(prefs, values); p.change(Object.fromEntries(Object.entries(values).map(([k, v]) => [k, { newValue: v }]))); }
+  } } };
+  popup.window.eval(source('popup.js'));
+  const visible = () => p.w.document.querySelectorAll('.sidepeek-thread-group .sidepeek-comment-item').length;
+  assert.equal(visible(), 2, 'parent plus one preview');
+  p.query('.sidepeek-thread-group .sidepeek-expand-btn').click(); await tick();
+  assert.equal(visible(), 4);
+  p.query('.sidepeek-thread-group .sidepeek-expand-btn').click(); await tick();
+  assert.equal(visible(), 6);
+  const first = p.query('[data-id="102"]');
+  const body = p.query('.sidepeek-body'); body.scrollTop = 170;
+  const textarea = p.query('.sidepeek-footer-textarea'); textarea.value = 'Keep preview draft';
+  textarea.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+  for (const limit of [3, 2, 5, 1]) {
+    popup.window.document.querySelector(`[data-limit="${limit}"]`).click(); await tick();
+    assert.equal(prefs.sidex_sub_reply_limit, limit);
+    assert.equal(visible(), 1 + limit);
+    assert.equal(p.query('[data-id="102"]'), first);
+    assert.equal(p.query('.sidepeek-footer-textarea').value, 'Keep preview draft');
+    assert.equal(body.scrollTop, 170);
+    assert.equal(p.calls.length, 1, 'changing preview size never fetches another branch');
+  }
+  assert.match(popup.window.document.querySelector('#txt-subreply-limit-hint').textContent, /N\+2/);
+  popup.window.document.querySelector('[data-lang="en"]').click();
+  assert.match(popup.window.document.querySelector('#txt-subreply-limit-hint').textContent, /First click/);
 });
 
 test('mixed branches count only actually hidden loaded replies and keep author continuations visible', async t => {
@@ -51,7 +88,7 @@ test('mixed branches count only actually hidden loaded replies and keep author c
   assert.ok(p.query('[data-id="120"]'));
   assert.equal(p.query('[data-id="121"]'), null);
   assert.equal(p.query('[data-id="122"]'), null);
-  assert.equal(p.query('.sidepeek-thread-group .sidepeek-expand-btn').textContent, '展开另外 2 条已加载回复');
+  assert.equal(p.query('.sidepeek-thread-group .sidepeek-expand-btn').textContent, '加载更多回复（再显示 2 条）');
 });
 
 test('pagination extends the author chain while retaining manual text expansion', async t => {
@@ -66,11 +103,11 @@ test('pagination extends the author chain while retaining manual text expansion'
   assert.equal(item.querySelector('.sidepeek-text').classList.contains('sidepeek-text-clamp'), false);
 });
 
-test('unknown child counts use an unnumbered fetch button rather than inventing hidden loaded replies', async t => {
+test('unknown child counts show the next preview budget rather than an invented hidden reply count', async t => {
   const p = await open(t, [post('100'), post('101', '100', 'guest', 'Reply', 20)]);
   const button = p.query('.sidepeek-fetch-replies-btn');
   assert.ok(button);
-  assert.equal(button.textContent, '加载更多回复');
+  assert.equal(button.textContent, '加载更多回复（再显示 2 条）');
   assert.doesNotMatch(button.textContent, /20/);
 });
 

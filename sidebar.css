@@ -55,6 +55,15 @@ article[data-testid="tweet"][data-sidex-pinned-active="dim"] {
   background-color: rgba(255, 255, 255, 0.03) !important;
 }
 
+/* Repair only native Article quotes whose sibling text collapsed to zero width. */
+article[data-testid="tweet"] [data-sidex-article-quote-layout] {
+  flex-direction: column !important;
+}
+
+article[data-testid="tweet"] [data-sidex-article-quote-layout] > div:has([data-testid="tweetText"]) {
+  flex-basis: auto !important;
+}
+
 /* ==========================================================================
    Drawer Container
    ========================================================================== */

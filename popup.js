@@ -58,7 +58,8 @@
         google: "点击翻译时将正文发送给 Google；免费接口可能限流。",
         external: "保留正文，隐藏 SideX 翻译按钮。请使用已有插件的划词或网页翻译。"
       },
-      subReplyLimitLabel: "二级回复展示",
+      subReplyLimitLabel: "二级回复默认展示数",
+      subReplyLimitHint: "默认 N 条 → 首次加载更多显示 N+2 条 → 再次点击展开并加载本条全部回复。修改后立即重置；作者连续自回复始终显示。",
       resetLabel: "抽屉宽度",
       resetBtn: "恢复默认",
       resetDone: "已恢复！",
@@ -92,6 +93,7 @@
         external: "Keep post text and hide SideX translation buttons. Use your extension's selection or page translation."
       },
       subReplyLimitLabel: "Sub-reply Preview",
+      subReplyLimitHint: "Start with N replies. First click shows up to N+2; second click expands and loads this branch. Changes reset previews. Author continuations stay visible.",
       resetLabel: "Drawer Width",
       resetBtn: "Reset",
       resetDone: "Restored!",
@@ -141,6 +143,7 @@
     updatePhotoModeButtons();
 
     if (subReplyLimitLabel) subReplyLimitLabel.textContent = s.subReplyLimitLabel;
+    document.getElementById("txt-subreply-limit-hint").textContent = s.subReplyLimitHint;
     resetLabel.textContent = s.resetLabel;
     resetBtnText.textContent = s.resetBtn;
     hintEsc.textContent = s.hintEsc;
