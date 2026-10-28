@@ -39,7 +39,7 @@ test('non-author continuations and owner replies to other users remain preview-l
   assert.equal(p.query('[data-id="103"]'), null);
   assert.equal(p.query('[data-id="120"]'), null);
   const expand = p.query('.sidepeek-thread-group .sidepeek-expand-btn');
-  assert.equal(expand.textContent, '加载更多回复（再显示 2 条）');
+  assert.equal(expand.textContent, '加载更多回复');
   expand.click(); await tick();
   assert.equal(p.query('[data-id="121"]'), null);
   assert.equal(p.query('.sidepeek-thread-group .sidepeek-expand-btn').textContent, '展开并加载全部回复');
@@ -61,7 +61,7 @@ test('popup preview changes apply to manually expanded branches and preserve dra
   const visible = () => p.w.document.querySelectorAll('.sidepeek-thread-group .sidepeek-comment-item').length;
   assert.equal(visible(), 2, 'parent plus one preview');
   p.query('.sidepeek-thread-group .sidepeek-expand-btn').click(); await tick();
-  assert.equal(visible(), 4);
+  assert.equal(visible(), 5);
   p.query('.sidepeek-thread-group .sidepeek-expand-btn').click(); await tick();
   assert.equal(visible(), 6);
   const first = p.query('[data-id="102"]');
@@ -77,7 +77,7 @@ test('popup preview changes apply to manually expanded branches and preserve dra
     assert.equal(body.scrollTop, 170);
     assert.equal(p.calls.length, 1, 'changing preview size never fetches another branch');
   }
-  assert.match(popup.window.document.querySelector('#txt-subreply-limit-hint').textContent, /N\+2/);
+  assert.match(popup.window.document.querySelector('#txt-subreply-limit-hint').textContent, /再加载 3 条，共 4 条/);
   popup.window.document.querySelector('[data-lang="en"]').click();
   assert.match(popup.window.document.querySelector('#txt-subreply-limit-hint').textContent, /First click/);
 });
@@ -88,12 +88,12 @@ test('mixed branches count only actually hidden loaded replies and keep author c
   assert.ok(p.query('[data-id="120"]'));
   assert.equal(p.query('[data-id="121"]'), null);
   assert.equal(p.query('[data-id="122"]'), null);
-  assert.equal(p.query('.sidepeek-thread-group .sidepeek-expand-btn').textContent, '加载更多回复（再显示 2 条）');
+  assert.equal(p.query('.sidepeek-thread-group .sidepeek-expand-btn').textContent, '加载更多回复');
 });
 
 test('pagination extends the author chain while retaining manual text expansion', async t => {
   const long = 'Long continuation. '.repeat(40);
-  const p = await open(t, [], {}, m => m.cursor ? response([post('103', '102'), post('104', '103')])
+  const p = await open(t, [], { sidex_auto_expand_reply_text: false }, m => m.cursor ? response([post('103', '102'), post('104', '103')])
     : response([post('100'), post('101', '100', 'owner', long, 1), post('102', '101', 'owner', 'Second', 1)], 'next'));
   p.query('[data-id="101"] .sidepeek-show-more-btn').click();
   const item = p.query('[data-id="101"]');
@@ -103,17 +103,17 @@ test('pagination extends the author chain while retaining manual text expansion'
   assert.equal(item.querySelector('.sidepeek-text').classList.contains('sidepeek-text-clamp'), false);
 });
 
-test('unknown child counts show the next preview budget rather than an invented hidden reply count', async t => {
+test('unknown child counts keep a simple load-more label without an invented reply count', async t => {
   const p = await open(t, [post('100'), post('101', '100', 'guest', 'Reply', 20)]);
   const button = p.query('.sidepeek-fetch-replies-btn');
   assert.ok(button);
-  assert.equal(button.textContent, '加载更多回复（再显示 2 条）');
+  assert.equal(button.textContent, '加载更多回复');
   assert.doesNotMatch(button.textContent, /20/);
 });
 
-test('the default-off text option updates cached comments immediately and preserves manual expansion and drafts', async t => {
+test('the saved text-folding preference updates cached comments and preserves manual expansion and drafts', async t => {
   const long = 'Long reply body. '.repeat(40);
-  const p = await open(t, [post('100'), post('101', '100', 'guest', long), post('102', '100', 'guest2', long)]);
+  const p = await open(t, [post('100'), post('101', '100', 'guest', long), post('102', '100', 'guest2', long)], { sidex_auto_expand_reply_text: false });
   const a = p.query('[data-id="101"]'), b = p.query('[data-id="102"]');
   assert.ok(a.querySelector('.sidepeek-text-clamp'));
   a.querySelector('.sidepeek-show-more-btn').click();
@@ -122,7 +122,7 @@ test('the default-off text option updates cached comments immediately and preser
   const textarea = p.query('.sidepeek-footer-textarea');
   textarea.focus(); textarea.value = 'Keep draft'; textarea.dispatchEvent(new p.w.Event('input', { bubbles: true }));
   const body = p.query('.sidepeek-body'); body.scrollTop = 250;
-  const prefs = {};
+  const prefs = { sidex_auto_expand_reply_text: false };
   const popup = new JSDOM(source('popup.html'), { runScripts: 'outside-only' });
   t.after(() => popup.window.close());
   popup.window.chrome = { storage: { sync: {
@@ -144,7 +144,7 @@ test('the default-off text option updates cached comments immediately and preser
   assert.equal(p.query('.sidepeek-footer-textarea').value, 'Keep draft');
   assert.equal(body.scrollTop, 250);
   popup.window.document.querySelector('[data-lang="en"]').click();
-  assert.equal(popup.window.document.querySelector('#txt-auto-expand-title').textContent, 'Auto-expand reply text');
+  assert.equal(popup.window.document.querySelector('#txt-auto-expand-title').textContent, 'Show full reply text');
 });
 
 test('persisted auto-expand text never expands quoted cards or gated author replies', async t => {
@@ -157,4 +157,19 @@ test('persisted auto-expand text never expands quoted cards or gated author repl
   assert.doesNotMatch(p.query('.sidepeek-body').textContent, /GATED_AUTHOR_TEXT/);
   assert.ok(p.query('.sidepeek-gated-btn'));
   assert.equal(p.query('.sidepeek-quote-toggle').getAttribute('aria-expanded'), 'false', 'quoted cards retain their separate expansion state');
+});
+
+test('reply text is fully shown by default while an explicit saved off preference is retained', async t => {
+  const long = 'Long reply text. '.repeat(40);
+  const p = await open(t, [post('100'), post('101', '100', 'guest', long)]);
+  assert.equal(p.query('.sidepeek-text-clamp'), null);
+  const popup = new JSDOM(source('popup.html'), { runScripts: 'outside-only' });
+  t.after(() => popup.window.close());
+  popup.window.chrome = { storage: { sync: { get(defaults, cb) { cb(defaults); }, set() {} } } };
+  popup.window.eval(source('popup.js'));
+  assert.equal(popup.window.document.querySelector('#sidex-auto-expand-text').checked, true);
+  p.change({ sidex_auto_expand_reply_text: { newValue: false } });
+  assert.ok(p.query('.sidepeek-text-clamp'));
+  p.change({ sidex_auto_expand_reply_text: { newValue: undefined } });
+  assert.equal(p.query('.sidepeek-text-clamp'), null, 'removing the preference restores the new default');
 });

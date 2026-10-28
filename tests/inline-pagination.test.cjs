@@ -333,18 +333,18 @@ function observers() {
     observe(target) { this.targets.push(target); }
     disconnect() { this.targets = []; }
   }; }, fire() { for (const observer of [...all]) {
-    observer.callback(observer.targets.filter(t => t.isConnected).map(target => ({ target, isIntersecting: true })));
+    observer.callback(observer.targets.filter(t => t.isConnected && t.classList.contains('sidepeek-pagination')).map(target => ({ target, isIntersecting: true })));
   } }, all };
 }
 
-test('a branch click loads one scoped page without prefetching siblings or following visible cursors', async t => {
+test('a branch click fills its own preview without prefetching siblings', async t => {
   const io = observers();
   const first = detail([
     moduleEntry('101', [tweet('101', '100'), tweet('102', '101')], 'a'),
     moduleEntry('110', [tweet('110', '100'), tweet('111', '110', 'UNCHANGED_SIBLING')], 'b')
   ], { bottom: 'outer', end: false });
   const p = await open(t, m => !m.cursor ? first : detail([
-    moduleEntry('101', [tweet('103', '102')], 'a-next'),
+    moduleEntry('101', [tweet('103', '102'), ...['104','105','106','107','108','109'].map(id => tweet(id, '101'))], 'a-next'),
     moduleEntry('110', [tweet('111', '110', 'UNRELATED_UPDATE'), tweet('112', '110')], 'b-unrelated')
   ], { posts: [tweet('120', '100')], bottom: 'unrelated-outer', end: false }),
     { sidex_sub_reply_limit: 3 }, io.setup);
@@ -359,8 +359,9 @@ test('a branch click loads one scoped page without prefetching siblings or follo
   assert.equal(p.query('[data-id="120"]'), null);
   io.fire(); io.fire(); await tick();
   assert.equal(p.calls.length, 2, 'no automatic next page, sibling page or outer page while reading this branch');
+  const beforeSibling = p.calls.length;
   p.w.document.querySelectorAll('.sidepeek-inline-load-more-btn')[1].click(); await tick();
-  assert.equal(p.calls.at(-1).cursor, 'b', 'an unrelated response cannot replace the sibling cursor');
+  assert.equal(p.calls[beforeSibling].cursor, 'b', 'an unrelated response cannot replace the sibling cursor');
 });
 
 test('branch pagination ignores sibling unavailability and unrelated progress', async t => {

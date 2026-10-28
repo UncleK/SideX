@@ -26,20 +26,20 @@ async function open(t, request, limit = 1) {
 }
 
 for (const limit of [1, 2, 3, 5]) {
-  test(`cached previews follow ${limit}, ${limit + 2}, all, collapse without requests`, async t => {
-    const p = await open(t, () => page([post('100'), post('101', '100', 9), ...children(102, 9)]), limit);
+  test(`cached previews follow ${limit}, ${limit * 2 + 2}, all, collapse without requests`, async t => {
+    const p = await open(t, () => page([post('100'), post('101', '100', 15), ...children(102, 15)]), limit);
     assert.equal(visible(p), limit);
-    more(p).click(); await tick(); assert.equal(visible(p), limit + 2);
+    more(p).click(); await tick(); assert.equal(visible(p), limit * 2 + 2);
     assert.equal(more(p).textContent, '展开并加载全部回复');
-    more(p).click(); await tick(); assert.equal(visible(p), 9);
+    more(p).click(); await tick(); assert.equal(visible(p), 15);
     group(p).querySelector('.sidepeek-collapse-btn').click(); await tick();
     assert.equal(visible(p), limit);
-    more(p).click(); await tick(); assert.equal(visible(p), limit + 2, 'collapse resets the next click');
+    more(p).click(); await tick(); assert.equal(visible(p), limit * 2 + 2, 'collapse resets the next click');
     assert.equal(p.calls.length, 1);
   });
 }
 
-test('first click fetches one page within N+2; second drains only this branch and leaves Spam folded', async t => {
+test('first click appends N+2 replies; second drains only this branch and leaves Spam folded', async t => {
   const p = await open(t, m => {
     if (m.tweetId === '100') return page([post('100'), post('101', '100', 20), post('150', '100', 3), post('102', '101')], 'outer');
     if (!m.cursor) return page([post('101', '100', 20), ...children(102, 4)], 'next-1');
@@ -47,7 +47,7 @@ test('first click fetches one page within N+2; second drains only this branch an
     return page(children(108, 2), null, true);
   });
   more(p).click(); await tick();
-  assert.equal(visible(p), 3);
+  assert.equal(visible(p), 4);
   assert.equal(p.calls.length, 2);
   more(p).click(); await tick(); await tick();
   assert.equal(visible(p), 8);
@@ -96,8 +96,70 @@ test('an inline branch keeps its original request scope while the second click d
   }
   const p = await open(t, m => !m.cursor ? modules([post('101', '100', 8), ...children(102, 4)], 'a')
     : m.cursor === 'a' ? modules(children(106, 2), 'b') : modules(children(108, 2)));
-  more(p).click(); await tick(); assert.equal(visible(p), 3); assert.equal(p.calls.length, 1);
+  more(p).click(); await tick(); assert.equal(visible(p), 4); assert.equal(p.calls.length, 1);
   more(p).click(); await tick(); await tick();
   assert.equal(visible(p), 8);
   assert.deepEqual(p.calls.map(m => [m.tweetId, m.cursor || '']), [['100', ''], ['100', 'a'], ['100', 'b']]);
+});
+
+function previewObservers() {
+  const instances = [];
+  return { setup(w) { w.IntersectionObserver = class {
+    constructor(callback) { this.callback = callback; this.targets = []; instances.push(this); }
+    observe(target) { this.targets.push(target); }
+    disconnect() { this.targets = []; }
+  }; }, fire(id = '101') {
+    for (const observer of [...instances]) {
+      const target = observer.targets.find(node => node.isConnected && node.classList.contains('sidepeek-thread-group') && node.firstElementChild?.dataset.id === id);
+      if (target) observer.callback([{ target, isIntersecting: true }]);
+    }
+  } };
+}
+
+test('visible default 3 fills sparse pages, then appends 5 to show 8, without loading the offscreen sibling', async t => {
+  const io = previewObservers();
+  const p = createPage({ settings: { sidex_sub_reply_limit: 3, sidex_auto_load_replies: false }, setupWindow: io.setup, request: m => {
+    if (m.tweetId === '100') return page([post('100'), post('101', '100', 20), post('102', '101'), post('150', '100', 4)]);
+    if (!m.cursor) return page([post('101', '100', 20), ...children(102, 3)], 'a');
+    if (m.cursor === 'a') return page(children(105, 2), 'b');
+    if (m.cursor === 'b') return page(children(107, 2), 'c');
+    if (m.cursor === 'c') return page(children(109, 2), 'd');
+    return page(children(111, 2));
+  } });
+  t.after(() => p.w.close()); await tick(); p.clickPost(0); await tick();
+  assert.equal(visible(p), 1, 'only one cached child arrived with the main list');
+  io.fire(); await tick();
+  assert.equal(visible(p), 3, 'the selected default is filled on screen');
+  assert.equal(p.calls.length, 2);
+  more(p).click(); await tick(); await tick();
+  assert.equal(visible(p), 8, 'the first click appends five rather than raising the total to five');
+  assert.deepEqual(p.calls.map(m => m.cursor).filter(Boolean), ['a', 'b', 'c']);
+  more(p).click(); await tick();
+  assert.equal(visible(p), 11);
+  assert.equal(p.calls.filter(m => m.tweetId === '150').length, 0);
+});
+
+test('changing a visible preview from 1 to 3 fills missing children without consuming a manual click', async t => {
+  const io = previewObservers();
+  const p = createPage({ setupWindow: io.setup, request: m => m.tweetId === '100'
+    ? page([post('100'), post('101', '100', 10), post('102', '101')])
+    : page([post('101', '100', 10), ...children(102, 10)]) });
+  t.after(() => p.w.close()); await tick(); p.clickPost(0); await tick();
+  p.change({ sidex_sub_reply_limit: { newValue: 3 } }); io.fire(); await tick();
+  assert.equal(visible(p), 3);
+  assert.equal(more(p).textContent, '加载更多回复');
+  more(p).click(); await tick(); assert.equal(visible(p), 8);
+});
+
+test('default preview errors remain manual and never loop when the branch stays visible', async t => {
+  const io = previewObservers();
+  const p = createPage({ settings: { sidex_sub_reply_limit: 3 }, setupWindow: io.setup, request: m => {
+    if (m.tweetId !== '100') throw new Error('offline');
+    return page([post('100'), post('101', '100', 5), post('102', '101')]);
+  } });
+  t.after(() => p.w.close()); await tick(); p.clickPost(0); await tick();
+  io.fire(); await tick(); io.fire(); io.fire(); await tick();
+  assert.equal(p.calls.length, 2);
+  assert.equal(more(p).textContent, '重试');
+  assert.equal(visible(p), 1);
 });

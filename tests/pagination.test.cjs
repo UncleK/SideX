@@ -29,7 +29,7 @@ function observers() {
     constructor(callback, options) { this.callback = callback; this.options = options; this.targets = []; instances.push(this); }
     observe(target) { this.targets.push(target); }
     disconnect() { this.targets = []; }
-  }; }, fire() { for (const i of [...instances]) { const targets = i.targets.filter(n => n.isConnected); if (targets.length) i.callback(targets.map(target => ({ target, isIntersecting: true }))); } }, instances };
+  }; }, fire() { for (const i of [...instances]) { const targets = i.targets.filter(n => n.isConnected && n.classList.contains('sidepeek-pagination')); if (targets.length) i.callback(targets.map(target => ({ target, isIntersecting: true }))); } }, instances };
 }
 
 for (const focalId of ['100', '200']) {
@@ -59,7 +59,7 @@ for (const focalId of ['100', '200']) {
 test('inline completion stays hidden while the outer list has more pages, and branch cursors remain actionable', async t => {
   const parent = tweet('101', '100'); parent.legacy.reply_count = 2;
   const p = await open(t, m => m.tweetId === '100' ? page({ replies: [parent], cursor: 'outer-next' })
-    : page({ focal: false, replies: [parent, tweet('102', '101')],
+    : page({ focal: false, replies: [parent, ...['102','103','104','105'].map(id => tweet(id, '101'))],
       ...(m.cursor ? { end: 'Bottom' } : { cursor: 'branch-next' }) }));
   p.query('.sidepeek-fetch-replies-btn').click(); await tick();
   assert.ok(p.query('.sidepeek-thread-group .sidepeek-load-more-btn'));
@@ -72,7 +72,7 @@ test('inline completion stays hidden while the outer list has more pages, and br
 test('a clicked subthread loads one page and collapsing it never starts another page', async t => {
   const io = observers();
   const p = await open(t, m => m.tweetId === '101'
-    ? page({ focal: false, replies: [tweet('101', '100'), tweet('102', '101')], cursor: 'branch-next' })
+    ? page({ focal: false, replies: [tweet('101', '100'), ...['102','103','104','105'].map(id => tweet(id, '101'))], cursor: 'branch-next' })
     : m.cursor ? page({ replies: [tweet('120', '100')], end: 'Bottom' })
       : page({ replies: [tweet('101', '100'), tweet('110', '100')], cursor: 'outer-next' }), io.setup);
   p.query('.sidepeek-fetch-replies-btn').click(); await tick();
@@ -354,7 +354,7 @@ test('popup preference immediately toggles automatic loading while manual loadin
   assert.ok(p.query('[data-id="102"]'));
   assert.equal(p.calls.filter(m => m.cursor).length, 1);
   popup.window.document.querySelector('[data-lang="en"]').click();
-  assert.equal(popup.window.document.querySelector('#txt-auto-load-title').textContent, 'Auto-load more replies');
+  assert.equal(popup.window.document.querySelector('#txt-auto-load-title').textContent, 'Load comments as you scroll');
 });
 
 

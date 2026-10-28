@@ -15,12 +15,15 @@
   const subReplyLimitLabel = document.getElementById("txt-subreply-limit-label");
   const limitGroup = document.getElementById("sidex-limit-group");
   const resetLabel = document.getElementById("txt-reset-label");
-  const resetBtn = document.getElementById("btn-reset-width");
+  const resetBtn = document.getElementById("btn-reset-defaults");
   const resetBtnText = document.getElementById("txt-reset-btn");
   const hintEsc = document.getElementById("txt-hint-esc");
   const langGroup = document.getElementById("sidex-lang-group");
   const versionBadge = document.getElementById("sidex-version-badge");
   const translationSelect = document.getElementById("sidex-translation-provider");
+  const DEFAULT_SETTINGS = Object.freeze({ sidex_enabled: true, sidex_auto_load_replies: true,
+    sidex_auto_expand_reply_text: true, sidex_lang: null, sidex_sub_reply_limit: 1,
+    sidex_reply_mode: "drawer", sidex_photo_mode: "sidex", sidex_translation_provider: "x", sidex_auto_pin: false });
 
   // Dynamically sync version from manifest
   try {
@@ -32,17 +35,21 @@
 
   const STRINGS = {
     zh: {
-      autoExpandTitle: "自动展开回复正文",
-      autoExpandDesc: "显示已加载的完整正文",
-      autoLoadTitle: "自动加载更多评论",
-      autoLoadDesc: "主列表自动加载，手动加载后暂停",
+      readingTitle: "评论阅读",
+      moreSettingsTitle: "更多设置",
+      moreSettingsHint: "回复方式、图片、翻译与侧栏",
+      refreshNotice: "请刷新 X 生效",
+      autoExpandTitle: "完整显示回复长文",
+      autoExpandDesc: "侧栏长回复直接显示全文，无需点“显示更多”。",
+      autoLoadTitle: "滚动到底继续加载评论",
+      autoLoadDesc: "靠近底部时加载下一页一级评论；手动加载后暂停。",
       enabledTitle: "插件已启用",
       enabledDesc: "点击推文原地展开评论流",
       disabledTitle: "插件已停用",
       disabledDesc: "已恢复 X 原生跳转与浏览行为",
       replyModeLabel: "回复模式",
-      autoPinLabel: "打开面板时自动固定",
-      autoPinHint: "自动固定新打开的侧栏",
+      autoPinLabel: "侧栏默认保持打开",
+      autoPinHint: "新侧栏默认固定，点击页面空白或按 Esc 不会关闭。",
       replyModeDrawer: "快捷回复",
       replyModeNative: "官方弹窗",
       photoModeLabel: "图片评论区",
@@ -58,25 +65,30 @@
         google: "点击翻译时将正文发送给 Google；免费接口可能限流。",
         external: "保留正文，隐藏 SideX 翻译按钮。请使用已有插件的划词或网页翻译。"
       },
-      subReplyLimitLabel: "二级回复默认展示数",
-      subReplyLimitHint: "默认 N 条 → 首次加载更多显示 N+2 条 → 再次点击展开并加载本条全部回复。修改后立即重置；作者连续自回复始终显示。",
-      resetLabel: "抽屉宽度",
-      resetBtn: "恢复默认",
-      resetDone: "已恢复！",
+      subReplyLimitLabel: "默认展开回复数",
+      subReplyLimitHint: "每条评论下先显示 {limit} 条回复；首次再加载 {batch} 条，共 {total} 条；再次展开全部。作者连续自回复保持完整。",
+      resetLabel: "默认设置",
+      resetBtn: "全部恢复",
+      resetDone: "已全部恢复",
+      resetHint: "恢复所有选项和侧栏宽度，语言跟随浏览器；保留回复草稿。",
       hintEsc: "关闭抽屉或大图"
     },
     en: {
-      autoExpandTitle: "Auto-expand reply text",
-      autoExpandDesc: "Show the full loaded text",
-      autoLoadTitle: "Auto-load more replies",
-      autoLoadDesc: "Main list; pauses after a manual load",
+      readingTitle: "Reading comments",
+      moreSettingsTitle: "More settings",
+      moreSettingsHint: "Reply tools, photos, translation and sidebar",
+      refreshNotice: "Refresh X to apply.",
+      autoExpandTitle: "Show full reply text",
+      autoExpandDesc: "Read long sidebar replies without clicking Show more.",
+      autoLoadTitle: "Load comments as you scroll",
+      autoLoadDesc: "Load the next page of top-level comments near the bottom. Pauses after a manual load.",
       enabledTitle: "Extension Enabled",
       enabledDesc: "Click tweets to open comment stream",
       disabledTitle: "Extension Paused",
       disabledDesc: "Native X navigation restored",
       replyModeLabel: "Reply Mode",
-      autoPinLabel: "Automatically pin new panels",
-      autoPinHint: "Automatically pin new sidebars",
+      autoPinLabel: "Keep new sidebars open",
+      autoPinHint: "Pin new panels so outside clicks and Esc do not close them.",
       replyModeDrawer: "Quick reply",
       replyModeNative: "Official",
       photoModeLabel: "Photo comments",
@@ -93,10 +105,11 @@
         external: "Keep post text and hide SideX translation buttons. Use your extension's selection or page translation."
       },
       subReplyLimitLabel: "Sub-reply Preview",
-      subReplyLimitHint: "Start with N replies. First click shows up to N+2; second click expands and loads this branch. Changes reset previews. Author continuations stay visible.",
-      resetLabel: "Drawer Width",
-      resetBtn: "Reset",
-      resetDone: "Restored!",
+      subReplyLimitHint: "Start with {limit} replies per comment. First click adds {batch}, up to {total} total; next click loads all. Author continuations stay visible.",
+      resetLabel: "Default settings",
+      resetBtn: "Reset all",
+      resetDone: "Defaults restored",
+      resetHint: "Reset all options and sidebar width, use your browser language, and keep reply drafts.",
       hintEsc: "Close drawer or lightbox"
     }
   };
@@ -108,6 +121,11 @@
   let currentPhotoMode = "sidex";
   let translationProvider = "x";
 
+  function saveSettings(values) {
+    storage?.set(values);
+    document.querySelector(".sidex-refresh-notice").hidden = false;
+  }
+
   function getSystemLang() {
     const nav = (navigator.language || "zh").toLowerCase();
     return nav.startsWith("zh") ? "zh" : "en";
@@ -115,6 +133,11 @@
 
   function updateTexts() {
     const s = STRINGS[currentLang] || STRINGS.zh;
+    document.getElementById("txt-reading-title").textContent = s.readingTitle;
+    document.getElementById("txt-more-settings-title").textContent = s.moreSettingsTitle;
+    document.getElementById("txt-more-settings-hint").textContent = s.moreSettingsHint;
+    document.getElementById("txt-refresh-notice").textContent = s.refreshNotice;
+    document.getElementById("txt-reset-hint").textContent = s.resetHint;
     document.getElementById("txt-auto-expand-title").textContent = s.autoExpandTitle;
     document.getElementById("txt-auto-expand-desc").textContent = s.autoExpandDesc;
     document.getElementById("txt-auto-load-title").textContent = s.autoLoadTitle;
@@ -143,7 +166,7 @@
     updatePhotoModeButtons();
 
     if (subReplyLimitLabel) subReplyLimitLabel.textContent = s.subReplyLimitLabel;
-    document.getElementById("txt-subreply-limit-hint").textContent = s.subReplyLimitHint;
+    updateLimitButtons(currentSubReplyLimit);
     resetLabel.textContent = s.resetLabel;
     resetBtnText.textContent = s.resetBtn;
     hintEsc.textContent = s.hintEsc;
@@ -163,7 +186,11 @@
     if (!limitGroup) return;
     limitGroup.querySelectorAll(".sidex-pill-btn").forEach((btn) => {
       btn.classList.toggle("active", Number(btn.dataset.limit) === Number(limit));
+      btn.setAttribute("aria-pressed", String(Number(btn.dataset.limit) === Number(limit)));
     });
+    const counts = { limit, batch: limit + 2, total: limit * 2 + 2 };
+    document.getElementById("txt-subreply-limit-hint").textContent = (STRINGS[currentLang] || STRINGS.zh)
+      .subReplyLimitHint.replace(/\{(limit|batch|total)\}/g, (_, key) => counts[key]);
   }
 
   function updateReplyModeButtons(mode) {
@@ -198,14 +225,14 @@
     const mode = event.target.closest("[data-photo-mode]")?.dataset.photoMode;
     if (!["native", "sidex"].includes(mode) || mode === currentPhotoMode) return;
     currentPhotoMode = mode;
-    storage?.set({ sidex_photo_mode: mode });
+    saveSettings({ sidex_photo_mode: mode });
     updatePhotoModeButtons();
   });
 
   // Load saved settings
   const storage = chrome?.storage?.sync || chrome?.storage?.local;
   if (storage) {
-    storage.get({ sidex_enabled: true, sidex_auto_load_replies: true, sidex_auto_expand_reply_text: false, sidex_lang: null, sidex_sub_reply_limit: 1, sidex_reply_mode: "drawer", sidex_photo_mode: "sidex", sidex_translation_provider: "x", sidex_auto_pin: false }, (res) => {
+    storage.get(DEFAULT_SETTINGS, (res) => {
       isEnabled = res.sidex_enabled !== false;
       currentLang = res.sidex_lang || getSystemLang();
       currentSubReplyLimit = Number(res.sidex_sub_reply_limit) || 1;
@@ -215,7 +242,7 @@
       translationProvider = ["x", "google", "external"].includes(res.sidex_translation_provider) ? res.sidex_translation_provider : "x";
       toggleInput.checked = isEnabled;
       autoLoadInput.checked = res.sidex_auto_load_replies !== false;
-      autoExpandInput.checked = res.sidex_auto_expand_reply_text === true;
+      autoExpandInput.checked = res.sidex_auto_expand_reply_text !== false;
       updateTexts();
       updateBadge(isEnabled);
       updateLimitButtons(currentSubReplyLimit);
@@ -229,17 +256,17 @@
   }
 
   autoExpandInput.addEventListener("change", () => {
-    storage?.set({ sidex_auto_expand_reply_text: autoExpandInput.checked });
+    saveSettings({ sidex_auto_expand_reply_text: autoExpandInput.checked });
   });
 
   autoLoadInput.addEventListener("change", () => {
-    storage?.set({ sidex_auto_load_replies: autoLoadInput.checked });
+    saveSettings({ sidex_auto_load_replies: autoLoadInput.checked });
   });
 
   // Toggle switch change handler
   translationSelect.addEventListener("change", () => {
     translationProvider = translationSelect.value;
-    storage?.set({ sidex_translation_provider: translationProvider });
+    saveSettings({ sidex_translation_provider: translationProvider });
     updateTexts();
   });
 
@@ -248,12 +275,12 @@
     updateTexts();
     updateBadge(isEnabled);
     if (storage) {
-      storage.set({ sidex_enabled: isEnabled });
+      saveSettings({ sidex_enabled: isEnabled });
     }
   });
 
   autoPinInput?.addEventListener("change", () => {
-    storage?.set({ sidex_auto_pin: autoPinInput.checked });
+    saveSettings({ sidex_auto_pin: autoPinInput.checked });
   });
 
   // Language switch buttons handler
@@ -265,7 +292,7 @@
       currentLang = lang;
       updateTexts();
       if (storage) {
-        storage.set({ sidex_lang: currentLang });
+        saveSettings({ sidex_lang: currentLang });
       }
     }
   });
@@ -280,7 +307,7 @@
         currentReplyMode = mode;
         updateReplyModeButtons(currentReplyMode);
         if (storage) {
-          storage.set({ sidex_reply_mode: currentReplyMode });
+          saveSettings({ sidex_reply_mode: currentReplyMode });
         }
       }
     });
@@ -296,17 +323,27 @@
         currentSubReplyLimit = limit;
         updateLimitButtons(currentSubReplyLimit);
         if (storage) {
-          storage.set({ sidex_sub_reply_limit: currentSubReplyLimit });
+          saveSettings({ sidex_sub_reply_limit: currentSubReplyLimit });
         }
       }
     });
   }
 
-  // Reset width button handler
+  // Restore every setting, while the content script retains text drafts.
   resetBtn.addEventListener("click", () => {
-    if (storage) {
-      storage.set({ sidex_reset_width_trigger: Date.now() });
-    }
+    saveSettings({ ...DEFAULT_SETTINGS, sidex_reset_defaults_trigger: Date.now() });
+    isEnabled = true;
+    currentLang = getSystemLang();
+    currentSubReplyLimit = DEFAULT_SETTINGS.sidex_sub_reply_limit;
+    currentReplyMode = DEFAULT_SETTINGS.sidex_reply_mode;
+    currentPhotoMode = DEFAULT_SETTINGS.sidex_photo_mode;
+    translationProvider = DEFAULT_SETTINGS.sidex_translation_provider;
+    toggleInput.checked = true;
+    autoLoadInput.checked = true;
+    autoExpandInput.checked = true;
+    autoPinInput.checked = false;
+    updateTexts();
+    updateBadge(true);
     const s = STRINGS[currentLang] || STRINGS.zh;
     resetBtnText.textContent = s.resetDone;
     setTimeout(() => {

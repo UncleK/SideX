@@ -111,12 +111,13 @@
     expandedThreadIds: new Set(),
     previewMoreThreadIds: new Set(),
     branchLoadJobs: new Map(),
+    pausedPreviewIds: new Set(),
     loadedThreadIds: new Set(),
     loadingThreadIds: new Set(),
     threadCursors: new Map(),
     autoLoadReplies: true,
     manualReplyLoading: false,
-    autoExpandReplyText: false,
+    autoExpandReplyText: true,
     threadPages: new Map(),
     inlinePages: new Map(),
     unavailableReplyIds: new Set(),
@@ -245,11 +246,11 @@
   let autoPinDefault = false;
   let settingsLoaded = !storage;
   if (storage) {
-    storage.get({ sidex_enabled: true, sidex_auto_load_replies: true, sidex_auto_expand_reply_text: false, sidex_lang: null, sidex_sub_reply_limit: 1, sidex_reply_mode: "drawer", sidex_photo_mode: "sidex", sidex_translation_provider: "x", sidex_auto_pin: false }, (res) => {
+    storage.get({ sidex_enabled: true, sidex_auto_load_replies: true, sidex_auto_expand_reply_text: true, sidex_lang: null, sidex_sub_reply_limit: 1, sidex_reply_mode: "drawer", sidex_photo_mode: "sidex", sidex_translation_provider: "x", sidex_auto_pin: false }, (res) => {
       settingsLoaded = true;
       isSideXEnabled = res.sidex_enabled !== false;
       state.autoLoadReplies = res.sidex_auto_load_replies !== false;
-      state.autoExpandReplyText = res.sidex_auto_expand_reply_text === true;
+      state.autoExpandReplyText = res.sidex_auto_expand_reply_text !== false;
       autoPinDefault = res.sidex_auto_pin === true;
       state.translationProvider = ["x", "google", "external"].includes(res.sidex_translation_provider) ? res.sidex_translation_provider : "x";
       state.photoMode = res.sidex_photo_mode === "native" ? "native" : "sidex";
@@ -272,7 +273,7 @@
 
     chrome.storage.onChanged.addListener((changes) => {
       if (changes.sidex_auto_expand_reply_text !== undefined) {
-        state.autoExpandReplyText = changes.sidex_auto_expand_reply_text.newValue === true;
+        state.autoExpandReplyText = changes.sidex_auto_expand_reply_text.newValue !== false;
         if (state.open) renderDrawer();
       }
       if (changes.sidex_auto_load_replies !== undefined) {
@@ -319,6 +320,7 @@
           state.expandedThreadIds.clear();
           state.previewMoreThreadIds.clear();
           state.branchLoadJobs.clear();
+          state.pausedPreviewIds.clear();
         }
         state.subReplyLimit = limit;
         if (state.open) renderDrawer();
@@ -327,6 +329,17 @@
         localStorage.removeItem("sidepeek_custom_width_v2");
         updateDrawerPosition();
         showToast(t("widthResetToast"));
+      }
+      if (changes.sidex_reset_defaults_trigger !== undefined) {
+        state.expandedThreadIds.clear();
+        state.previewMoreThreadIds.clear();
+        state.branchLoadJobs.clear();
+        state.pausedPreviewIds.clear();
+        state.manualReplyLoading = false;
+        localStorage.removeItem("sidepeek_custom_width_v2");
+        updateDrawerPosition();
+        if (state.open) renderDrawer();
+        showToast(getLocale() === "zh" ? "已恢复全部默认设置" : "All default settings restored");
       }
     });
   }
@@ -364,7 +377,6 @@
       loadMoreThreadReplies: "加载更多回复",
       retryBtn: "重试",
       showReplies: "展开 {count} 条回复",
-      showMoreReplies: "加载更多回复（再显示 {count} 条）",
       loadAllThreadReplies: "展开并加载全部回复",
       collapseReplies: "收起回复",
       loadRepliesFailed: "加载回复失败，请重试",
@@ -523,7 +535,6 @@
       loadMoreThreadReplies: "Load more replies",
       retryBtn: "Retry",
       showReplies: "Show {count} replies",
-      showMoreReplies: "Load more replies (show {count} more)",
       loadAllThreadReplies: "Expand and load all replies",
       collapseReplies: "Collapse replies",
       loadRepliesFailed: "Failed to load replies",
@@ -1537,7 +1548,7 @@
           } else {
             // Author continuations are visible independently of the preview
             // budget for other branches. Count only actually hidden models.
-            const previewLimit = INLINE_LIMIT + (state.previewMoreThreadIds.has(rootReply.id) ? 2 : 0);
+            const previewLimit = state.previewMoreThreadIds.has(rootReply.id) ? INLINE_LIMIT * 2 + 2 : INLINE_LIMIT;
             const preview = new Set(children.filter(child => !authorChain.has(child.id)).slice(0, previewLimit).map(child => child.id));
             const shown = children.filter(child => authorChain.has(child.id) || preview.has(child.id));
             for (let i = 0; i < shown.length; i++) {
@@ -1551,7 +1562,7 @@
               const button = document.createElement("button");
               button.type = "button";
               button.className = "sidepeek-expand-btn";
-              button.textContent = threadPreviewLabel(rootReply.id, Math.min(2, hiddenCount));
+              button.textContent = threadPreviewLabel(rootReply.id);
               button.disabled = state.branchLoadJobs.has(rootReply.id);
               button.addEventListener("click", () => advanceThreadPreview(rootReply.id));
               row.appendChild(button);
@@ -1565,6 +1576,7 @@
           }
 
           body.appendChild(threadGroup);
+          observeThreadPreview(threadGroup, rootReply.id, body);
         }
       }
       appendReplyPagination(body, state.focalTweetId);
@@ -1987,16 +1999,17 @@
       state.expandedThreadIds.delete(id);
       state.previewMoreThreadIds.delete(id);
       state.branchLoadJobs.delete(id);
+      state.pausedPreviewIds.add(id);
       renderDrawer();
     });
     row.appendChild(button);
     container.appendChild(row);
   }
 
-  function threadPreviewLabel(id, count = 2) {
+  function threadPreviewLabel(id) {
     if (state.branchLoadJobs.has(id)) return t("loadingReplies");
     if (state.expandedThreadIds.has(id)) return t("loadMoreThreadReplies");
-    return state.previewMoreThreadIds.has(id) ? t("loadAllThreadReplies") : t("showMoreReplies", { count });
+    return state.previewMoreThreadIds.has(id) ? t("loadAllThreadReplies") : t("loadMoreThreadReplies");
   }
 
   function nextBranchPage(rootId, retry = false) {
@@ -2030,31 +2043,55 @@
     state.branchLoadJobs.set(rootId, job);
     state.manualReplyLoading = true;
     state.anchorCommentId = rootId;
+    state.pausedPreviewIds.delete(rootId);
     state.previewMoreThreadIds.add(rootId);
     if (all) state.expandedThreadIds.add(rootId);
     renderDrawer();
-    const active = () => state.open && state.threadGeneration === generation && state.branchLoadJobs.get(rootId) === job;
     try {
-      const authors = authorThreadIds();
-      const cached = (state.tree?.getSubtree(rootId) || []).filter(reply => !authors.has(reply.id)).length;
-      // The first click raises the preview budget by two and reads at most one
-      // page if needed. Only the second click drains this branch's known pages.
-      if (!all && cached >= state.subReplyLimit + 2) return;
-      let next = firstPage;
-      while (next && active()) {
-        if (next.key) await fetchInlineReplies(next.key, false);
-        else await fetchSubReplies(next.id, false, false, next.cursor || null);
-        if (!active()) return;
-        const page = next.key ? state.inlinePages.get(next.key) : state.threadPages.get(next.id);
-        if (page?.error || page?.paused || page?.stalled || !all) break;
-        next = nextBranchPage(rootId);
-      }
+      // N initially, then append N+2 (2N+2 total), then the whole branch.
+      await loadBranchToTarget(rootId, all ? Infinity : state.subReplyLimit * 2 + 2, job, generation, true);
     } finally {
       if (state.branchLoadJobs.get(rootId) === job) {
         state.branchLoadJobs.delete(rootId);
         if (state.open && state.threadGeneration === generation) renderDrawer();
       }
     }
+  }
+
+  async function loadBranchToTarget(rootId, target, job, generation, manual) {
+    const active = () => state.open && state.threadGeneration === generation && state.branchLoadJobs.get(rootId) === job;
+    let next = nextBranchPage(rootId, manual);
+    while (next && active() && (state.tree?.getSubtree(rootId).length || 0) < target) {
+      if (next.key) await fetchInlineReplies(next.key, false, manual);
+      else await fetchSubReplies(next.id, false, false, next.cursor || null);
+      if (!active()) return;
+      const page = next.key ? state.inlinePages.get(next.key) : state.threadPages.get(next.id);
+      if (page?.error || page?.paused || page?.stalled) break;
+      next = nextBranchPage(rootId);
+    }
+  }
+
+  function observeThreadPreview(group, id, body) {
+    const limit = state.subReplyLimit;
+    if (typeof IntersectionObserver !== "function" || state.expandedThreadIds.has(id) ||
+        state.previewMoreThreadIds.has(id) || state.pausedPreviewIds.has(id) ||
+        (state.tree?.getSubtree(id).length || 0) >= limit || !nextBranchPage(id)) return;
+    const generation = state.threadGeneration;
+    const observer = new IntersectionObserver(entries => {
+      if (!replyObservers.has(observer) || !group.isConnected || !state.open || state.threadGeneration !== generation ||
+          state.subReplyLimit !== limit || state.branchLoadJobs.size || state.loadingThreadIds.size ||
+          !entries.some(entry => entry.isIntersecting)) return;
+      const job = {};
+      state.branchLoadJobs.set(id, job);
+      renderDrawer();
+      loadBranchToTarget(id, limit, job, generation, false).finally(() => {
+        if (state.branchLoadJobs.get(id) !== job) return;
+        state.branchLoadJobs.delete(id);
+        if (state.open && state.threadGeneration === generation) renderDrawer();
+      });
+    }, { root: body, rootMargin: "0px" });
+    replyObservers.add(observer);
+    observer.observe(group);
   }
 
   function renderCommentNode(model, hasThreadLine = false, isChild = false) {
@@ -3885,11 +3922,11 @@
     };
   }
 
-  async function fetchInlineReplies(key, expandBranch = true) {
+  async function fetchInlineReplies(key, expandBranch = true, manual = true) {
     const page = state.inlinePages.get(key);
     if (!page || page.loading || page.stalled || !state.open) return;
     const generation = state.threadGeneration;
-    state.manualReplyLoading = true;
+    if (manual) state.manualReplyLoading = true;
     page.loading = true;
     for (const root of state.tree.rootReplies) {
       if (expandBranch && (root.id === page.branchRootId || state.tree.getSubtree(root.id).some(reply => reply.id === page.branchRootId))) {
@@ -3995,6 +4032,7 @@
     state.expandedThreadIds.clear();
     state.previewMoreThreadIds.clear();
     state.branchLoadJobs.clear();
+    state.pausedPreviewIds.clear();
     state.loadedThreadIds.clear();
     state.loadingThreadIds.clear();
     state.threadCursors.clear();
@@ -4207,6 +4245,7 @@
         state.expandedThreadIds.clear();
         state.previewMoreThreadIds.clear();
         state.branchLoadJobs.clear();
+        state.pausedPreviewIds.clear();
         state.inlinePages.clear();
         state.unavailableReplyIds.clear();
         state.openGatedThreads.clear();
@@ -4267,6 +4306,7 @@
         state.expandedThreadIds.clear();
         state.previewMoreThreadIds.clear();
         state.branchLoadJobs.clear();
+        state.pausedPreviewIds.clear();
         state.loadedThreadIds.clear();
         state.loadingThreadIds.clear();
         state.threadCursors.clear();

@@ -133,7 +133,7 @@ test('failed page loads can retry and stale pages never leak into a newer post',
   assert.equal(p.query('.sidepeek-comment-item[data-id="102"]'), null);
 });
 
-test('expanding a reply supports its next page without moving siblings into the branch', async t => {
+test('filling a reply preview follows its next page without moving siblings into the branch', async t => {
   const values = [tweet('100'), tweet('101', '100'), tweet('110', '100')];
   values[1].legacy.reply_count = 4;
   const p = createPage({ request: m => {
@@ -146,8 +146,6 @@ test('expanding a reply supports its next page without moving siblings into the 
   p.query('.sidepeek-expand-btn').click(); await tick();
   const group = p.query('.sidepeek-thread-group');
   assert.equal(group.querySelector('[data-id="110"]'), null);
-  const more = group.querySelector('.sidepeek-load-more-btn'); assert.ok(more);
-  more.click(); await tick();
   assert.ok(p.query('.sidepeek-thread-group [data-id="103"]'));
   assert.equal(p.calls.at(-1).cursor, 'child-next');
 });

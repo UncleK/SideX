@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-Available-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.33-00b4f8?style=flat-square" alt="Version 1.1.33" />
+    <img src="https://img.shields.io/badge/Version-1.1.34-00b4f8?style=flat-square" alt="Version 1.1.34" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -41,8 +41,8 @@
 
 * 🚀 **In-Place Drawer**: Click any tweet to dock its replies directly in the 3rd column—zero page redirects or reload.
 * 📖 **Auto-Unroll Long Posts**: Automatically expands "Show more" on focal posts.
-* 🧵 **Conversation Tree & Drill-down**: Choose a default preview N of 1, 2, 3 or 5. The first click shows up to N+2 replies; the second expands and loads the whole ordinary branch. Collapse or change the setting to reset to N, preserving drafts and scroll. Author continuations stay visible; automatic full reply text defaults to off.
-* 📚 **Reply loading**: Shows loaded direct replies alongside X's reported total. Main-list automatic loading defaults to on and can be disabled. The first branch click reads at most one page; only an explicit Expand and load all action follows that branch's pages, without fetching sibling branches. Manual loading pauses main-list automation. Folded replies still need a separate reveal action. Errors, empty pages and repeated cursors stop continuous branch loading.
+* 🧵 **Conversation Tree & Drill-down**: Choose a default preview N of 1, 2, 3 or 5, filled as the branch enters view. The first click adds N+2 replies, up to 2N+2 total (for example, 3 → 8); the second expands and loads the whole ordinary branch. Collapse or change the setting to reset to N, preserving drafts and scroll. Author continuations stay visible. Full reply text is shown by default and can be turned off.
+* 📚 **Reply loading**: Shows loaded direct replies alongside X's reported total. Main-list automatic loading defaults to on and can be disabled. Branch previews follow enough pages to fill their selected size without prefetching offscreen branches. An explicit Expand and load all action follows the selected branch to its ordinary end. Manual loading pauses main-list automation. Folded replies still need a separate reveal action. Errors, empty pages and repeated cursors stop continuous branch loading.
 * 📌 **Optional panel pinning**: Keep the panel open across outside clicks, Esc and X navigation, with the active post highlighted. You can still switch posts or close the panel manually. Automatic pinning defaults to off and applies to newly opened panels.
 * 💬 **Quick replies and official dialogs**: The compact quick toolbar has seven entries: images, GIFs, polls, emoji, scheduling, location and content disclosure (flag). Send text, emoji and up to four JPG/PNG/WebP images directly. Advanced tools open X's actual dialogs above the sidebar. In Official mode, clicking a comment's reply icon opens the official reply dialog in the current page without another browser window.
 * ✍️ **Separate text drafts**: Switch posts and close comments freely without a prompt. Unsent text is kept separately per post and reply target in the current tab and restored on return. Refreshing the page or closing the tab clears these drafts; image attachments are not retained after closing or switching replies.
@@ -109,6 +109,8 @@ npm test
 ```
 
 Tests use synthetic X responses and DOM fixtures without performing real account actions. They cover profile parsing, translation requests, long-text chunking, native controls, rollback, retained reading state, scroll reset, and stale responses. X internals and third-party translation extensions may change. Without a matching native profile link, SideX renders a fallback with a full-profile link rather than simulating Grok's Profile Summary button; comments without native nodes are still rendered by SideX.
+
+Version 1.1.34 corrects the first click to append N+2 (for example, 3 → 8 → all) and fills visible branches to the selected preview size. Settings are grouped, full reply text defaults to on, and restoring all defaults preserves reply drafts. A short orange refresh reminder appears only after a preference changes. All 224 local regression tests pass; current-source behavior was checked in Chrome with synthetic replies. See the [bilingual release notes](docs/releases/v1.1.34.md) and [full store descriptions](docs/STORE_LISTING.md). Refresh X after updating SideX or changing settings; refreshing clears temporary text drafts.
 
 Version 1.1.33 repairs detected native X Article quote rows whose zero-width captions create long blank areas. Reply previews now follow N, N+2, then all: the first click reads at most one page, and the second follows only the selected branch's ordinary pages. Collapsing or changing the limit resets previews while preserving drafts and scroll. Author continuations stay visible; siblings and folded replies are not fetched automatically. All 218 local regression tests pass. The layout correction was checked on a real X page. Current-source settings and staged expansion were checked in Chrome with synthetic data; a fresh ZIP installation was not tested.
 

@@ -14,7 +14,7 @@
         <img src="icons/icon-32.png" alt="SideX Logo" class="sidex-popup-logo" />
         <div class="sidex-popup-title-group">
           <span class="sidex-popup-title">SideX</span>
-          <span class="sidex-popup-badge" id="sidex-version-badge">v1.1.33</span>
+          <span class="sidex-popup-badge" id="sidex-version-badge">v1.1.34</span>
         </div>
       </div>
       <!-- Language Switcher in Header -->
@@ -23,6 +23,8 @@
         <button type="button" class="sidex-lang-btn" data-lang="en">EN</button>
       </div>
     </header>
+
+    <p class="sidex-refresh-notice" role="status" hidden><span id="txt-refresh-notice">请刷新 X 生效</span></p>
 
     <!-- Extension Toggle -->
     <div class="sidex-card sidex-switch-card">
@@ -39,26 +41,24 @@
 
     </div>
 
-    <!-- Automatic Behavior Settings -->
-    <div class="sidex-card sidex-reply-settings-card">
-      <div class="sidex-switch-setting-row">
-        <div class="sidex-switch-info">
-          <label class="sidex-switch-title" id="txt-auto-pin-label" for="sidex-auto-pin">打开面板时自动固定</label>
-          <div class="sidex-switch-desc" id="txt-auto-pin-hint">自动固定新打开的侧栏</div>
-        </div>
-        <label class="sidex-toggle">
-          <input type="checkbox" id="sidex-auto-pin" aria-labelledby="txt-auto-pin-label" />
-          <span class="sidex-toggle-slider"></span>
-        </label>
-      </div>
-    </div>
-
     <!-- Reply Display Settings -->
     <div class="sidex-card sidex-reply-settings-card">
+      <h2 class="sidex-section-title" id="txt-reading-title">评论阅读</h2>
+      <div class="sidex-action-row">
+        <div class="sidex-action-label" id="txt-subreply-limit-label">默认展开回复数</div>
+        <div class="sidex-pill-group" id="sidex-limit-group" role="group" aria-labelledby="txt-subreply-limit-label" aria-describedby="txt-subreply-limit-hint">
+          <button type="button" class="sidex-pill-btn active" data-limit="1">1</button>
+          <button type="button" class="sidex-pill-btn" data-limit="2">2</button>
+          <button type="button" class="sidex-pill-btn" data-limit="3">3</button>
+          <button type="button" class="sidex-pill-btn" data-limit="5">5</button>
+        </div>
+      </div>
+      <p class="sidex-setting-hint" id="txt-subreply-limit-hint"></p>
+      <div class="sidex-card-divider"></div>
       <div class="sidex-switch-setting-row">
         <div class="sidex-switch-info">
-          <div class="sidex-switch-title" id="txt-auto-load-title">自动加载更多评论</div>
-          <div class="sidex-switch-desc" id="txt-auto-load-desc">滚动到底部时加载</div>
+          <label class="sidex-switch-title" id="txt-auto-load-title" for="sidex-auto-load-input">滚动到底继续加载评论</label>
+          <div class="sidex-switch-desc" id="txt-auto-load-desc">靠近底部时加载下一页一级评论；手动加载后暂停。</div>
         </div>
         <label class="sidex-toggle">
           <input type="checkbox" id="sidex-auto-load-input" checked aria-labelledby="txt-auto-load-title" aria-describedby="txt-auto-load-desc" />
@@ -68,18 +68,23 @@
       <div class="sidex-card-divider"></div>
       <div class="sidex-switch-setting-row">
         <div class="sidex-switch-info">
-          <div class="sidex-switch-title" id="txt-auto-expand-title">自动展开回复正文</div>
-          <div class="sidex-switch-desc" id="txt-auto-expand-desc">显示已加载的完整正文</div>
+          <label class="sidex-switch-title" id="txt-auto-expand-title" for="sidex-auto-expand-text">完整显示回复长文</label>
+          <div class="sidex-switch-desc" id="txt-auto-expand-desc">侧栏长回复直接显示全文，无需点“显示更多”。</div>
         </div>
         <label class="sidex-toggle">
-          <input type="checkbox" id="sidex-auto-expand-text" aria-labelledby="txt-auto-expand-title" aria-describedby="txt-auto-expand-desc" />
+          <input type="checkbox" id="sidex-auto-expand-text" checked aria-labelledby="txt-auto-expand-title" aria-describedby="txt-auto-expand-desc" />
           <span class="sidex-toggle-slider"></span>
         </label>
       </div>
     </div>
 
     <!-- Features / Quick Actions -->
-    <div class="sidex-card sidex-actions-card">
+    <details class="sidex-card sidex-more-settings">
+      <summary>
+        <span class="sidex-section-title" id="txt-more-settings-title">更多设置</span>
+        <span class="sidex-setting-hint" id="txt-more-settings-hint">回复方式、图片、翻译与侧栏</span>
+      </summary>
+      <div class="sidex-actions-card">
       <div class="sidex-action-row">
         <div class="sidex-action-label" id="txt-reply-mode-label">回复模式</div>
         <div class="sidex-pill-group" id="sidex-reply-mode-group">
@@ -92,8 +97,8 @@
       <div class="sidex-action-row">
         <div class="sidex-action-label" id="txt-photo-mode-label">图片评论区</div>
         <div class="sidex-pill-group" id="sidex-photo-mode-group">
-          <button type="button" class="sidex-pill-btn" data-photo-mode="native" id="btn-photo-native">官方样式</button>
           <button type="button" class="sidex-pill-btn active" data-photo-mode="sidex" id="btn-photo-sidex">SideX 样式</button>
+          <button type="button" class="sidex-pill-btn" data-photo-mode="native" id="btn-photo-native">官方样式</button>
         </div>
       </div>
       <p class="sidex-setting-hint" id="txt-photo-mode-hint"></p>
@@ -108,27 +113,29 @@
       </div>
       <p class="sidex-setting-hint" id="txt-translation-hint"></p>
       <div class="sidex-card-divider"></div>
-      <div class="sidex-action-row">
-        <div class="sidex-action-label" id="txt-subreply-limit-label">二级回复默认展示数</div>
-        <div class="sidex-pill-group" id="sidex-limit-group">
-          <button type="button" class="sidex-pill-btn active" data-limit="1">1</button>
-          <button type="button" class="sidex-pill-btn" data-limit="2">2</button>
-          <button type="button" class="sidex-pill-btn" data-limit="3">3</button>
-          <button type="button" class="sidex-pill-btn" data-limit="5">5</button>
+      <div class="sidex-switch-setting-row">
+        <div class="sidex-switch-info">
+          <label class="sidex-switch-title" id="txt-auto-pin-label" for="sidex-auto-pin">侧栏默认保持打开</label>
+          <div class="sidex-switch-desc" id="txt-auto-pin-hint">新侧栏默认固定，点击页面空白或按 Esc 不会关闭。</div>
         </div>
+        <label class="sidex-toggle">
+          <input type="checkbox" id="sidex-auto-pin" aria-labelledby="txt-auto-pin-label" aria-describedby="txt-auto-pin-hint" />
+          <span class="sidex-toggle-slider"></span>
+        </label>
       </div>
-      <p class="sidex-setting-hint" id="txt-subreply-limit-hint"></p>
       <div class="sidex-card-divider"></div>
       <div class="sidex-action-row">
-        <div class="sidex-action-label" id="txt-reset-label">抽屉宽度</div>
-        <button type="button" class="sidex-action-btn" id="btn-reset-width">
+        <div class="sidex-action-label" id="txt-reset-label">默认设置</div>
+        <button type="button" class="sidex-action-btn" id="btn-reset-defaults">
           <svg viewBox="0 0 256 256" width="14" height="14" fill="currentColor">
             <path d="M224,128a96,96,0,1,1-21.84-60.61L224,48v48H176l18.53-18.53A80,80,0,1,0,207.82,136H224A95.54,95.54,0,0,1,224,128Z"/>
           </svg>
-          <span id="txt-reset-btn">恢复默认</span>
+          <span id="txt-reset-btn">全部恢复</span>
         </button>
       </div>
-    </div>
+      <p class="sidex-setting-hint" id="txt-reset-hint">恢复所有选项和侧栏宽度，语言跟随浏览器；保留回复草稿。</p>
+      </div>
+    </details>
 
     <!-- Shortcut Hints & Footer -->
     <footer class="sidex-popup-footer">

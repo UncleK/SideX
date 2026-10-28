@@ -119,6 +119,25 @@ body {
 }
 
 /* Cards */
+.sidex-refresh-notice {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--sidex-bg);
+  color: #fbbf24;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.sidex-refresh-notice[hidden] {
+  display: none;
+}
+
+@media (prefers-color-scheme: light) {
+  .sidex-refresh-notice { color: #b45309; }
+}
+
 .sidex-card {
   background: var(--sidex-card-bg);
   border: 1px solid var(--sidex-border);
@@ -147,6 +166,51 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.sidex-section-title {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--sidex-text);
+}
+
+.sidex-more-settings {
+  padding: 0;
+}
+
+.sidex-more-settings summary {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 34px 14px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.sidex-more-settings summary::-webkit-details-marker {
+  display: none;
+}
+
+.sidex-more-settings summary::after {
+  content: "⌄";
+  position: absolute;
+  right: 14px;
+  top: 15px;
+  color: var(--sidex-muted);
+}
+
+.sidex-more-settings[open] summary {
+  border-bottom: 1px solid var(--sidex-border);
+}
+
+.sidex-more-settings[open] summary::after {
+  content: "⌃";
+}
+
+.sidex-more-settings .sidex-switch-title {
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .sidex-switch-info {

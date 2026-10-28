@@ -17,7 +17,7 @@ test('current and legacy profile shapes preserve zero and unknown values', () =>
 });
 
 test('translation, expanded text and extension-inserted DOM survive reply expansion; switching posts resets scroll', async t => {
-  const p = createPage({ request: m => m.type === 'TRANSLATE_TWEET' ? { translation: '完整译文', provider: 'X / Grok', sourceLanguage: 'en' } : thread(m.tweetId) });
+  const p = createPage({ settings: { sidex_auto_expand_reply_text: false }, request: m => m.type === 'TRANSLATE_TWEET' ? { translation: '完整译文', provider: 'X / Grok', sourceLanguage: 'en' } : thread(m.tweetId) });
   t.after(() => p.w.close());
   await tick(); p.clickPost(0); await tick();
   const item = p.query('.sidepeek-comment-item');
@@ -633,6 +633,7 @@ test('hydrating an already visible fallback profile does not restart its visibil
   t.after(() => p.w.close());
   await tick(); p.clickPost(0); await tick();
   p.query('.sidepeek-avatar-link').dispatchEvent(new p.w.MouseEvent('mouseenter')); await tick(390);
+  await new Promise(resolve => p.w.requestAnimationFrame(resolve));
   const card = p.query('#sidepeek-user-hovercard');
   assert.equal(card.classList.contains('visible'), true);
   let becameHidden = false;

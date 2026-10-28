@@ -1,6 +1,6 @@
 # Chrome Web Store Listing Description
 
-在现有 SideX 商店项目的详细说明中粘贴下方文本。更新包不会自动替换这段说明。
+v1.1.34：在现有 SideX 商店项目的详细说明中粘贴下方文本；也可分别使用打包输出的英文和中文说明填写对应语言。更新包不会自动替换商店说明。
 
 ```text
 SideX makes X (Twitter) conversations easier to read. Click a post's text or blank area to open its replies in the right-hand column while keeping your timeline in place.
@@ -9,9 +9,9 @@ FEATURES
 • Docked comments: read replies beside the timeline without opening a separate detail page.
 • Long-post reading: automatically open the post's native Show more control when available.
 • Conversation threads: expand and collapse reply branches, with configurable reply previews and automatic unfolding of loaded author self-replies.
-• Reply loading: choose a default preview N (1/2/3/5). First click shows up to N+2 and reads at most one page; second click expands and loads the selected ordinary branch. Collapse or change the setting to reset to N. Main-list automatic loading is on by default and pauses after manual loading. Other branches are not fetched; folded replies need a separate reveal. Errors, empty pages and repeated cursors stop continuous branch loading.
+• Reply loading: choose a default preview N (1/2/3/5), filled as the branch enters view. First click adds N+2, up to 2N+2 total (3 → 8); second click expands and loads the selected ordinary branch. Collapse or change the setting to reset to N. Main-list automatic loading is on by default and pauses after manual loading. Offscreen branches are not prefetched; folded replies need a separate reveal. Errors, empty pages and repeated cursors stop continuous branch loading.
 • Optional pinning: keep the panel open across outside clicks, Esc and X navigation, with the active post highlighted. Manual close and post switching remain available. Auto-pin is off by default and applies to new panels.
-• Reply text: optionally expand long reply text automatically; off by default.
+• Reply text: long replies are fully shown by default; turn this off to fold them.
 • Reply options: use the inline composer with image attachments, or open X's official reply dialog.
 • Text drafts: keep separate drafts per post and reply target, restored on return. Switch posts or close comments freely without a prompt. Drafts last until you refresh the page or close the tab; images are not saved with drafts.
 • Photo comments: choose SideX or Official comments beside photos, independently of reply mode. Collapse for a full-width image and expand with reading position and drafts retained.
@@ -23,10 +23,14 @@ FEATURES
 • Translation choices: use the compact translation icon directly after Like to show or hide a reply's translation. Use X official translation, choose Google, or use your existing translation extension's selection/page translation.
 • Appearance: follows X's theme and supports an adjustable sidebar width.
 
-WHAT'S NEW IN 1.1.33
-• Repairs long blank areas caused by zero-width captions in native X Article quotes.
-• Applies sub-reply preview limit changes immediately to expanded branches, preserving drafts and scroll.
-• Adds staged reply previews: N by default, N+2 after the first click, then the full selected branch after the second. Author continuations stay visible.
+WHAT'S NEW IN 1.1.34
+• Includes the fix for long blank areas in native X Article quotes.
+• Fills visible reply previews to the chosen default; the first click adds N+2 (3 → 8), and the second loads the selected branch.
+• Reorganizes reading options and more settings, shows full reply text by default, and places SideX photo comments first.
+• Restores all default options and sidebar width while preserving drafts. A short refresh reminder appears only after changing a setting.
+
+AFTER UPDATING
+Refresh open X pages after updating SideX or changing settings. Send or copy any unfinished text first: refreshing clears temporary drafts. An explicitly saved preference to fold long reply text is retained until you enable full text or restore defaults.
 
 PRIVACY
 SideX runs in your browser and has no SideX relay server or analytics service. It processes the X content you open and uses your current X session for authenticated requests. Text drafts stay temporarily in the current page and are not synced. Replies and selected attachments go to X. Clicking Grok opens X's native analysis flow for the selected post through X/Grok, under their service terms and privacy policies. If you select Google translation and click Translate, the post text is sent directly to Google. X authentication information is not sent to Google. Other translation extensions follow their own settings and privacy policies.
@@ -50,9 +54,9 @@ SideX 把 X 的评论区放到右侧。点击帖子正文或空白处，在保�
 • 评论原位停靠在右侧，减少主信息流与详情页之间的来回切换。
 • 帖子存在官方“显示更多”入口时，自动展开长文。
 • 展开、收起回复分支，自定义二级回复默认展示数量，自动展示已加载的作者连续自回复。
-• 默认二级回复数 N 可选 1/2/3/5；首次加载更多最多显示 N+2 条并请求一页，第二次展开并连续加载本条普通分支，收起或修改设置后回到 N。主列表自动加载默认开启，手动加载后暂停；不加载其他分支，折叠回复仍需单独主动展开，失败、空页或重复游标会停止连续加载。
+• 默认二级回复数 N 可选 1/2/3/5，分支进入可见区域时按需补齐；首次加载更多追加 N+2 条，共最多 2N+2 条（例如 3 → 8），第二次展开并连续加载本条普通分支，收起或修改设置后回到 N。主列表自动加载默认开启，手动加载后暂停；不预取屏幕外分支，折叠回复仍需单独主动展开，失败、空页或重复游标会停止连续加载。
 • 可选固定面板并高亮当前帖；固定后，点击外部、按 Esc 和站内导航会保留面板，仍可手动关闭或切帖。自动固定默认关闭，仅影响新打开的面板。
-• 可开启回复长正文自动展开，该选项默认关闭。
+• 回复长正文默认完整显示，可关闭以折叠长文。
 • 支持侧栏回复、图片附件，以及打开 X 官方回复框。
 • 按帖子和回复对象分别保留文字草稿，切回时恢复；切帖、关闭直接响应，不弹出拦截提示。草稿在刷新页面或关闭标签页后清空，不保存图片附件。
 • 图片旁评论区可选 SideX 或官方样式，与回复模式分别设置；收起看大图，展开保留评论位置和草稿。
@@ -64,10 +68,14 @@ SideX 把 X 的评论区放到右侧。点击帖子正文或空白处，在保�
 • 点击点赞后面的翻译图标显示或隐藏译文；默认使用 X 官方翻译，也可选择 Google，或使用已有翻译插件的划词／网页翻译。
 • 跟随 X 主题，支持调整侧栏宽度。
 
-1.1.33 更新
-• 兼容 X 原生文章引用正文被挤为零宽、造成大段空白的布局异常。
-• 修改二级回复默认展示数后立即应用到已展开分支，保留草稿和滚动位置。
-• 二级回复分两次展开：默认 N 条 → 首次 N+2 条 → 再次展开并加载本条全部普通回复；作者连续自回复保持展示。
+1.1.34 更新
+• 包含 X 原生文章引用出现大段空白的布局修复。
+• 按所选默认数量补齐可见分支；首次再加载 N+2 条（例如 3 → 8），第二次展开本条全部普通回复。
+• 设置分为“评论阅读”和“更多设置”，回复长正文默认完整显示，图片评论的 SideX 选项放在左侧。
+• 可恢复全部选项和侧栏宽度，保留回复草稿；仅在修改后显示简短的刷新提示。
+
+更新后
+更新扩展或修改设置后，请刷新已打开的 X 页面。先发送或复制未完成的文字，刷新会清空临时草稿。此前明确关闭“完整显示回复长文”的设置会保留，可手动打开或恢复默认。
 
 隐私说明
 SideX 在浏览器中运行，没有 SideX 中转或统计服务器。扩展处理你打开的 X 内容，并复用当前 X 会话；文字草稿仅在当前页面暂存，不参与同步，回复及选择的附件发送给 X。点击 Grok 会通过 X 原生流程分析所选帖子，由 X/Grok 处理并遵循其服务条款与隐私政策。只有选择 Google 翻译并点击翻译时，正文才会直接发送给 Google，X 认证信息不会发给 Google。已有翻译插件遵循各自的设置和隐私政策。
