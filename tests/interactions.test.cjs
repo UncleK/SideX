@@ -488,6 +488,63 @@ test('native hover card keeps the actual component, original handlers and full c
   assert.equal(card.hasAttribute('data-sidex-hover-closing'), false);
 });
 
+test('reply-body mentions and reply-to links reuse the native profile component for the mentioned user', async t => {
+  const p = createPage({ request: m => m.type === 'PREPARE_NATIVE_USER_HOVER' ? { ready: false }
+    : { data: [tweet('100'), tweet('101', '100', 'Ask @mentioned and @reader', {
+      legacy: { full_text: 'Ask @mentioned and @reader', in_reply_to_status_id_str: '100', in_reply_to_screen_name: 'mentioned' }
+    })].map(result => ({ tweet_results: { result } })) } });
+  t.after(() => p.w.close());
+  p.w.HTMLElement.prototype.showPopover = function () {};
+  p.w.HTMLElement.prototype.hidePopover = function () {};
+  const layers = p.w.document.createElement('div'); layers.id = 'layers'; p.w.document.body.append(layers);
+  const source = p.w.document.createElement('a'); source.href = '/mentioned';
+  p.w.document.querySelector('main').append(source);
+  const card = p.w.document.createElement('div'); card.dataset.testid = 'hoverCardParent';
+  card.innerHTML = '<div data-testid="HoverCard"><a href="/mentioned">Mentioned user</a><button>Native action</button></div>';
+  source.addEventListener('mouseover', () => layers.append(card));
+  let actions = 0; card.querySelector('button').addEventListener('click', () => actions++);
+  await tick(); p.clickPost(0); await tick();
+  for (const selector of ['.sidepeek-text-mention[href$="/mentioned"]', '.sidepeek-reply-to-tag a']) {
+    const link = p.query(selector); assert.ok(link);
+    link.dispatchEvent(new p.w.MouseEvent('mouseenter')); await tick(390);
+    assert.equal(p.query('[data-sidex-native-hover]'), card);
+    card.querySelector('button').click();
+  }
+  assert.equal(actions, 2);
+  assert.equal(p.calls.some(m => m.type === 'FETCH_USER_PROFILE'), false);
+});
+
+test('a sidebar-only mention prepares an X native source and releases it after dismissal', async t => {
+  let p;
+  p = createPage({ request: m => {
+    if (m.type === 'PREPARE_NATIVE_USER_HOVER') {
+      assert.equal(m.screenName, 'sidebar_only');
+      const host = p.w.document.createElement('div'); host.dataset.sidexNativeProfileSource = String(m.hoverToken);
+      const source = p.w.document.createElement('a'); source.href = '/sidebar_only'; host.append(source); p.w.document.body.append(host);
+      source.addEventListener('mouseover', () => {
+        const card = p.w.document.createElement('div'); card.dataset.testid = 'hoverCardParent';
+        card.innerHTML = '<div data-testid="HoverCard"><a href="/sidebar_only">Sidebar user</a></div>';
+        p.query('#layers').append(card);
+      });
+      return { ready: true };
+    }
+    if (m.type === 'CLOSE_NATIVE_USER_HOVER') {
+      p.query(`[data-sidex-native-profile-source="${m.hoverToken}"]`)?.remove(); return { closed: true };
+    }
+    return { data: [tweet('100'), tweet('101', '100', 'Hi @sidebar_only')].map(result => ({ tweet_results: { result } })) };
+  } });
+  t.after(() => p.w.close());
+  p.w.HTMLElement.prototype.showPopover = function () {};
+  p.w.HTMLElement.prototype.hidePopover = function () {};
+  const layers = p.w.document.createElement('div'); layers.id = 'layers'; p.w.document.body.append(layers);
+  await tick(); p.clickPost(0); await tick();
+  p.query('.sidepeek-text-mention').dispatchEvent(new p.w.MouseEvent('mouseenter')); await tick(390);
+  assert.ok(p.query('[data-sidex-native-hover]'));
+  assert.equal(p.calls.some(m => m.type === 'FETCH_USER_PROFILE'), false);
+  p.w.document.dispatchEvent(new p.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await tick();
+  assert.equal(p.query('[data-sidex-native-profile-source]'), null);
+});
+
 test('native profile overlays leave the avatar reachable while cards and other dialogs remain interactive', t => {
   const dom = new JSDOM('<div id="layers" data-sidex-native-layers><div id="hover-overlay" style="pointer-events:auto">'
     + '<div><div data-testid="hoverCardParent" style="pointer-events:auto"><button>Profile Summary</button></div></div></div>'

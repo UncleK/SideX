@@ -1,6 +1,6 @@
 # Chrome Web Store Listing Description
 
-v1.1.34：中英文合并说明，英文在前、中文在后。将下方全文粘贴到现有商店项目的详细说明中；上传 ZIP 不会自动更新说明。
+v1.1.35：中英文合并说明，英文在前、中文在后。将下方全文粘贴到现有商店项目的详细说明中；上传 ZIP 不会自动更新说明。
 
 ```text
 SideX brings X (Twitter) comments beside your timeline. Click a post's text or blank area to read replies in the right-hand column without losing your place.
@@ -10,16 +10,16 @@ FEATURES
 • Long text: expand posts using X's Show more control when available. Long replies are fully shown by default.
 • Reply previews: choose 1, 2, 3 or 5 replies per comment. The first Load more click adds your default plus 2—for example, 3 + 5 = 8. The next click loads the selected branch's remaining ordinary replies. Author continuations stay visible; folded replies require a separate reveal.
 • Automatic loading: load more top-level comments as you scroll. Manual loading pauses this automation for the current conversation.
-• Replies and drafts: reply inline with images or use X's official dialog. Separate text drafts are restored when you return to a post or reply target. Refreshing or closing the tab clears drafts; images are not retained.
+• Replies and drafts: reply inline with images or use X's official dialog. Successful sends reset the recipient to the main post; failures keep your text and recipient. Separate drafts return with their post or reply target. Refreshing or closing the tab clears drafts; images are not retained.
 • Photos and quotes: choose SideX or Official comments beside photos, collapse the panel for a larger image, and expand quoted text in place.
-• X tools: open official quote, share and More menus, use Grok, and view profile cards from the sidebar.
+• X tools: open official quote, share and More menus, use Grok, and hover authors or @mentions to see native profile cards with their available X interactions.
 • Translation: show or hide translations with the icon after Like. Choose X official translation, Google, or use your existing translation extension.
 • Appearance: follow X's theme, resize the sidebar, or pin it to keep it open. Auto-pin is off by default.
 
-WHAT'S NEW IN 1.1.34
-• Fixes incomplete default reply previews and corrects the 3 → 8 → all loading sequence.
-• Simplifies settings, enables full reply text by default, and adds Reset all while preserving the current draft.
-• Shows a short orange refresh reminder only after a setting changes. Includes the fix for blank areas in X Article quotes.
+WHAT'S NEW IN 1.1.35
+• Clears the selected reply recipient after a successful send, so the next reply defaults to the main post.
+• Adds native X profile cards to @mentions and reply-to links, including users absent from the main page.
+• Preserves failed drafts and newer reply targets when an older confirmation arrives.
 
 Refresh X after updating SideX or changing settings. Send or copy unfinished drafts first. A previously saved preference to fold long replies is preserved.
 
@@ -43,16 +43,16 @@ SideX 把 X 的评论区放到右侧。点击帖子正文或空白处，即可�
 • 长文阅读：自动展开帖子已有的“显示更多”，回复长正文默认完整显示。
 • 回复预览：每条评论默认展示 1、2、3 或 5 条回复。首次加载更多追加“默认数量 + 2”条，例如默认 3 条，再显示 5 条，共 8 条；再次点击加载本条分支剩余的普通回复。作者连续自回复保持展示，折叠回复需单独展开。
 • 自动加载：滚动时继续加载一级评论；手动加载后，本次会话暂停自动加载。
-• 回复与草稿：支持侧栏图文回复和 X 官方回复框。按帖子、回复对象分别保留文字草稿，返回时恢复；刷新或关闭标签页后清空，不保留图片附件。
+• 回复与草稿：支持侧栏图文回复和 X 官方回复框。发送成功后默认回到回复主帖，失败保留文字与对象。按帖子、回复对象分别保留草稿，返回时恢复；刷新或关闭标签页后清空，不保留图片附件。
 • 图片与引用：图片旁可选 SideX 或官方评论区，收起面板查看大图；引用正文可原位展开。
-• 官方交互：在侧栏使用 X 的引用、分享、更多菜单、Grok 和用户资料卡。
+• 官方交互：在侧栏使用 X 的引用、分享、更多菜单和 Grok；悬停作者或 @用户，查看带有原生交互的用户资料卡。
 • 翻译：点击点赞后的翻译图标显示或隐藏译文，可选 X 官方、Google，或使用已有翻译插件。
 • 外观与固定：跟随 X 主题，支持调整宽度和固定侧栏；自动固定默认关闭。
 
-1.1.34 更新
-• 修复默认回复数量未补齐，按“3 → 8 → 全部”逐步加载。
-• 简化设置，长回复全文默认开启；支持恢复全部默认设置并保留当前草稿。
-• 仅在修改设置后显示橙色刷新提示，并包含 X 文章引用大段空白的修复。
+1.1.35 更新
+• 回复成功后清空当前回复对象，下一条默认回复主帖。
+• 正文 @用户和回复对象链接复用 X 原生资料卡，也支持主页面未显示的用户。
+• 发送失败保留草稿与对象，迟到的回执不会覆盖新回复。
 
 更新扩展或修改设置后，请刷新 X；刷新前先发送或复制未完成的草稿。此前明确关闭长回复全文的设置会保留。
 

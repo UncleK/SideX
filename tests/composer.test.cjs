@@ -86,6 +86,42 @@ test('Ctrl+Enter is single-flight and successful replies use the real server ID 
   assert.ok(p.query('.sidepeek-comment-item[data-id="1000"]'));
 });
 
+test('a successful child reply resets to the focal post and cannot restore the published child draft', async t => {
+  const sent = [];
+  const p = createPage({ request: m => {
+    if (m.type !== 'CREATE_REPLY') return thread(m.tweetId);
+    sent.push(m.tweetId); return created(String(999 + sent.length), m.tweetId, m.text);
+  } });
+  t.after(() => p.w.close()); await tick(); p.clickPost(0); await tick();
+  p.query('.sidepeek-act-reply').click();
+  input(p, 'To child'); p.query('.sidepeek-footer-submit-btn').click(); await tick();
+  assert.equal(p.query('.sidepeek-footer-reply-target').style.display, 'none');
+  assert.equal(p.query('.sidepeek-footer-textarea').value, '');
+  assert.equal(p.query('.sidepeek-footer-submit-btn').disabled, true);
+  input(p, 'To main post'); p.query('.sidepeek-footer-submit-btn').click(); await tick();
+  assert.deepEqual(sent, ['101', '100']);
+  p.query('.sidepeek-act-reply').click();
+  assert.equal(p.query('.sidepeek-footer-textarea').value, '', 'published child text cannot return as a draft');
+});
+
+test('a failed child reply retains its recipient and text; a late success preserves a newer child draft', async t => {
+  let resolve, reject;
+  const p = createPage({ request: m => m.type === 'CREATE_REPLY'
+    ? new Promise((done, fail) => { resolve = done; reject = fail; }) : thread(m.tweetId) });
+  t.after(() => p.w.close()); await tick(); p.clickPost(0); await tick();
+  p.query('[data-id="101"] .sidepeek-act-reply').click(); input(p, 'Retry child');
+  p.query('.sidepeek-footer-submit-btn').click(); await tick(); reject(new Error('offline')); await tick();
+  assert.equal(p.query('.sidepeek-footer-reply-target').style.display, 'flex');
+  assert.equal(p.query('.sidepeek-footer-textarea').value, 'Retry child');
+  p.query('.sidepeek-footer-submit-btn').click(); await tick();
+  p.query('[data-id="102"] .sidepeek-act-reply').click(); input(p, 'Keep newer target');
+  resolve(created('999', '101', 'Retry child')); await tick();
+  assert.equal(p.query('.sidepeek-footer-textarea').value, 'Keep newer target');
+  assert.equal(p.query('.sidepeek-footer-reply-target').style.display, 'flex');
+  p.query('[data-id="101"] .sidepeek-act-reply').click();
+  assert.equal(p.query('.sidepeek-footer-textarea').value, '');
+});
+
 test('an old send cannot clear a newer draft or insert into a different conversation', async t => {
   let finish;
   const p = createPage({ request: m => m.type === 'CREATE_REPLY' ? new Promise(resolve => { finish = resolve; }) : thread(m.tweetId) });
@@ -366,6 +402,20 @@ test('a native confirmation cannot clear input for a newer reply target', async 
   assert.equal(p.query('.sidepeek-footer-textarea').value, 'New child draft');
   p.query('.sidepeek-cancel-reply-target').click();
   assert.equal(p.query('.sidepeek-footer-textarea').value, '', 'only the published root draft was cleared');
+});
+
+test('a native child publication resets the quick composer to its saved focal draft', async t => {
+  const p = nativePage(); t.after(() => p.w.close());
+  await tick(); p.clickPost(0); await tick(); input(p, 'Keep root draft');
+  p.query('.sidepeek-act-reply').click(); input(p, 'Native child');
+  p.query('.sidepeek-tool-poll').click(); await tick(50);
+  p.w.dispatchEvent(new p.w.MessageEvent('message', { source: p.w, origin: p.w.location.origin,
+    data: { source: 'sidepeek-page', type: 'REPLY_CREATED', payload: created('998', '101', 'Native child') } }));
+  assert.equal(p.query('.sidepeek-footer-reply-target').style.display, 'none');
+  assert.equal(p.query('.sidepeek-footer-textarea').value, 'Keep root draft');
+  p.query('#layers').replaceChildren();
+  p.query('[data-id="101"] .sidepeek-act-reply').click();
+  assert.equal(p.query('.sidepeek-footer-textarea').value, '');
 });
 
 test('closing an image-only reply discards attachments and a late upload cannot restore them', async t => {

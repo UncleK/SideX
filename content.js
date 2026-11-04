@@ -196,14 +196,13 @@
     if (event.data?.type === "REPLY_CREATED") {
       for (const model of Core.collectTweetModels(event.data.payload)) {
         const intent = state.nativeReplyTransfer;
-        if (intent?.targetId === model.inReplyToId && intent.draft?.text === intent.text) {
-          intent.draft.text = "";
-          intent.draft.media.length = 0;
-          const currentTarget = state.replyTarget?.id || (state.activeView?.type === "drilldown" ? state.activeView.parentId : state.focalTweetId);
-          if (state.focalTweetId === intent.focalId && currentTarget === intent.targetId) {
-            const textarea = document.querySelector(".sidepeek-footer-textarea");
-            if (textarea) textarea.value = "";
-            document.querySelector(".sidepeek-footer-composer")?._sidepeekComposer?.refresh();
+        if (intent?.targetId === model.inReplyToId) {
+          if (!intent.draft || intent.draft.text === intent.text) {
+            if (intent.draft) {
+              intent.draft.text = "";
+              intent.draft.media.length = 0;
+            }
+            resetPublishedReplyTarget(intent.focalId, intent.targetId, intent.draft);
           }
           state.nativeReplyTransfer = null;
         }
@@ -1287,9 +1286,7 @@
     const userAvatar = getCurrentUserAvatar();
     const replyPlaceholder = state.replyTarget
       ? t("replyToUser", { handle: state.replyTarget.author.handle })
-      : isDrillDown
-        ? t("replyToUser", { handle: drillDownParent?.author?.handle || (getLocale() === "zh" ? "此人" : "user") })
-        : t("replyToAuthor", { handle: state.focalModel?.author?.handle || (getLocale() === "zh" ? "楼主" : "author") });
+      : t("replyToAuthor", { handle: state.focalModel?.author?.handle || (getLocale() === "zh" ? "楼主" : "author") });
 
     const isNativeMode = state.replyMode === "native";
 
@@ -1341,7 +1338,7 @@
       initResizeHandle(root);
       initScrollSlider(root);
       if (!isNativeMode) {
-        initFooterComposer(root, isDrillDown, drillDownParent);
+        initFooterComposer(root);
       }
 
       root.querySelector(".sidepeek-btn-close")?.addEventListener("click", closeDrawer);
@@ -1396,7 +1393,7 @@
       tempDiv.innerHTML = getDrawerFooterHtml(userAvatar, replyPlaceholder);
       const newFooter = tempDiv.firstElementChild;
       root.appendChild(newFooter);
-      initFooterComposer(root, isDrillDown, drillDownParent);
+      initFooterComposer(root);
     }
 
     const replyTargetBox = root.querySelector(".sidepeek-footer-reply-target");
@@ -2213,7 +2210,7 @@
     item.querySelector(".sidepeek-drilldown-trigger")?.addEventListener("click", () => {
       state.manualReplyLoading = true;
       state.activeView = { type: "drilldown", parentId: model.id };
-      state.replyTarget = null;
+      state.replyTarget = model;
       renderDrawer();
     });
 
@@ -2305,6 +2302,7 @@
     if (avatarLink) attachUserHoverEvents(avatarLink, model.author);
     if (nameEl) attachUserHoverEvents(nameEl, model.author);
     attachUserHoverEvents(item.querySelector(".sidepeek-handle"), model.author);
+    bindMentionHoverEvents(item, model);
 
     // Image zoom / lightbox click
     item.querySelectorAll(".sidepeek-zoomable-img").forEach((img) => {
@@ -2506,8 +2504,7 @@
   function preserveReplyText() {
     document.querySelector(".sidepeek-footer-composer")?._sidepeekComposer?.saveTextOnly();
     if (!state.open) return;
-    const target = state.replyTarget ||
-      (state.activeView?.type === "drilldown" ? state.tree?.byId.get(state.activeView.parentId) : null);
+    const target = state.replyTarget;
     if (target) replyDraftTargets.set(state.focalTweetId, target);
     else replyDraftTargets.delete(state.focalTweetId);
   }
@@ -2518,7 +2515,17 @@
     return draft?.text || draft?.sending ? target : null;
   }
 
-  function initFooterComposer(root, isDrillDown, drillDownParent) {
+  function resetPublishedReplyTarget(focalId, targetId, submittedDraft) {
+    if (replyDraftTargets.get(focalId)?.id === targetId) replyDraftTargets.delete(focalId);
+    if (state.focalTweetId !== focalId || (state.replyTarget?.id || state.focalTweetId) !== targetId) return;
+    // Refresh the submitted draft before changing targets, so syncTarget cannot
+    // save the old editor text back into the successfully published draft.
+    document.querySelector(".sidepeek-footer-composer")?._sidepeekComposer?.refresh(submittedDraft);
+    state.replyTarget = null;
+    if (state.open) renderDrawer();
+  }
+
+  function initFooterComposer(root) {
     const footer = root.querySelector(".sidepeek-footer-composer");
     if (!footer) return;
 
@@ -2530,9 +2537,7 @@
       state.replyTarget = null;
       if (replyTargetBox) replyTargetBox.style.display = "none";
       if (textarea) {
-        textarea.placeholder = isDrillDown
-          ? t("replyToUser", { handle: drillDownParent?.author?.handle || (getLocale() === "zh" ? "此人" : "user") })
-          : t("replyToAuthor", { handle: state.focalModel?.author?.handle || (getLocale() === "zh" ? "楼主" : "author") });
+        textarea.placeholder = t("replyToAuthor", { handle: state.focalModel?.author?.handle || (getLocale() === "zh" ? "楼主" : "author") });
         footer._sidepeekComposer?.syncTarget();
         textarea.focus();
       }
@@ -2557,8 +2562,7 @@
 
     const MAX_MEDIA = 4;
     let active = true;
-    const getTargetId = () => state.replyTarget?.id ||
-      (state.activeView?.type === "drilldown" ? state.activeView.parentId : state.focalTweetId);
+    const getTargetId = () => state.replyTarget?.id || state.focalTweetId;
     const getDraftKey = () => `${state.focalTweetId}:${getTargetId()}`;
     function getDraft(key) {
       if (!composerDrafts.has(key)) composerDrafts.set(key, { text: "", media: [], sending: false });
@@ -2911,6 +2915,7 @@
           renderMediaPreviews();
           closeAllPopovers();
         }
+        resetPublishedReplyTarget(focalId, targetId, ownerDraft);
         if (state.open && state.focalTweetId === focalId && state.threadGeneration === generation) {
           acceptCreatedReply(created);
         }
@@ -3370,14 +3375,28 @@
     document.addEventListener("focusin", onNativeEnter, true);
   }
 
-  function showNativeUserHoverCard(author, triggerEl, generation) {
+  async function showNativeUserHoverCard(author, triggerEl, generation) {
     const handle = author.handle.toLowerCase();
-    const source = [...document.querySelectorAll('#react-root a[href], main a[href]')].find(link => {
+    let source = [...document.querySelectorAll('#react-root a[href], main a[href]')].find(link => {
       if (link.closest('#layers, #sidepeek-drawer-root')) return false;
       try { return new URL(link.href).pathname.toLowerCase() === `/${handle}`; } catch { return false; }
     });
     const layers = document.getElementById("layers");
-    if (!source || !layers || typeof HTMLElement.prototype.showPopover !== "function") return Promise.resolve(false);
+    if (!layers || typeof HTMLElement.prototype.showPopover !== "function") return false;
+    let prepared = false;
+    const releaseSource = () => {
+      if (prepared) requestPage("CLOSE_NATIVE_USER_HOVER", { hoverToken: generation }, 2000).catch(() => {});
+    };
+    if (!source) {
+      const rect = triggerEl.getBoundingClientRect();
+      try {
+        prepared = Boolean((await requestPage("PREPARE_NATIVE_USER_HOVER", { screenName: author.handle,
+          hoverToken: generation, anchor: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } }, 2500))?.ready);
+      } catch {}
+      if (generation !== hoverCardGeneration || !triggerEl.isConnected) { releaseSource(); return false; }
+      source = document.querySelector(`[data-sidex-native-profile-source="${generation}"] a`);
+      if (!prepared || !source) { releaseSource(); return false; }
+    }
     nativeHoverCleanup?.();
     return new Promise(resolve => {
       let parent = null;
@@ -3417,6 +3436,7 @@
           parent.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body }));
         }
         source.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body }));
+        releaseSource();
         finish(false);
       };
       const attach = () => {
@@ -3600,6 +3620,18 @@
       if (generation === hoverCardGeneration && activeHoverAuthor === author.handle.toLowerCase()) card.classList.add("visible");
     });
 
+  }
+
+  function bindMentionHoverEvents(root, model) {
+    const mentions = [...(model.entities?.userMentions || []), ...(model.quote?.entities?.userMentions || [])];
+    for (const link of root.querySelectorAll('.sidepeek-text-mention, .sidepeek-reply-to-tag a')) {
+      const handle = new URL(link.href).pathname.match(/^\/([A-Za-z0-9_]{1,30})\/?$/)?.[1];
+      if (!handle) continue;
+      const mention = mentions.find(item => item.screenName.toLowerCase() === handle.toLowerCase());
+      const author = handle.toLowerCase() === model.author?.handle?.toLowerCase() ? model.author
+        : { handle, name: mention?.name || handle, following: null };
+      attachUserHoverEvents(link, author);
+    }
   }
 
   function attachUserHoverEvents(triggerEl, author) {

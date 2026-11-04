@@ -787,6 +787,67 @@
     return { normalize, denormalize, tweetSchema, tweetApi, react, reactDom };
   }
 
+  let nativeUserHover = null;
+  function closeNativeUserHover(token) {
+    const session = nativeUserHover;
+    if (!session || (token !== undefined && session.token !== token)) return;
+    nativeUserHover = null;
+    session.finish?.(false);
+    session.root?.unmount();
+    session.host.remove();
+  }
+
+  async function prepareNativeUserHover(screenName, token, anchor) {
+    if (!/^[A-Za-z0-9_]{1,30}$/.test(screenName) || !Number.isSafeInteger(token)) return { ready: false };
+    const runtime = nativePostRuntime();
+    if (!runtime.react || !runtime.reactDom) return { ready: false };
+    let template = null;
+    const providers = [];
+    for (const link of document.querySelectorAll('#react-root a[href], main a[href]')) {
+      if (link.closest('#sidepeek-drawer-root, #layers')) continue;
+      const key = Object.keys(link).find(name => name.startsWith('__reactFiber$'));
+      for (let fiber = key && link[key], depth = 0; fiber && depth < 800; fiber = fiber.return, depth++) {
+        const props = fiber.memoizedProps;
+        // X's own profile-hover wrapper accepts screenName and a child link.
+        // Re-render it for the requested handle instead of copying callbacks
+        // that still refer to the timeline author's profile.
+        if (!template && typeof props?.screenName === 'string' && props.children &&
+            ('onAvatarClick' in props || 'onScreenNameClick' in props)) template = fiber;
+        if (template && fiber.tag === 10 && props && 'value' in props) providers.push({ type: fiber.type, value: props.value });
+      }
+      if (template) break;
+    }
+    if (!template) return { ready: false };
+    closeNativeUserHover();
+    const host = document.createElement('div');
+    host.dataset.sidexNativeProfileSource = String(token);
+    host.setAttribute('aria-hidden', 'true');
+    const coord = value => Number.isFinite(value) ? value : 0;
+    Object.assign(host.style, { position: 'fixed', left: `${coord(anchor?.left)}px`, top: `${coord(anchor?.top)}px`,
+      width: `${Math.max(1, coord(anchor?.width))}px`, height: `${Math.max(1, coord(anchor?.height))}px`, opacity: '0', pointerEvents: 'none' });
+    document.body.append(host);
+    const session = { token, host, root: null, finish: null };
+    nativeUserHover = session;
+    const ready = new Promise(resolve => {
+      const observer = new MutationObserver(() => { if (host.querySelector('a')) session.finish(true); });
+      const timer = setTimeout(() => session.finish(false), 1500);
+      session.finish = value => { clearTimeout(timer); observer.disconnect(); resolve(value); };
+      observer.observe(host, { childList: true, subtree: true });
+    });
+    try {
+      const React = runtime.react;
+      let tree = React.createElement(template.type, { screenName },
+        React.createElement('a', { href: `/${screenName}`, tabIndex: -1 }, `@${screenName}`));
+      for (const provider of providers) tree = React.createElement(provider.type, { value: provider.value }, tree);
+      session.root = runtime.reactDom.createRoot(host, { onUncaughtError: () => closeNativeUserHover(token) });
+      session.root.render(tree);
+      if (host.querySelector('a')) session.finish(true);
+      if (await ready && nativeUserHover === session) return { ready: true };
+    } catch { /* The readable fallback remains available if X changes its wrapper. */ }
+    closeNativeUserHover(token);
+    return { ready: false };
+  }
+
   function nativeActionTemplate(tweetId) {
     let fallback = null;
     for (const button of document.querySelectorAll('article[data-testid="tweet"] button[aria-haspopup="menu"]')) {
@@ -1020,6 +1081,16 @@
     if (event.source !== window || event.origin !== location.origin) return;
     const message = event.data;
     if (message?.source !== CONTENT_SOURCE || !Number.isInteger(message.requestId)) return;
+
+    if (message.type === "PREPARE_NATIVE_USER_HOVER" || message.type === "CLOSE_NATIVE_USER_HOVER") {
+      try {
+        const payload = message.type === "PREPARE_NATIVE_USER_HOVER"
+          ? await prepareNativeUserHover(String(message.screenName || ''), message.hoverToken, message.anchor)
+          : (closeNativeUserHover(message.hoverToken), { closed: true });
+        respond(message.requestId, true, payload);
+      } catch { respond(message.requestId, true, { ready: false }); }
+      return;
+    }
 
     if (message.type === "UPLOAD_MEDIA") {
       try {

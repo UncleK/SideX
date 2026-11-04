@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-Available-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.34-00b4f8?style=flat-square" alt="Version 1.1.34" />
+    <img src="https://img.shields.io/badge/Version-1.1.35-00b4f8?style=flat-square" alt="Version 1.1.35" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -45,11 +45,11 @@
 * 📚 **Reply loading**: Shows loaded direct replies alongside X's reported total. Main-list automatic loading defaults to on and can be disabled. Branch previews follow enough pages to fill their selected size without prefetching offscreen branches. An explicit Expand and load all action follows the selected branch to its ordinary end. Manual loading pauses main-list automation. Folded replies still need a separate reveal action. Errors, empty pages and repeated cursors stop continuous branch loading.
 * 📌 **Optional panel pinning**: Keep the panel open across outside clicks, Esc and X navigation, with the active post highlighted. You can still switch posts or close the panel manually. Automatic pinning defaults to off and applies to newly opened panels.
 * 💬 **Quick replies and official dialogs**: The compact quick toolbar has seven entries: images, GIFs, polls, emoji, scheduling, location and content disclosure (flag). Send text, emoji and up to four JPG/PNG/WebP images directly. Advanced tools open X's actual dialogs above the sidebar. In Official mode, clicking a comment's reply icon opens the official reply dialog in the current page without another browser window.
-* ✍️ **Separate text drafts**: Switch posts and close comments freely without a prompt. Unsent text is kept separately per post and reply target in the current tab and restored on return. Refreshing the page or closing the tab clears these drafts; image attachments are not retained after closing or switching replies.
+* ✍️ **Separate text drafts**: Unsent text is kept separately per post and reply target and restored on return. A successful reply clears its draft and selected recipient, returning the composer to the main post. Failed sends retain both; late confirmations preserve newer drafts. Switch posts and close comments freely. Refreshing or closing the tab clears drafts; images are not retained after closing or switching replies.
 * 🔄 **Native interactions first**: Quotes open X's official in-page composer with the original-post card. Sharing uses X's official menu with account and media-specific options, even for replies absent from the native timeline. Reuse native like and bookmark controls when the same post is rendered on the page; other comments use X session requests.
 * ✨ **Grok and official More menu**: Analyze the selected reply with Grok or open X's official three-dot menu from its header, including replies absent from the native timeline. Grok, Chat and official menus appear above the SideX sidebar.
 * 🌐 **Translation options**: Translate from the compact icon directly after Like in each reply's action bar, then click again to hide the translation. Use X official translation by default, choose Google, or hide SideX translation controls and use your existing translator's selection/page translation.
-* 👤 **Profile hover cards**: Reuse the actual X card next to the sidebar when a matching native profile link exists; otherwise show a fallback with biography, relationship counts, and followers you know.
+* 👤 **Profile hover cards**: Hover authors, reply recipients or @mentions in reply text. Reuse X's actual card and interactions, including its loaded native profile component for users absent from the main page. If the native component is unavailable, show a fallback with biography, relationship counts and followers you know.
 * 🎨 **Adaptive Themes & Resizable**: Matches X's Light, Dim, and Dark themes. Drag the right edge to adjust sidebar width.
 * 🛡️ **Runs in your browser**: Reuses your X session without a SideX relay server. When Google translation is selected, post text is sent directly to Google.
 
@@ -100,6 +100,8 @@ SideX is an independent open-source productivity extension and is **not affiliat
 ---
 
 ## Development and verification
+
+Version 1.1.35 resets the reply recipient after a successful send and restores native X profile cards for @mentions in reply text, including users absent from the main timeline. Failed sends retain their recipient and text; late confirmations preserve newer drafts. All 230 regression tests pass. The actual reloaded local extension was checked on X; send confirmations were simulated locally without publishing test replies. See the [bilingual release notes](docs/releases/v1.1.35.md) and [combined store description](docs/STORE_LISTING.md).
 
 The committed source and `vendor/twitter-text.js` need no build for normal edits. Run `npm run build:text` when updating the text library; this also generates bundled license notices. Reload SideX in `chrome://extensions` after editing, then refresh X.
 

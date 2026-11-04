@@ -34,6 +34,40 @@ function bridge(fetchResult, setupWindow) {
   return { w, requests, send };
 }
 
+test('sidebar-only profile sources use the requested handle, native contexts and token-scoped cleanup', async t => {
+  const rendered = [];
+  const b = bridge(null, w => {
+    const Provider = {};
+    function NativeProfile() {}
+    const react = { useState() {}, createElement: (type, props, children) => ({ type, props, children }) };
+    const reactDom = { createRoot: host => ({ render(tree) {
+      assert.equal(tree.type, Provider); assert.equal(tree.props.value, 'X context');
+      const profile = tree.children; assert.equal(profile.type, NativeProfile);
+      assert.equal(profile.props.onAvatarClick, undefined, 'do not inherit the source profile action');
+      rendered.push(profile.props.screenName);
+      const link = w.document.createElement('a'); link.href = profile.children.props.href; host.append(link);
+    }, unmount() { host.replaceChildren(); } }) };
+    const runtime = { c: { react: { exports: react }, dom: { exports: reactDom } }, m: {} };
+    w.webpackChunkProfileFixture = []; w.webpackChunkProfileFixture.push = entry => entry[2](runtime);
+    w.document.body.innerHTML = '<main><a href="/source">Source</a></main>';
+    w.document.querySelector('a').__reactFiber$fixture = { return: { type: NativeProfile,
+      memoizedProps: { screenName: 'source', children: {}, onAvatarClick: () => assert.fail('wrong profile') },
+      return: { tag: 10, type: Provider, memoizedProps: { value: 'X context' } } } };
+  });
+  t.after(() => b.w.close());
+  assert.equal((await b.send({ type: 'PREPARE_NATIVE_USER_HOVER', screenName: 'mentioned', hoverToken: 1,
+    anchor: { left: 900, top: 200, width: 80, height: 20 } })).ready, true);
+  assert.equal(b.w.document.querySelector('[data-sidex-native-profile-source="1"] a').pathname, '/mentioned');
+  assert.equal((await b.send({ type: 'PREPARE_NATIVE_USER_HOVER', screenName: 'other_user', hoverToken: 2 })).ready, true);
+  assert.equal(b.w.document.querySelector('[data-sidex-native-profile-source="1"]'), null);
+  await b.send({ type: 'CLOSE_NATIVE_USER_HOVER', hoverToken: 1 });
+  assert.ok(b.w.document.querySelector('[data-sidex-native-profile-source="2"]'), 'an old dismissal cannot remove a newer user');
+  await b.send({ type: 'CLOSE_NATIVE_USER_HOVER', hoverToken: 2 });
+  assert.equal(b.w.document.querySelector('[data-sidex-native-profile-source]'), null);
+  assert.deepEqual(rendered, ['mentioned', 'other_user']);
+  assert.equal(b.requests.length, 0);
+});
+
 test('all six toggle operations map desired state to the correct X action', async t => {
   const b = bridge(); t.after(() => b.w.close());
   const cases = [ ['like', true, 'FavoriteTweet'], ['like', false, 'UnfavoriteTweet'],
