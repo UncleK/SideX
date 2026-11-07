@@ -49,6 +49,17 @@
     return Number.isFinite(number) ? number : 0;
   }
 
+  function unescapeShortText(value) {
+    const named = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: "\u00a0" };
+    return value.replace(/&([a-z]+|#\d+|#[xX][\da-fA-F]+);/g, (entity, name) => {
+      if (Object.hasOwn(named, name)) return named[name];
+      if (name[0] !== "#") return entity;
+      const hex = /^#[xX]/.test(name);
+      const point = parseInt(name.slice(hex ? 2 : 1), hex ? 16 : 10);
+      return point > 0 && point <= 0x10ffff && (point < 0xd800 || point > 0xdfff) ? String.fromCodePoint(point) : entity;
+    });
+  }
+
   function tweetLength(text) {
     if (!text) return 0;
     return root.SidePeekTwitterText.parseTweet(String(text)).weightedLength;
@@ -125,7 +136,7 @@
     const modernMedia = Array.isArray(tweet?.media)
       ? tweet.media
       : tweet?.media?.all || tweet?.media?.media || [];
-    const media = legacy?.extended_entities?.media || legacy?.entities?.media || modernMedia;
+    const media = tweet?.media_entities2 || legacy?.extended_entities?.media || legacy?.entities?.media || modernMedia;
     return (media || []).map((item) => {
       const rawType = String(item.type || item.media_type || item.__typename || "").toLowerCase();
       const isGif = rawType.includes("animated") || rawType === "gif";
@@ -162,7 +173,9 @@
     const description = values.description || "";
     const domain = values.vanity_url || values.domain || "";
     const image = values.summary_photo_image_large || values.photo_image_full_size || values.thumbnail_image || values.player_image || "";
-    const url = values.card_url || legacy?.entities?.urls?.[0]?.expanded_url || "";
+    const entityUrls = [...(tweet?.url_entities || []), ...(legacy?.entities?.urls || [])];
+    const cardUrl = values.card_url || legacyCard.url;
+    const url = entityUrls.find(entity => entity.url === cardUrl)?.expanded_url || cardUrl || entityUrls[0]?.expanded_url || "";
     if (title || domain || image) {
       return { title, description, domain, image, url };
     }
@@ -173,22 +186,29 @@
     const tweet = unwrapResult(value);
     if (!tweet) return null;
     const legacy = tweet.legacy || {};
+    const details = tweet.details || {};
+    const counts = tweet.counts || {};
+    const perspective = tweet.perspective || {};
     const user = unwrapUser(tweet.core?.user_results) || unwrapUser(tweet.user_results);
     const userLegacy = user?.legacy || {};
     const userCore = user?.core || {};
     const note = tweet.note_tweet?.note_tweet_results?.result;
-    let text = typeof note?.text === "string" ? note.text : String(legacy.full_text || legacy.text || "");
-    const handle = userLegacy.screen_name || userCore.screen_name || "";
+    const shortText = String(details.full_text ?? legacy.full_text ?? legacy.text ?? "");
+    let text = typeof note?.text === "string" ? note.text : shortText;
+    const handle = userCore.screen_name ?? userLegacy.screen_name ?? "";
     const id = String(tweet.rest_id || legacy.id_str || "");
-    const quoted = depth < 1 ? tweetModel(tweet.quoted_status_result, depth + 1) : null;
+    const quoted = depth < 1 ? tweetModel(tweet.quoted_tweet_results || tweet.quoted_status_result, depth + 1) : null;
     const media = mediaItems(legacy, tweet);
 
     // Apply offsets before modifying text. A leading @mention inside the
     // display range is authored content, even when this tweet is a reply.
-    const range = legacy.display_text_range;
+    const range = details.display_text_range ?? legacy.display_text_range;
+    const displaySource = details.display_text_range != null ? Array.from(text) : text;
     if (typeof note?.text !== "string" && Array.isArray(range) &&
-        Number.isInteger(range[0]) && range[0] > 0 && range[0] <= text.length) {
-      text = text.slice(range[0]);
+        Number.isInteger(range[0]) && range[0] > 0 && range[0] <= displaySource.length) {
+      // x-web's details ranges use code points, rather than JS UTF-16 offsets.
+      const visible = displaySource.slice(range[0]);
+      text = Array.isArray(visible) ? visible.join("") : visible;
     }
 
     // Remove only links identified as attachments. A photo/video reply can
@@ -198,11 +218,26 @@
       ...(legacy.entities?.media || []),
       ...(note?.entity_set?.media || [])
     ];
-    const mediaUrls = new Set(mediaEntities.map((m) => m.url).filter(Boolean));
+    const mediaUrls = new Set(mediaEntities.map(m => m.url).filter(Boolean));
+    // New media entities omit url and identify the attachment in details text.
+    // Derive only a complete shortened URL, preserving unrelated source links.
+    const shortPoints = Array.from(shortText);
+    for (const item of tweet.media_entities2 || []) {
+      let url = item.url;
+      const indices = item.indices;
+      if (!url && Array.isArray(indices) && indices.every(Number.isInteger) &&
+          indices[0] >= 0 && indices[1] > indices[0] && indices[1] <= shortPoints.length) {
+        const candidate = shortPoints.slice(indices[0], indices[1]).join("");
+        if (/^https?:\/\/t\.co\/[A-Za-z0-9]+$/.test(candidate)) url = candidate;
+      }
+      if (url) mediaUrls.add(url);
+    }
     text = text.replace(/https?:\/\/t\.co\/[A-Za-z0-9]+/g, url => mediaUrls.has(url) ? "" : url).trim();
+    if (typeof note?.text !== "string" && typeof details.full_text === "string") text = unescapeShortText(text).trim();
     const rawUrls = [
-      ...(legacy.entities?.urls || []),
-      ...(note?.entity_set?.urls || [])
+      ...(note?.entity_set?.urls || []),
+      ...(tweet.url_entities || []),
+      ...(legacy.entities?.urls || [])
     ];
     const seenUrls = new Set();
     const urls = [];
@@ -218,6 +253,7 @@
 
     const rawMentions = [
       ...(legacy.entities?.user_mentions || []),
+      ...(tweet.mention_entities || []),
       ...(note?.entity_set?.user_mentions || [])
     ];
     const userMentions = [];
@@ -234,6 +270,7 @@
 
     const rawHashtags = [
       ...(legacy.entities?.hashtags || []),
+      ...(details.hashtag_entities || []),
       ...(note?.entity_set?.hashtags || [])
     ];
     const hashtags = [];
@@ -257,22 +294,22 @@
         hashtags
       },
       author: userModel(user) || { id: "", name: "X 用户", handle: "", avatar: "" },
-      createdAt: legacy.created_at || "",
+      createdAt: Number.isFinite(details.created_at_ms) ? new Date(details.created_at_ms).toISOString() : legacy.created_at || "",
       conversationId: String(legacy.conversation_id_str || ""),
-      inReplyToId: String(legacy.in_reply_to_status_id_str || ""),
-      inReplyToHandle: String(legacy.in_reply_to_screen_name || ""),
-      reportedReplyCount: Number.isFinite(legacy.reply_count) ? legacy.reply_count : null,
+      inReplyToId: String(tweet.reply_to_results?.rest_id ?? legacy.in_reply_to_status_id_str ?? ""),
+      inReplyToHandle: String(tweet.reply_to_user_results?.result?.core?.screen_name ?? legacy.in_reply_to_screen_name ?? ""),
+      reportedReplyCount: Number.isFinite(counts.reply_count ?? legacy.reply_count) ? (counts.reply_count ?? legacy.reply_count) : null,
       counts: {
-        replies: numberValue(legacy.reply_count),
-        reposts: numberValue(legacy.retweet_count),
-        likes: numberValue(legacy.favorite_count),
-        bookmarks: numberValue(legacy.bookmark_count),
+        replies: numberValue(counts.reply_count ?? legacy.reply_count),
+        reposts: numberValue(counts.retweet_count ?? legacy.retweet_count),
+        likes: numberValue(counts.favorite_count ?? legacy.favorite_count),
+        bookmarks: numberValue(counts.bookmark_count ?? legacy.bookmark_count),
         views: numberValue(tweet.views?.count)
       },
       flags: {
-        liked: Boolean(legacy.favorited),
-        reposted: Boolean(legacy.retweeted || legacy.current_user_retweet?.id_str),
-        bookmarked: Boolean(legacy.bookmarked)
+        liked: Boolean(perspective.favorited ?? legacy.favorited),
+        reposted: Boolean(perspective.retweeted ?? (legacy.retweeted || legacy.current_user_retweet?.id_str)),
+        bookmarked: Boolean(perspective.bookmarked ?? legacy.bookmarked)
       },
       media,
       quote: quoted,

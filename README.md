@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-Available-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.35-00b4f8?style=flat-square" alt="Version 1.1.35" />
+    <img src="https://img.shields.io/badge/Version-1.1.38-00b4f8?style=flat-square" alt="Version 1.1.38" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -100,6 +100,8 @@ SideX is an independent open-source productivity extension and is **not affiliat
 ---
 
 ## Development and verification
+
+Version 1.1.38 supports X's new x-web client: in-place opening, restored reply data and native-control entry points, opaque profile cards, stable photo docking, focal markers and emoji labels. All 273 regression tests pass. Core browser checks and intercepted-send checks are documented in the [QA matrix](docs/QA_20261108.md), including remaining coverage limits. See the [bilingual release notes](docs/releases/v1.1.38.md) and [combined store description](docs/STORE_LISTING.md).
 
 Version 1.1.35 resets the reply recipient after a successful send and restores native X profile cards for @mentions in reply text, including users absent from the main timeline. Failed sends retain their recipient and text; late confirmations preserve newer drafts. All 230 regression tests pass. The actual reloaded local extension was checked on X; send confirmations were simulated locally without publishing test replies. See the [bilingual release notes](docs/releases/v1.1.35.md) and [combined store description](docs/STORE_LISTING.md).
 

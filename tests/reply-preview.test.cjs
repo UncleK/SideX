@@ -163,3 +163,31 @@ test('default preview errors remain manual and never loop when the branch stays 
   assert.equal(more(p).textContent, '重试');
   assert.equal(visible(p), 1);
 });
+
+test('a Failed to fetch subreply request preserves visible replies and draft, then recovers on manual retry', async t => {
+  let branchRequests = 0;
+  const p = await open(t, m => {
+    if (m.tweetId === '100') return page([post('100'), post('101', '100', 10), post('102', '101')]);
+    if (++branchRequests === 1) throw new TypeError('Failed to fetch');
+    return page([post('101', '100', 10), ...children(102, 5)]);
+  });
+  const warnings = [];
+  p.w.console.warn = (...args) => warnings.push(args);
+  const editor = p.query('.sidepeek-footer-textarea');
+  editor.value = 'Keep this draft'; editor.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+  more(p).click(); await tick();
+  assert.equal(branchRequests, 1);
+  assert.equal(visible(p), 1);
+  assert.equal(p.query('[data-id="102"]').isConnected, true);
+  assert.equal(p.query('.sidepeek-footer-textarea').value, 'Keep this draft');
+  assert.equal(warnings.length, 1);
+  assert.equal(warnings[0][1].message, 'Failed to fetch');
+  await tick(25);
+  assert.equal(branchRequests, 1, 'failed reads do not loop automatically');
+  more(p).click(); await tick();
+  assert.equal(branchRequests, 2);
+  assert.equal(visible(p), 4);
+  assert.equal(p.query('.sidepeek-footer-textarea').value, 'Keep this draft');
+  assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), true);
+  assert.equal(group(p).querySelector('.sidepeek-pagination-error'), null);
+});

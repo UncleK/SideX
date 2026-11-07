@@ -34,6 +34,194 @@ function bridge(fetchResult, setupWindow) {
   return { w, requests, send };
 }
 
+function xWebBridgeFixture(w, { depth = 140, index = 7, respond = () => ({ data: { success: true } }) } = {}) {
+  const calls = [], routed = [], traveled = [];
+  const entries = new Map([[index, w.location.pathname + w.location.search]]);
+  const nativeHistory = {
+    location: { state: { __TSR_index: index } },
+    go(delta) {
+      traveled.push(delta);
+      this.location.state.__TSR_index += delta;
+      const path = entries.get(this.location.state.__TSR_index);
+      if (path) w.history.replaceState({}, '', path);
+    }
+  };
+  const navigation = {
+    push(path, state) {
+      routed.push({ path, state });
+      nativeHistory.location.state.__TSR_index++;
+      entries.set(nativeHistory.location.state.__TSR_index, path);
+      w.history.pushState({}, '', path);
+    },
+    replace(path) { w.history.replaceState({}, '', path); },
+    goBack() { nativeHistory.go(-1); },
+    preload() {}
+  };
+  const environment = { getNetwork: () => ({ execute(operation, variables, cacheConfig) {
+    const call = { operation, variables, cacheConfig }; calls.push(call);
+    return { subscribe(observer) {
+      queueMicrotask(() => {
+        try {
+          const result = respond(call);
+          if (result instanceof Error || result instanceof w.Error) observer.error(result);
+          else { if (result !== undefined) observer.next(result); observer.complete(); }
+        } catch (error) { observer.error(error); }
+      });
+      return { unsubscribe() { call.unsubscribed = true; } };
+    } };
+  } }) };
+  w.document.head.innerHTML = '<script src="https://abs.twimg.com/x-web/x-web/entry-client-test.js"></script>';
+  const link = w.document.createElement('a'); link.href = '/compose/post'; w.document.body.append(link);
+  let fiber = { tag: 10, memoizedProps: { value: { environment } } };
+  fiber = { tag: 10, memoizedProps: { value: { buildLocation() {}, history: nativeHistory } }, return: fiber };
+  fiber = { tag: 10, memoizedProps: { value: navigation }, return: fiber };
+  for (let i = 0; i < depth; i++) fiber = { memoizedProps: {}, return: fiber };
+  link.__reactFiber$xWebFixture = fiber;
+  return { calls, routed, traveled, nativeHistory, navigation, environment };
+}
+
+test('x-web toggles use the six observed native Relay operations with camelCase target variables', async t => {
+  let fixture;
+  const b = bridge(null, w => { fixture = xWebBridgeFixture(w); }); t.after(() => b.w.close());
+  const cases = [
+    ['like', true, 'FavoriteTweet', 'gWHQmsY1Atd_XuOoMR2v5A'],
+    ['like', false, 'likeButtonControlUnfavoriteMutation', 'jd_5MSDRzKH4MJ3c4BmrqQ'],
+    ['bookmark', true, 'BookmarkAdd', '9559L3Eb62SZndMSVHIeNw'],
+    ['bookmark', false, 'BookmarkDelete', 'jTTS9lZmxUq-eYwmY8pHiA'],
+    ['repost', true, 'CreateRetweet', 'lBRHQaQKWQwF0eaGzH209w'],
+    ['repost', false, 'retweetButtonUnretweetMutation', 'TSIYEnua4u_yleM5nrWzFw']
+  ];
+  for (const [action, active, name, id] of cases) {
+    await b.send({ type: 'TOGGLE_ACTION', action, active, tweetId: '123' });
+    const call = fixture.calls.at(-1);
+    assert.equal(call.operation.name, name);
+    assert.equal(call.operation.id, id);
+    assert.equal(call.operation.operationKind, 'mutation');
+    assert.equal(call.operation.text, null);
+    assert.deepEqual(JSON.parse(JSON.stringify(call.variables)), { tweetId: '123' });
+    assert.equal(call.cacheConfig.force, true);
+  }
+  assert.equal(fixture.calls.length, 6);
+  assert.equal(b.requests.length, 0, 'the extension must not bypass X\'s native network and transaction headers');
+});
+
+test('x-web native mutation errors and missing confirmations never retry through another transport', async t => {
+  for (const kind of ['network', 'graphql', 'empty']) {
+    let fixture;
+    const b = bridge(null, w => { fixture = xWebBridgeFixture(w, { respond: () => kind === 'network'
+      ? new w.Error('Native network unavailable') : kind === 'graphql' ? { errors: [{ message: 'Denied by X' }] } : undefined }); });
+    t.after(() => b.w.close());
+    await assert.rejects(b.send({ type: 'TOGGLE_ACTION', action: 'like', active: true, tweetId: '123' }),
+      kind === 'network' ? /Native network unavailable/ : kind === 'graphql' ? /Denied by X/ : /确认/);
+    assert.equal(fixture.calls.length, 1);
+    assert.equal(b.requests.length, 0, 'an unconfirmed write cannot be sent again as a fallback fetch');
+  }
+});
+
+test('x-web writes fail before sending if the native Relay environment is unavailable', async t => {
+  const b = bridge(null, w => {
+    w.document.head.innerHTML = '<script src="https://abs.twimg.com/x-web/x-web/entry-client-test.js"></script>';
+    w.document.body.innerHTML = '<a href="/compose/post">Post</a>';
+  }); t.after(() => b.w.close());
+  await assert.rejects(b.send({ type: 'TOGGLE_ACTION', action: 'bookmark', active: true, tweetId: '123' }), /原生请求入口尚未就绪/);
+  assert.equal(b.requests.length, 0, 'missing native headers cannot trigger a direct-fetch fallback');
+});
+
+test('x-web replies retain the 280-character boundary, exact recipient, media and original success payload', async t => {
+  const success = { data: { create_tweet: { tweet_results: { result: tweet('999', '123') } } }, extensions: { trace: 'native-confirmation' } };
+  let fixture;
+  const b = bridge(null, w => { fixture = xWebBridgeFixture(w, { respond: () => success }); }); t.after(() => b.w.close());
+  for (const [text, name, id] of [
+    ['x'.repeat(280), 'CreateTweet', 'oYN2wNon5cYp3VrfXrwImw'],
+    ['x'.repeat(281), 'createTweetNoteTweetMutation', '_cIwQ6XY_C81R09ZGyWc-Q'],
+    ['https://example.com/' + 'a'.repeat(350), 'CreateTweet', 'oYN2wNon5cYp3VrfXrwImw']
+  ]) {
+    const result = await b.send({ type: 'CREATE_REPLY', tweetId: '123', text, mediaIds: ['456'] });
+    assert.deepEqual(result, success);
+    const call = fixture.calls.at(-1), variables = call.variables;
+    assert.equal(call.operation.name, name); assert.equal(call.operation.id, id);
+    assert.equal(variables.tweet_text, text);
+    assert.deepEqual(JSON.parse(JSON.stringify(variables.reply)), { in_reply_to_tweet_id: '123', exclude_reply_user_ids: [] });
+    assert.deepEqual(JSON.parse(JSON.stringify(variables.media)), { media_entities: [{ media_id: '456', tagged_users: [] }], possibly_sensitive: false });
+    assert.equal(Object.hasOwn(variables, 'dark_request'), false);
+    assert.equal(Object.hasOwn(variables, 'disallowed_reply_options'), false);
+    assert.equal(variables.__relay_internal__pv__xclientsfeaturesappviewerisloggedinrelayprovider, true);
+  }
+  assert.equal(fixture.calls.length, 3);
+  assert.equal(b.requests.length, 0);
+});
+
+test('x-web long-reply failure is returned without a second publication or mutation of the submitted draft', async t => {
+  const draft = { type: 'CREATE_REPLY', tweetId: '123', text: 'Keep this unfinished reply. '.repeat(20), mediaIds: ['456'] };
+  const original = structuredClone(draft);
+  let fixture;
+  const b = bridge(null, w => { fixture = xWebBridgeFixture(w, { respond: () => new w.Error('Ambiguous native failure') }); });
+  t.after(() => b.w.close());
+  await assert.rejects(b.send(draft), /Ambiguous native failure/);
+  assert.deepEqual(draft, original);
+  assert.equal(fixture.calls.length, 1);
+  assert.equal(fixture.calls[0].operation.name, 'createTweetNoteTweetMutation');
+  assert.equal(b.requests.length, 0);
+});
+
+test('deep x-web providers open replies and quoted posts for the exact requested ID without fetching or publishing', async t => {
+  let fixture;
+  const b = bridge(null, w => { fixture = xWebBridgeFixture(w, { depth: 180 }); }); t.after(() => b.w.close());
+  b.w.open = () => assert.fail('No new windows');
+  assert.equal((await b.send({ type: 'OPEN_NATIVE_REPLY', tweetId: '123' })).opened, true);
+  assert.equal(fixture.routed[0].path, '/compose/post?in_reply_to=123');
+  assert.equal((await b.send({ type: 'OPEN_NATIVE_QUOTE', tweetId: '456' })).opened, true);
+  assert.equal(fixture.routed[1].path, '/compose/post?quote_tweet_id=456');
+  assert.equal(fixture.calls.length, 0); assert.equal(b.requests.length, 0);
+});
+
+test('an existing x-web native textarea draft blocks reply and quote launch without overwriting its content', async t => {
+  let fixture;
+  const b = bridge(null, w => { fixture = xWebBridgeFixture(w); }); t.after(() => b.w.close());
+  b.w.document.body.insertAdjacentHTML('beforeend', '<div role="dialog" data-slot="xds-modal-surface"><textarea aria-multiline="true">Keep official draft</textarea></div>');
+  for (const type of ['OPEN_NATIVE_REPLY', 'OPEN_NATIVE_QUOTE']) {
+    await assert.rejects(b.send({ type, tweetId: '123' }), /NATIVE_DRAFT_ALREADY_OPEN/);
+  }
+  assert.equal(b.w.document.querySelector('textarea').value, 'Keep official draft');
+  assert.equal(fixture.routed.length, 0); assert.equal(fixture.calls.length, 0); assert.equal(b.requests.length, 0);
+});
+
+test('x-web quick-tool Escape returns once to the captured TSR entry, including an underlying photo route', async t => {
+  for (const path of ['/home', '/reader/status/123/photo/1']) {
+    let fixture;
+    const b = bridge(null, w => {
+      w.history.replaceState({}, '', path);
+      fixture = xWebBridgeFixture(w, { index: 12, depth: 180 });
+    });
+    t.after(() => b.w.close());
+    let nativeEsc = 0;
+    b.w.addEventListener('keydown', () => nativeEsc++, true);
+    assert.equal((await b.send({ type: 'OPEN_NATIVE_REPLY', tweetId: '123', quickTool: true })).opened, true);
+    b.w.document.body.insertAdjacentHTML('beforeend', '<div role="dialog" data-slot="xds-modal-surface"><input aria-label="Search for GIFs"></div>');
+    fixture.navigation.push('/i/foundmedia/search');
+    const first = new b.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    b.w.document.dispatchEvent(first);
+    assert.equal(first.defaultPrevented, true);
+    assert.deepEqual(fixture.traveled, [-2]);
+    assert.equal(fixture.nativeHistory.location.state.__TSR_index, 12);
+    assert.equal(b.w.location.pathname, path);
+    assert.equal(nativeEsc, 0);
+    b.w.document.dispatchEvent(new b.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    assert.deepEqual(fixture.traveled, [-2], 'a second Escape belongs to X, not the completed tool session');
+    assert.equal(nativeEsc, 1);
+    assert.equal(fixture.calls.length, 0); assert.equal(b.requests.length, 0);
+  }
+});
+
+test('an untracked x-web quick tool does not open a composer that Escape could not restore', async t => {
+  let fixture;
+  const b = bridge(null, w => { fixture = xWebBridgeFixture(w, { index: undefined });
+    delete fixture.nativeHistory.location.state.__TSR_index;
+  }); t.after(() => b.w.close());
+  assert.equal((await b.send({ type: 'OPEN_NATIVE_REPLY', tweetId: '123', quickTool: true })).opened, false);
+  assert.equal(fixture.routed.length, 0);
+});
+
 test('sidebar-only profile sources use the requested handle, native contexts and token-scoped cleanup', async t => {
   const rendered = [];
   const b = bridge(null, w => {
@@ -118,6 +306,44 @@ test('comment pagination forwards the focal ID and opaque cursor to TweetDetail'
   const variables = JSON.parse(b.requests.at(-1).url.searchParams.get('variables'));
   assert.equal(variables.focalTweetId, '123');
   assert.equal(variables.cursor, 'opaque+/cursor==');
+});
+
+test('x-web can read the first detail without a Webpack registry or previous detail navigation', async t => {
+  const b = bridge(null, w => {
+    w.document.head.innerHTML = '<script src="https://abs.twimg.com/x-web/x-web/entry-client-test.js"></script>';
+  });
+  t.after(() => b.w.close());
+  await b.send({ type: 'READ_THREAD', tweetId: '100', cursor: 'opaque-next' });
+  const request = b.requests.at(-1);
+  assert.equal(request.url.origin, 'https://api.x.com');
+  assert.equal(request.url.pathname, '/graphql/L4cB5UHNoH3-RjFtwlfluw/TweetDetail');
+  const variables = JSON.parse(request.url.searchParams.get('variables'));
+  assert.equal(variables.focalTweetId, '100');
+  assert.equal(variables.cursor, 'opaque-next');
+  assert.equal(variables.withFocalTweet, true);
+  assert.equal(request.url.searchParams.has('features'), false);
+});
+
+test('observed x-web detail IDs, endpoint and provider switches override the compatibility defaults', async t => {
+  const b = bridge(); t.after(() => b.w.close());
+  const observed = new URL('https://api.x.com/graphql/fresh-native-id/TweetDetail');
+  observed.searchParams.set('variables', JSON.stringify({ focalTweetId: '200', cursor: 'old-cursor',
+    __relay_internal__pv__postctafetchenabledrelayprovider: true,
+    __relay_internal__pv__xclientsfeaturestweetcomponentsgrokanalyzepostrelayprovider: false }));
+  await b.w.fetch(observed.toString());
+  await b.send({ type: 'READ_THREAD', tweetId: '100' });
+  const request = b.requests.at(-1);
+  assert.equal(request.url.origin, 'https://api.x.com');
+  assert.equal(request.url.pathname, '/graphql/fresh-native-id/TweetDetail');
+  const variables = JSON.parse(request.url.searchParams.get('variables'));
+  assert.equal(variables.focalTweetId, '100');
+  assert.equal(variables.cursor, null);
+  assert.equal(variables.__relay_internal__pv__postctafetchenabledrelayprovider, true);
+  assert.equal(variables.__relay_internal__pv__xclientsfeaturestweetcomponentsgrokanalyzepostrelayprovider, false);
+  observed.pathname = '/graphql/newer-native-id/TweetDetail';
+  await b.w.fetch(observed.toString());
+  await b.send({ type: 'READ_THREAD', tweetId: '200' });
+  assert.equal(b.requests.at(-1).url.pathname, '/graphql/newer-native-id/TweetDetail', 'a cached operation cannot override a newer native ID');
 });
 
 test('a fallback sidebar read is cached without being broadcast as a separate native observation', async t => {

@@ -14,6 +14,43 @@ function mountPhoto(p, id = '300') {
   return { dialog, panel: dialog.querySelector('.native-photo-panel'), image: dialog.querySelector('img'), region: dialog.querySelector('section') };
 }
 
+test('x-web photo viewer docks only its right panel, preserves its inline draft and uses the native collapse control', async t => {
+  const p = createPage(); t.after(() => p.w.close()); await tick();
+  const portal = p.w.document.createElement('div'); portal.dataset.baseUiPortal = '';
+  portal.innerHTML = '<div role="dialog" data-slot="xds-modal-surface"><div><img alt="Full-size photo"><button><svg data-icon="icon-double-chevron-right"></svg></button></div><div class="modern-photo-panel"><section><article class="group/post">Photo post</article><textarea aria-multiline="true">Existing inline draft</textarea></section></div></div>';
+  p.w.document.body.append(portal);
+  let collapsed = 0;
+  portal.querySelector('button').addEventListener('click', () => { collapsed++; });
+  p.w.history.pushState({}, '', '/reader/status/300/photo/1');
+  p.w.dispatchEvent(new p.w.PopStateEvent('popstate')); await tick(70);
+  const panel = portal.querySelector('.modern-photo-panel');
+  assert.equal(p.query('#sidepeek-drawer-root').parentElement, panel);
+  assert.equal(panel.hasAttribute('data-sidex-photo-panel'), true);
+  assert.equal(panel.contains(portal.querySelector('img[alt="Full-size photo"]')), false);
+  assert.equal(panel.querySelector('textarea').value, 'Existing inline draft');
+  p.query('.sidepeek-btn-photo-collapse').click();
+  assert.equal(collapsed, 1);
+  p.change({ sidex_photo_mode: { newValue: 'native' } }); await tick();
+  assert.equal(panel.hasAttribute('data-sidex-photo-panel'), false);
+  assert.equal(panel.querySelector('textarea').value, 'Existing inline draft');
+});
+
+test('x-web photo docking survives virtualized native posts being unmounted from the hidden timeline', async t => {
+  const p = createPage(); t.after(() => p.w.close()); await tick();
+  const portal = p.w.document.createElement('div'); portal.dataset.baseUiPortal = '';
+  portal.innerHTML = '<div role="dialog" data-slot="xds-modal-surface"><div><img alt="Full-size photo"><button><svg data-icon="icon-double-chevron-right"></svg></button></div><div class="modern-photo-panel"><section aria-labelledby="photo-timeline"><h2 id="photo-timeline">Timeline</h2><article class="group/post">Photo post</article></section></div></div>';
+  p.w.document.body.append(portal);
+  p.w.history.pushState({}, '', '/reader/status/300/photo/1');
+  p.w.dispatchEvent(new p.w.PopStateEvent('popstate')); await tick(70);
+  const panel = portal.querySelector('.modern-photo-panel');
+  assert.equal(p.query('#sidepeek-drawer-root').parentElement, panel);
+  panel.querySelector('section article').remove(); await tick(70);
+  assert.equal(p.w.document.documentElement.dataset.sidexPhotoView, 'sidex');
+  assert.equal(panel.hasAttribute('data-sidex-photo-panel'), true);
+  assert.equal(p.query('#sidepeek-drawer-root').parentElement, panel);
+  assert.equal(p.query('.sidepeek-btn-photo-collapse').style.display, 'inline-flex');
+});
+
 test('an explicit official photo preference is preserved and the real settings popup replaces only the right panel without losing drafts', async t => {
   const p = createPage({ settings: { sidex_photo_mode: 'native' } }); t.after(() => p.w.close());
   await tick(); p.clickPost(0); await tick();

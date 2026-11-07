@@ -33,25 +33,30 @@
 }
 
 /* Middle Timeline Focal Tweet Highlight */
-article[data-testid="tweet"].sidepeek-focal-active {
+article[data-testid="tweet"].sidepeek-focal-active,
+main article[class~="group/post"].sidepeek-focal-active {
   box-shadow: inset 0 0 0 2px rgba(29, 155, 240, 0.45), 0 2px 12px rgba(29, 155, 240, 0.12) !important;
   border-radius: 8px !important;
   transition: box-shadow 0.25s ease !important;
 }
 
 /* A pinned focal post keeps its marker after X rewrites the article's class. */
-article[data-testid="tweet"][data-sidex-pinned-active] {
+article[data-testid="tweet"][data-sidex-pinned-active],
+main article[class~="group/post"][data-sidex-pinned-active] {
   box-shadow: inset 0 0 0 2px rgba(29, 155, 240, 0.45), 0 2px 12px rgba(29, 155, 240, 0.12) !important;
   border-radius: 8px !important;
   transition: background-color 0.2s ease, box-shadow 0.25s ease !important;
 }
 
-article[data-testid="tweet"][data-sidex-pinned-active="light"] {
+article[data-testid="tweet"][data-sidex-pinned-active="light"],
+main article[class~="group/post"][data-sidex-pinned-active="light"] {
   background-color: rgba(0, 0, 0, 0.03) !important;
 }
 
 article[data-testid="tweet"][data-sidex-pinned-active="dark"],
-article[data-testid="tweet"][data-sidex-pinned-active="dim"] {
+article[data-testid="tweet"][data-sidex-pinned-active="dim"],
+main article[class~="group/post"][data-sidex-pinned-active="dark"],
+main article[class~="group/post"][data-sidex-pinned-active="dim"] {
   background-color: rgba(255, 255, 255, 0.03) !important;
 }
 
@@ -100,6 +105,10 @@ article[data-testid="tweet"] [data-sidex-article-quote-layout] > div:has([data-t
    place, inside the dialog, so image sizing and modal focus keep working. */
 html[data-sidex-photo-view="native"] #sidepeek-drawer-root {
   display: none !important;
+}
+
+[data-sidex-photo-panel] {
+  position: relative;
 }
 
 [data-sidex-photo-panel] > :not(#sidepeek-drawer-root) {
@@ -916,7 +925,8 @@ body:has(#sidepeek-drawer-root.sidepeek-open) #layers {
   pointer-events: none;
 }
 
-#layers[data-sidex-native-layers]:popover-open {
+#layers[data-sidex-native-layers]:popover-open,
+[data-base-ui-portal][data-sidex-native-layers]:popover-open {
   /* X positions hover cards in document coordinates, including page scroll.
      Keep its zero-height document origin when promoting the portal. Native
      dialogs and drawers still use their own fixed viewport positioning. */
@@ -935,7 +945,8 @@ body:has(#sidepeek-drawer-root.sidepeek-open) #layers {
   pointer-events: none !important;
 }
 
-#layers[data-sidex-native-layers] > * {
+#layers[data-sidex-native-layers] > *,
+[data-base-ui-portal][data-sidex-native-layers] > * {
   pointer-events: auto;
 }
 
@@ -945,7 +956,8 @@ body:has(#sidepeek-drawer-root.sidepeek-open) #layers {
   pointer-events: none !important;
 }
 
-#layers[data-sidex-native-layers]::backdrop {
+#layers[data-sidex-native-layers]::backdrop,
+[data-base-ui-portal][data-sidex-native-layers]::backdrop {
   background: transparent;
   pointer-events: none;
 }
@@ -2321,11 +2333,15 @@ a.sidepeek-handle:hover { text-decoration: underline; }
   top: var(--sidex-hover-top, 12px) !important;
   margin: 0 !important;
   padding: 0 !important;
+  max-width: calc(100vw - 24px);
+  max-height: var(--sidex-hover-max-height, calc(100vh - 24px));
+}
+/* Legacy promotes a transparent wrapper; x-web promotes the painted card
+   itself. Preserve the latter's native background, border and banner clip. */
+[data-testid="hoverCardParent"][data-sidex-native-hover][popover] {
   border: 0 !important;
   background: transparent !important;
   overflow: visible !important;
-  max-width: calc(100vw - 24px);
-  max-height: var(--sidex-hover-max-height, calc(100vh - 24px));
 }
 [data-sidex-native-hover][data-sidex-hover-scroll] { overflow-y: auto !important; }
 [data-sidex-native-hover][popover]::backdrop { background: transparent; pointer-events: none; }

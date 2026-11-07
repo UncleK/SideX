@@ -15,9 +15,11 @@
       current.node.removeAttribute("data-sidex-native-layers");
     }
     function sync(root) {
-      const layers = document.getElementById("layers");
+      const modern = [...document.querySelectorAll('[data-base-ui-portal]')].find(portal =>
+        portal.querySelector('[role="dialog"], [role="menu"], [role="listbox"], [data-base-ui-focusable][data-side]:not([data-sidex-native-hover])'));
+      const layers = modern || document.getElementById("layers");
       const needsOverlay = root?.classList.contains("sidepeek-open") &&
-        layers?.querySelector('[role="dialog"], [role="menu"], [role="listbox"], [data-testid="Dropdown"], [data-testid="hoverCardParent"]:not([data-sidex-native-hover]), [data-testid="GrokDrawer"], [data-testid="chat-drawer-root"], [data-testid="DMDrawer"]');
+        (modern || layers?.querySelector('[role="dialog"], [role="menu"], [role="listbox"], [data-testid="Dropdown"], [data-testid="hoverCardParent"]:not([data-sidex-native-hover]), [data-testid="GrokDrawer"], [data-testid="chat-drawer-root"], [data-testid="DMDrawer"]'));
       if (!needsOverlay || !layers.showPopover) { release(); return false; }
       if (session?.node === layers) return true;
       release();
@@ -42,6 +44,7 @@
 
   const Core = globalThis.SidePeekCore;
   const ROOT_ID = "sidepeek-drawer-root";
+  const NATIVE_POST_SELECTOR = 'article[data-testid="tweet"], main article[class~="group/post"]';
   const CONTENT_SOURCE = "sidepeek-content";
   const PAGE_SOURCE = "sidepeek-page";
   const PHOTO_COLLAPSE_PATH = "M11.59 12L3.54 3.96l1.42-1.42L14.41 12l-9.45 9.46-1.42-1.42L11.59 12zm7 0l-8.05-8.04 1.42-1.42L21.41 12l-9.45 9.46-1.42-1.42L18.59 12z";
@@ -665,7 +668,9 @@
   function t(key, params = {}) {
     const locale = getLocale();
     const dict = TRANSLATIONS[locale] || TRANSLATIONS.en;
-    let val = dict[key] || TRANSLATIONS.zh[key] || key;
+    const lookup = table => key.split('.').reduce((value, part) =>
+      value && Object.hasOwn(value, part) ? value[part] : undefined, table);
+    let val = lookup(dict) || lookup(TRANSLATIONS.zh) || key;
     if (typeof val === "string") {
       for (const [k, v] of Object.entries(params)) {
         val = val.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
@@ -809,7 +814,8 @@
 
   function findPhotoCollapseButton() {
     return [...(photoViewer?.viewer.querySelectorAll('button') || [])].find(button =>
-      !drawerRoot?.contains(button) && button.querySelector('svg path')?.getAttribute('d') === PHOTO_COLLAPSE_PATH);
+      !drawerRoot?.contains(button) && (button.querySelector('svg path')?.getAttribute('d') === PHOTO_COLLAPSE_PATH ||
+        button.querySelector('svg[data-icon="icon-double-chevron-right"]')));
   }
 
   function syncPhotoHeader(root) {
@@ -848,8 +854,13 @@
     if (match) syncPinnedFocalHighlight();
     if (match) {
       const swipe = document.querySelector('#layers [data-testid="swipe-to-dismiss"]');
-      const viewer = swipe?.closest('[role="dialog"]');
-      const region = viewer?.querySelector('section[role="region"]');
+      const viewer = swipe?.closest('[role="dialog"]') ||
+        [...document.querySelectorAll('[role="dialog"][data-slot="xds-modal-surface"]')]
+          .find(dialog => dialog.querySelector('svg[data-icon="icon-double-chevron-right"], svg[data-icon="icon-double-chevron-left"]'));
+      // X unmounts virtualized posts once their section is hidden by our dock.
+      // Its labelled timeline section remains mounted, even while loading.
+      const region = viewer?.querySelector('section[role="region"], section[aria-labelledby]') ||
+        [...(viewer?.querySelectorAll('section') || [])].find(section => section.querySelector('article[class~="group/post"]'));
       const panel = region?.parentElement;
       if (!panel || panel.contains(swipe)) {
         releasePhotoPanel();
@@ -886,7 +897,7 @@
       return true;
     }
     // The reply dialog and its pickers can temporarily cover a photo viewer.
-    if (photoViewer?.viewer.isConnected && (nativeReplyOpening || document.querySelector('#layers [role="dialog"]'))) return true;
+    if (photoViewer?.viewer.isConnected && (nativeReplyOpening || document.querySelector('#layers [role="dialog"], [role="dialog"][data-slot="xds-modal-surface"]'))) return true;
     if (photoViewer || dockedPhotoPanel) {
       const wasDocked = Boolean(dockedPhotoPanel);
       releasePhotoPanel();
@@ -901,6 +912,11 @@
     return false;
   }
 
+  function nativeSidebarColumn() {
+    return document.querySelector('[data-testid="sidebarColumn"]') ||
+      [...document.querySelectorAll(`aside:not(#${ROOT_ID})`)].find(node => node.getBoundingClientRect().width > 0);
+  }
+
   function updateDrawerPosition() {
     const root = drawerRoot || document.getElementById(ROOT_ID);
     if (!root || !state.open) return;
@@ -913,7 +929,7 @@
 
     // 使用全新键名，避免继承旧版误保存的大宽度数据
     const savedWidth = Number(localStorage.getItem("sidepeek_custom_width_v2"));
-    const sidebar = document.querySelector('[data-testid="sidebarColumn"]');
+    const sidebar = nativeSidebarColumn();
 
     if (sidebar) {
       const rect = sidebar.getBoundingClientRect();
@@ -965,7 +981,7 @@
         document.body.style.cursor = "col-resize";
         state.isResizing = true;
 
-        const sidebar = document.querySelector('[data-testid="sidebarColumn"]');
+        const sidebar = nativeSidebarColumn();
         const minWidth = sidebar ? Math.round(sidebar.getBoundingClientRect().width) : 350;
         const initialRect = root.getBoundingClientRect();
         let hasMoved = false;
@@ -2402,8 +2418,8 @@
   // ==========================================================================
   let nativeReplyOpening = false;
   function nativeReplyEditors() {
-    return [...document.querySelectorAll('#layers [role="dialog"] [data-testid="tweetTextarea_0"]')]
-      .filter(editor => !editor.closest('[role="dialog"]')?.querySelector('[data-testid="swipe-to-dismiss"]'));
+    return [...document.querySelectorAll('#layers [role="dialog"] [data-testid="tweetTextarea_0"], [role="dialog"][data-slot="xds-modal-surface"] textarea[aria-multiline="true"]')]
+      .filter(editor => !editor.closest('[role="dialog"]')?.querySelector('[data-testid="swipe-to-dismiss"], svg[data-icon="icon-double-chevron-right"], svg[data-icon="icon-double-chevron-left"]'));
   }
   async function openNativeReplyDialog(tweetId, draftText = "", files = [], { tool = null } = {}) {
     const targetId = tweetId || state.focalTweetId;
@@ -2412,7 +2428,7 @@
       showToast(t("nativeDraftAlreadyOpen"));
       return false;
     }
-    const replyBtn = findDetailFocalArticle(targetId)?.querySelector('[data-testid="reply"]');
+    const replyBtn = findDetailFocalArticle(targetId)?.querySelector('[data-testid="reply"], [data-engagement-action="reply"] a');
     const focalId = state.focalTweetId;
     nativeReplyOpening = true;
     const existingEditors = new Set(nativeReplyEditors());
@@ -2448,10 +2464,16 @@
       if (!editor) { showToast(t("nativeReplyNotReady")); return false; }
       const dialog = editor.closest('[role="dialog"]');
       if (draftText) {
-        if (editor.textContent.trim()) { showToast(t("nativeDraftAlreadyOpen")); return false; }
+        const isTextarea = editor instanceof HTMLTextAreaElement;
+        if ((isTextarea ? editor.value : editor.textContent).trim()) { showToast(t("nativeDraftAlreadyOpen")); return false; }
         editor.focus();
-        const inserted = document.execCommand?.("insertText", false, draftText);
-        if (!inserted && editor.textContent !== draftText) { showToast(t("nativeDraftKept")); return false; }
+        if (isTextarea) {
+          Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(editor, draftText);
+          editor.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+          const inserted = document.execCommand?.("insertText", false, draftText);
+          if (!inserted && editor.textContent !== draftText) { showToast(t("nativeDraftKept")); return false; }
+        }
       }
       if (files.length) {
         const input = dialog.querySelector('input[type="file"]');
@@ -2464,7 +2486,9 @@
       state.nativeReplyTransfer = { focalId, targetId, draft: composerDrafts.get(`${focalId}:${targetId}`), text: draftText };
       nativeLayers?.sync(document.getElementById(ROOT_ID));
       if (tool) {
-        const button = dialog.querySelector(`[data-testid="${tool}"]`);
+        const modernTools = { gifSearchButton: 'Add GIF', createPollButton: 'Add poll', scheduleOption: 'Schedule post' };
+        const button = dialog.querySelector(`[data-testid="${tool}"]`) ||
+          (modernTools[tool] && [...dialog.querySelectorAll('button[aria-label]')].find(node => node.getAttribute('aria-label') === modernTools[tool]));
         if (button && !button.disabled && button.getAttribute("aria-disabled") !== "true") button.click();
         else showToast(getLocale() === "zh" ? "X 当前回复框未开放这个工具，草稿已保留" : "X does not offer this tool for the current reply. Your draft is retained.");
       }
@@ -2481,7 +2505,7 @@
   // ==========================================================================
   function setReplyTarget(model) {
     if (!model) return;
-    if (document.querySelector('#layers [role="dialog"] [data-testid="tweetTextarea_0"]')) {
+    if (nativeReplyEditors().length) {
       showToast(t("nativeDraftAlreadyOpen"));
       return;
     }
@@ -2974,6 +2998,15 @@
   // ==========================================================================
   // Action Handlers (Like, Repost, Bookmark, Share, More)
   // ==========================================================================
+  function nativeActionButton(article, action) {
+    const selectors = {
+      like: '[data-testid="like"], [data-testid="unlike"], [data-engagement-action="like"] button',
+      bookmark: '[data-testid="bookmark"], [data-testid="removeBookmark"], [data-engagement-action="bookmark"] button',
+      repost: '[data-testid="retweet"], [data-testid="unretweet"], [data-engagement-action="retweet"] button'
+    };
+    return selectors[action] ? article?.querySelector(selectors[action]) : null;
+  }
+
   function updateActionButtons(model, item) {
     for (const [action, flag, count] of [["like", "liked", "likes"], ["repost", "reposted", "reposts"], ["bookmark", "bookmarked", "bookmarks"]]) {
       const button = item.querySelector(`.sidepeek-act-${action}`);
@@ -2991,9 +3024,7 @@
     const key = `${model.id}:${action}`;
     if (pendingActions.has(key)) return;
     const nativeArticle = findDetailFocalArticle(model.id);
-    const nativeSelector = action === "like" ? '[data-testid="like"], [data-testid="unlike"]'
-      : action === "bookmark" ? '[data-testid="bookmark"], [data-testid="removeBookmark"]' : null;
-    const nativeButton = nativeSelector && nativeArticle?.querySelector(nativeSelector);
+    const nativeButton = action === "like" || action === "bookmark" ? nativeActionButton(nativeArticle, action) : null;
     if (nativeButton) {
       watchNativeActions(model, nativeArticle);
       if (!nativeButton.disabled) nativeButton.click();
@@ -3031,9 +3062,9 @@
         ["liked", "likes", "like", "unlike"], ["bookmarked", "bookmarks", "bookmark", "removeBookmark"],
         ["reposted", "reposts", "retweet", "unretweet"]
       ]) {
-        const button = article.querySelector(`[data-testid="${off}"], [data-testid="${on}"]`);
+        const button = nativeActionButton(article, off === "retweet" ? "repost" : off);
         if (!button) continue;
-        const active = button.dataset.testid === on;
+        const active = button.hasAttribute('aria-pressed') ? button.getAttribute('aria-pressed') === 'true' : button.dataset.testid === on;
         const aria = (button.getAttribute("aria-label") || "").replace(/[,\s]/g, "");
         const ariaCount = aria.match(/^(\d+)(?![\d.KM万千亿])/i)?.[1];
         const label = ariaCount || button.textContent.replace(/[,\s]/g, "");
@@ -3045,7 +3076,7 @@
       if (node) updateActionButtons(current, node);
     };
     const observer = new MutationObserver(sync);
-    observer.observe(article, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-testid"], characterData: true });
+    observer.observe(article, { subtree: true, childList: true, attributes: true, attributeFilter: ["data-testid", "aria-pressed", "aria-label"], characterData: true });
     nativeActionObservers.set(model.id, observer);
     nativeActionArticles.set(model.id, article);
     sync();
@@ -3365,7 +3396,7 @@
       if (new URL(link.href).pathname.toLowerCase() === `/${handle}`) restore();
     };
     const observer = new MutationObserver(() => {
-      const identity = card.querySelector('[data-testid="HoverCard"] a[href]');
+      const identity = card.querySelector('[data-testid="HoverCard"] a[href], a[href]');
       if (!card.isConnected || (identity && new URL(identity.href).pathname.toLowerCase() !== `/${handle}`)) restore();
     });
     nativeHoverRetirements.set(card, restore);
@@ -3381,7 +3412,9 @@
       if (link.closest('#layers, #sidepeek-drawer-root')) return false;
       try { return new URL(link.href).pathname.toLowerCase() === `/${handle}`; } catch { return false; }
     });
-    const layers = document.getElementById("layers");
+    const modern = Boolean(document.querySelector('main article[class~="group/post"]'));
+    if (modern) source = null;
+    const layers = document.getElementById("layers") || (modern ? document.body : null);
     if (!layers || typeof HTMLElement.prototype.showPopover !== "function") return false;
     let prepared = false;
     const releaseSource = () => {
@@ -3436,14 +3469,15 @@
           parent.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body }));
         }
         source.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body }));
+        if (modern && typeof PointerEvent === 'function') source.dispatchEvent(new PointerEvent('pointerout', { bubbles: true, pointerType: 'mouse', relatedTarget: document.body }));
         releaseSource();
         finish(false);
       };
       const attach = () => {
         if (generation !== hoverCardGeneration || !triggerEl.isConnected) { cleanup(); return; }
         // X can retain the previous card while its closing animation finishes.
-        const candidate = [...layers.querySelectorAll('[data-testid="hoverCardParent"]')].find(card => {
-          const identityLink = card.querySelector('[data-testid="HoverCard"] a[href]');
+        const candidate = [...layers.querySelectorAll('[data-testid="hoverCardParent"], [data-base-ui-portal] [data-base-ui-focusable][data-side]:not([role])')].find(card => {
+          const identityLink = card.querySelector('[data-testid="HoverCard"] a[href], a[href]');
           return identityLink && new URL(identityLink.href).pathname.toLowerCase() === `/${handle}`;
         });
         if (!candidate) return;
@@ -3468,6 +3502,7 @@
       nativeHoverCleanup = cleanup;
       observer.observe(layers, { childList: true, subtree: true });
       timer = setTimeout(cleanup, 1500);
+      if (modern && typeof PointerEvent === 'function') source.dispatchEvent(new PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse', relatedTarget: document.body }));
       source.dispatchEvent(new MouseEvent("mouseover", { bubbles: true, relatedTarget: document.body }));
       attach();
     });
@@ -4188,19 +4223,28 @@
 
   function findDetailFocalArticle(tweetId) {
     if (!tweetId) return null;
-    return [...document.querySelectorAll('article[data-testid="tweet"]')].find(article => {
-      const timeLink = [...article.querySelectorAll('time')].map(time => time.closest('a[href*="/status/"]')).find(Boolean);
-      return timeLink && Core.postIdFromUrl(timeLink.href) === String(tweetId);
-    }) || null;
+    return [...document.querySelectorAll(NATIVE_POST_SELECTOR)].find(article =>
+      !article.closest(`#${ROOT_ID}`) && Core.postIdFromUrl(nativePostUrl(article)) === String(tweetId)) || null;
   }
 
   function findPinnedFocalArticle(tweetId) {
     if (!tweetId) return null;
-    return [...document.querySelectorAll('article[data-testid="tweet"]')].find(article => {
-      if (article.closest(`#${ROOT_ID}`)) return false;
-      const timeLink = [...article.querySelectorAll('time')].map(time => time.closest('a[href*="/status/"]')).find(Boolean);
-      return timeLink && Core.postIdFromUrl(timeLink.href) === String(tweetId);
-    }) || null;
+    return findDetailFocalArticle(tweetId);
+  }
+
+  function nativePostUrl(article) {
+    if (!article) return null;
+    const rowUrl = article.closest('[data-navigation-stop][data-href]')?.getAttribute('data-href');
+    if (Core.postIdFromUrl(rowUrl)) return rowUrl;
+    const timeUrl = article.querySelector('time')?.closest('a[href*="/status/"]')?.getAttribute('href');
+    if (timeUrl) return timeUrl;
+    const ownLinks = [...article.querySelectorAll('a[href*="/status/"]')].filter(link => {
+      const quote = link.closest('[role="link"][data-href]');
+      return !quote || !article.contains(quote);
+    });
+    const timestamp = ownLinks.find(link => link.hasAttribute('data-base-ui-tooltip-trigger'));
+    const profile = article.querySelector('[data-post-avatar] a[href]')?.getAttribute('href');
+    return timestamp?.getAttribute('href') || Core.selectOwnPostUrl(ownLinks.map(link => link.getAttribute('href')), profile, location.href);
   }
 
   function syncPinnedFocalHighlight() {
@@ -4223,7 +4267,7 @@
   function expandFocalShowMore(tweetId) {
     let focalArticle = findDetailFocalArticle(tweetId);
     if (focalArticle) {
-      const showMore = focalArticle.querySelector?.('[data-testid="tweet-text-show-more-link"]');
+      const showMore = nativeShowMore(focalArticle);
       if (showMore) showMore.click();
       return;
     }
@@ -4233,7 +4277,7 @@
       const article = findDetailFocalArticle(tweetId);
       if (article) {
         clearInterval(retryTimer);
-        const showMore = article.querySelector?.('[data-testid="tweet-text-show-more-link"]');
+        const showMore = nativeShowMore(article);
         if (showMore) showMore.click();
       } else if (retries >= 15) {
         clearInterval(retryTimer);
@@ -4246,7 +4290,7 @@
     if (syncPhotoViewer()) return;
     // Pickers such as GIF search temporarily use /i/foundmedia/search. They
     // are overlays on the current post, not navigation away from its thread.
-    if (nativeReplyOpening || document.querySelector('#layers [role="dialog"]')) return;
+    if (nativeReplyOpening || nativeQuoteOpening || document.querySelector('#layers [role="dialog"], [data-base-ui-portal] [role="dialog"]')) return;
     if (!isSideXEnabled) return;
     if (state.isResizing) return;
     const currentUrl = location.href;
@@ -4387,7 +4431,7 @@
     state.focalArticle?.classList.add("sidepeek-focal-active");
 
     // 2. Expand "Show more" on focal tweet automatically
-    const showMoreBtn = articleNode?.querySelector?.('[data-testid="tweet-text-show-more-link"]');
+    const showMoreBtn = nativeShowMore(articleNode);
     if (showMoreBtn) {
       showMoreBtn.click();
     }
@@ -4434,6 +4478,13 @@
     renderDrawer();
   }
 
+  function nativeShowMore(article) {
+    return [...(article?.querySelectorAll('[data-testid="tweet-text-show-more-link"], [dir="auto"] button') || [])]
+      .find(button => button.closest('article') === article &&
+        !button.closest('[data-testid="quoteTweet"], [data-testid="tweet-quote"]') &&
+        (button.matches('[data-testid="tweet-text-show-more-link"]') || /^(?:show more|显示更多|顯示更多)$/i.test(button.textContent.trim())));
+  }
+
   /**
    * 精确判断点击位置是否应放行原生交互行为（原生跳转、按钮点击、卡片导航等）
    * 判定规则：
@@ -4445,6 +4496,12 @@
    */
   function shouldSkipClick(target, article) {
     if (!target) return false;
+    // x-web wraps the entire post (including its padding) in role=link.
+    // Only interactive descendants are separate native actions.
+    const inside = selector => {
+      const node = target.closest(selector);
+      return node && node !== article && article.contains(node);
+    };
 
     // 1. 基础交互控件：按钮、表单输入、音视频、操作栏（点赞/转推/回复/书签/菜单/全文展开等）
     if (
@@ -4469,7 +4526,7 @@
     }
 
     // 2. 超链接与链接角色容器（头像、用户名、@提及、#话题、时间戳、卡片等）
-    if (target.closest("a[href]") || target.closest('[role="link"]')) {
+    if (inside("a[href]") || inside('[role="link"]') || inside('[data-engagement-action]')) {
       return true;
     }
 
@@ -4501,7 +4558,7 @@
 
     // 5. 向上遍历检查是否位于包含 "𝕏 Article" / "Article" 徽章的独立卡片组件内部
     let parent = target.parentElement;
-    while (parent && parent !== article) {
+    while (parent && parent !== article && article.contains(parent)) {
       if (parent.tagName === "ARTICLE" || parent.getAttribute?.("data-testid") === "tweet") {
         break;
       }
@@ -4519,9 +4576,9 @@
 
   function getArticleReplyCount(article) {
     if (!article) return 0;
-    const replyBtn = article.querySelector('[data-testid="reply"]');
+    const replyBtn = article.querySelector('[data-testid="reply"], [data-engagement-action="reply"] a');
     if (!replyBtn) return 0;
-    const text = replyBtn.textContent?.trim() || "";
+    const text = replyBtn.textContent?.trim() || replyBtn.getAttribute('aria-label') || "";
     if (!text) return 0;
     if (/k/i.test(text)) {
       const m = text.match(/([\d.]+)/);
@@ -4544,7 +4601,7 @@
     if (!settingsLoaded) return;
     if (state.isResizing) return;
     if (event.target.closest?.('[data-sidex-native-reply-link]')) return;
-    if (event.target.closest?.("#layers, [data-sidex-native-share], [data-sidex-native-more], #sidepeek-user-hovercard, .sidepeek-more-menu, .sidepeek-repost-menu")) return;
+    if (event.target.closest?.("#layers, [data-base-ui-portal], [data-sidex-native-share], [data-sidex-native-more], #sidepeek-user-hovercard, .sidepeek-more-menu, .sidepeek-repost-menu")) return;
     if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
 
     // If clicked inside our drawer or lightbox, don't handle as timeline click
@@ -4554,7 +4611,8 @@
     const lightbox = document.getElementById("sidepeek-lightbox");
     if (lightbox && lightbox.contains(event.target)) return;
 
-    const article = event.target.closest?.('article[data-testid="tweet"]');
+    const article = event.target.closest?.(NATIVE_POST_SELECTOR) ||
+      event.target.closest?.('main [data-navigation-stop][data-href]')?.querySelector(NATIVE_POST_SELECTOR);
     if (!article) {
       // Clicked blank space outside drawer -> close drawer
       if (state.open && drawer && !drawer.contains(event.target) && !isPinProtectionActive()) {
@@ -4575,10 +4633,7 @@
 
     // Find tweet URL & ID
     // 优先从推文顶部的第一条时间链接提取自身 ID，避免受内嵌引用推文的 status 链接干扰
-    const firstTimeAnchor = article.querySelector('time')?.closest('a[href*="/status/"]');
-    const firstStatusUrl = firstTimeAnchor ? firstTimeAnchor.getAttribute("href") : null;
-    const hrefs = [...article.querySelectorAll('a[href*="/status/"]')].map(a => a.getAttribute("href"));
-    const ownUrl = firstStatusUrl || Core.selectOwnPostUrl(hrefs, null, location.href);
+    const ownUrl = nativePostUrl(article);
     const tweetId = ownUrl ? Core.postIdFromUrl(ownUrl) : null;
 
     if (!tweetId) return;
@@ -4628,7 +4683,8 @@
     const relevantRecords = records.filter(record => {
       if (record.target.closest?.(`#${ROOT_ID}, #sidepeek-user-hovercard`)) return false;
       if (record.type === "attributes") {
-        return record.attributeName === "href" && Boolean(record.target.closest?.('article[data-testid="tweet"]'));
+        return (record.attributeName === "href" || record.attributeName === "data-href") &&
+          Boolean(record.target.closest?.(NATIVE_POST_SELECTOR) || record.target.matches?.('[data-navigation-stop]'));
       }
       return true;
     });
@@ -4651,7 +4707,7 @@
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ["href"]
+    attributeFilter: ["href", "data-href"]
   });
 
   let pinnedThemeSyncScheduled = false;
@@ -4673,7 +4729,7 @@
     if (!isSideXEnabled) return;
     if (event.key === "Escape") {
       if (nativeHoverCleanup) { hideUserHoverCard(); return; }
-      if (document.querySelector('#layers [role="dialog"], #layers [role="menu"]') ||
+      if (document.querySelector('#layers [role="dialog"], #layers [role="menu"], [data-base-ui-portal] [role="dialog"], [data-base-ui-portal] [role="menu"]') ||
           [...document.querySelectorAll('#layers [data-testid="GrokDrawer"], #layers [data-testid="chat-drawer-root"], #layers [data-testid="DMDrawer"]')]
             .some(panel => panel.getBoundingClientRect().height > 80)) return;
       const lightbox = document.getElementById("sidepeek-lightbox");
@@ -4709,10 +4765,10 @@
     if (activeRepostMenu && !activeRepostMenu.contains(e.target) && (!activeRepostBtn || !activeRepostBtn.contains(e.target))) {
       closeRepostMenu();
     }
-    if (activeMoreBtn && !activeMoreBtn.contains(e.target) && !e.target.closest?.("#layers, [data-sidex-native-more]")) {
+    if (activeMoreBtn && !activeMoreBtn.contains(e.target) && !e.target.closest?.("#layers, [data-base-ui-portal], [data-sidex-native-more]")) {
       closeMoreMenu();
     }
-    if (activeShareBtn && !activeShareBtn.contains(e.target) && !e.target.closest?.("#layers, [data-sidex-native-share], [data-sidex-native-more]")) {
+    if (activeShareBtn && !activeShareBtn.contains(e.target) && !e.target.closest?.("#layers, [data-base-ui-portal], [data-sidex-native-share], [data-sidex-native-more]")) {
       closeShareMenu();
     }
   }, true);

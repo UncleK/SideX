@@ -231,6 +231,21 @@ test('the counter uses URL weights and Unicode emoji sequences from twitter-text
   assert.equal(p.query('.sidepeek-footer-submit-btn').disabled, true);
 });
 
+for (const [locale, labels] of [['zh', ['常用', '手势', '反应']], ['en', ['Frequent', 'Gestures', 'Reactions']]]) {
+  test(`emoji category labels resolve nested translations in ${locale} and category switching retains the draft`, async t => {
+    const p = createPage({ settings: { sidex_lang: locale } }); t.after(() => p.w.close());
+    await tick(); p.clickPost(0); await tick();
+    const input = p.query('.sidepeek-footer-textarea');
+    input.value = 'Retain my draft'; input.dispatchEvent(new p.w.Event('input', { bubbles: true }));
+    p.query('.sidepeek-tool-emoji').click();
+    assert.deepEqual([...p.w.document.querySelectorAll('.sidepeek-popover-tab')].map(button => button.textContent.trim()), labels);
+    p.w.document.querySelectorAll('.sidepeek-popover-tab')[1].click();
+    assert.equal(p.query('.sidepeek-footer-textarea').value, 'Retain my draft');
+    assert.equal(p.query('.sidepeek-popover-tab.active').textContent.trim(), labels[1]);
+    assert.equal(p.calls.some(message => message.type === 'CREATE_REPLY'), false);
+  });
+}
+
 test('quick reply retains all seven toolbar entries and working local image and emoji controls', async t => {
   const p = createPage(); t.after(() => p.w.close());
   await tick(); p.clickPost(0); await tick();

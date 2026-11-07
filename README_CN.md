@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/badge/Chrome_Web_Store-官方商店上架-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Chrome Web Store" />
     </a>
     <img src="https://img.shields.io/badge/Manifest-V3-blue?style=flat-square" alt="Manifest V3" />
-    <img src="https://img.shields.io/badge/Version-1.1.35-00b4f8?style=flat-square" alt="Version 1.1.35" />
+    <img src="https://img.shields.io/badge/Version-1.1.38-00b4f8?style=flat-square" alt="Version 1.1.38" />
     <img src="https://img.shields.io/badge/Browser-Chrome%20%7C%20Edge%20%7C%20Brave-success?style=flat-square" alt="Supported Browsers" />
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
   </p>
@@ -100,6 +100,8 @@ SideX 是一款完全开源、用于提升个人阅读效率的第三方辅助�
 ---
 
 ## 开发与验证
+
+1.1.38 适配 X 新版 x-web，恢复原位开栏、评论数据和原生交互入口，修复资料卡透明、图片侧栏反复切换、主帖高亮及表情分类文案。273 项回归通过；核心实装与拦截发送的结果及未覆盖范围见 [QA 矩阵](docs/QA_20261108.md)。详见[中英文更新说明](docs/releases/v1.1.38.md)和[合并商店说明](docs/STORE_LISTING.md)。
 
 1.1.35 修复发送成功后仍保持回复某人的问题，并为回复正文中的 @用户恢复 X 原生资料卡，支持主信息流中没有的用户。发送失败保留文字与对象，迟到回执不覆盖新草稿。全部 230 项回归通过；已在重新加载的实际本地扩展中验证，发送回执使用本地模拟，未向 X 发布测试回复。详见[中英文更新说明](docs/releases/v1.1.35.md)和[合并商店说明](docs/STORE_LISTING.md)。
 

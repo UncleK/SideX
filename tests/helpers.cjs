@@ -27,7 +27,7 @@ const html = `<!doctype html><html lang="zh"><body><main data-testid="primaryCol
   <article data-testid="tweet"><a href="/reader/status/200"><time>Today</time></a><div data-testid="tweetText">Post B</div></article>
   </main><div data-testid="sidebarColumn"></div></body></html>`;
 
-function createPage({ request, settings = {}, setupWindow } = {}) {
+function createPage({ request, settings = {}, setupWindow, contentSource } = {}) {
   const dom = new JSDOM(html, { url: 'https://x.com/home', runScripts: 'outside-only', pretendToBeVisual: true });
   const w = dom.window;
   const calls = [];
@@ -51,7 +51,7 @@ function createPage({ request, settings = {}, setupWindow } = {}) {
   setupWindow?.(w);
   w.eval(source('vendor/twitter-text.js'));
   w.eval(source('core.js'));
-  w.eval(source('content.js'));
+  w.eval(contentSource ?? source('content.js'));
   return { dom, w, calls, change: changes => changeListener(changes),
     clickPost: index => w.document.querySelectorAll('[data-testid="tweetText"]')[index].click(),
     query: selector => w.document.querySelector(selector) };

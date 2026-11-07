@@ -1,0 +1,369 @@
+{
+  "source": "https://x.com/fxmqs/status/2119005016740741146",
+  "observedAt": "2026-11-08",
+  "data": [
+    {
+      "tweet_results": {
+        "result": {
+          "__typename": "Tweet",
+          "rest_id": "2119005016740741146",
+          "core": {
+            "user_results": {
+              "result": {
+                "__typename": "User",
+                "rest_id": "2345989454",
+                "core": {
+                  "name": "风雪漫千山",
+                  "screen_name": "fxmqs"
+                },
+                "avatar": {
+                  "image_url": "https://pbs.twimg.com/profile_images/2054900209965273088/RsQ_Eywo_normal.jpg"
+                }
+              }
+            }
+          },
+          "legacy": {
+            "conversation_id_str": "2119005016740741146",
+            "entities": {
+              "media": [
+                {
+                  "expanded_url": "https://x.com/fxmqs/status/2119005016740741146/video/1"
+                }
+              ]
+            },
+            "lang": "zh",
+            "possibly_sensitive": false
+          },
+          "details": {
+            "cashtag_entities": [],
+            "created_at_ms": 1794045139000,
+            "display_text_range": [
+              0,
+              38
+            ],
+            "full_text": "gpt 的 dots 不知道干啥，\n\n烧点 SVG 动画吧，这个效果可还行？ https://t.co/DspPIAklwL",
+            "hashtag_entities": [],
+            "smarttags": []
+          },
+          "counts": {
+            "bookmark_count": 0,
+            "favorite_count": 4,
+            "quote_count": 0,
+            "reply_count": 3,
+            "retweet_count": 0
+          },
+          "perspective": {
+            "favorited": false,
+            "retweeted": false
+          },
+          "media_entities2": [
+            {
+              "additional_media_info": {
+                "monetizable": false
+              },
+              "allow_download_status": {
+                "allow_download": true
+              },
+              "expanded_url": "https://x.com/fxmqs/status/2119005016740741146/video/1",
+              "ext_media_availability": {
+                "status": "Available"
+              },
+              "ext_playlists": [],
+              "id_str": "2119004958762938368",
+              "indices": [
+                39,
+                62
+              ],
+              "media_url_https": "https://pbs.twimg.com/amplify_video_thumb/2119004958762938368/img/fJ263xHHEFEJZzD8.jpg",
+              "original_info": {
+                "height": 960,
+                "width": 960
+              },
+              "type": "video",
+              "video_info": {
+                "duration_millis": 15000,
+                "variants": [
+                  {
+                    "content_type": "application/x-mpegURL",
+                    "url": "https://video.twimg.com/amplify_video/2119004958762938368/pl/4hYC-A7wZ8GeblkU.m3u8?tag=29"
+                  },
+                  {
+                    "bitrate": 432000,
+                    "content_type": "video/mp4",
+                    "url": "https://video.twimg.com/amplify_video/2119004958762938368/vid/avc1/320x320/izm39y8SExtLolGB.mp4?tag=29"
+                  },
+                  {
+                    "bitrate": 832000,
+                    "content_type": "video/mp4",
+                    "url": "https://video.twimg.com/amplify_video/2119004958762938368/vid/avc1/540x540/okT7uYwyR3ZwXH3p.mp4?tag=29"
+                  },
+                  {
+                    "bitrate": 1280000,
+                    "content_type": "video/mp4",
+                    "url": "https://video.twimg.com/amplify_video/2119004958762938368/vid/avc1/720x720/TrWfVEeVHb2nsf04.mp4?tag=29"
+                  },
+                  {
+                    "bitrate": 8768000,
+                    "content_type": "video/mp4",
+                    "url": "https://video.twimg.com/amplify_video/2119004958762938368/vid/avc1/960x960/JErIRtuOW-HbL6QK.mp4?tag=29"
+                  }
+                ]
+              }
+            }
+          ],
+          "mention_entities": [],
+          "url_entities": [],
+          "views": {
+            "count": "168"
+          }
+        }
+      }
+    },
+    {
+      "tweet_results": {
+        "result": {
+          "__typename": "Tweet",
+          "rest_id": "2119037271546663266",
+          "core": {
+            "user_results": {
+              "result": {
+                "__typename": "User",
+                "rest_id": "1931289993663930369",
+                "core": {
+                  "name": "Ostep",
+                  "screen_name": "Onestep3sid"
+                },
+                "avatar": {
+                  "image_url": "https://pbs.twimg.com/profile_images/2067540033440243712/eGBjfXUn_normal.jpg"
+                }
+              }
+            }
+          },
+          "legacy": {
+            "conversation_id_str": "2119005016740741146",
+            "entities": {},
+            "lang": "zh"
+          },
+          "details": {
+            "cashtag_entities": [],
+            "created_at_ms": 1794052830000,
+            "display_text_range": [
+              7,
+              56
+            ],
+            "full_text": "@fxmqs SVG 动画是最诚实的一种测试：它跑不成视频，也没法靠「大概对」蒙过去。错一个坐标你一眼就能看见。",
+            "hashtag_entities": [],
+            "smarttags": []
+          },
+          "counts": {
+            "bookmark_count": 0,
+            "favorite_count": 1,
+            "quote_count": 0,
+            "reply_count": 0,
+            "retweet_count": 0
+          },
+          "perspective": {
+            "favorited": false,
+            "retweeted": false
+          },
+          "reply_to_results": {
+            "__typename": "TweetResults",
+            "id": "VHdlZXRSZXN1bHRzOjIxMTkwMDUwMTY3NDA3NDExNDY=",
+            "rest_id": "2119005016740741146"
+          },
+          "reply_to_user_results": {
+            "id": "VXNlclJlc3VsdHM6MjM0NTk4OTQ1NA==",
+            "rest_id": "2345989454",
+            "result": {
+              "__typename": "User",
+              "core": {
+                "screen_name": "fxmqs"
+              },
+              "id": "VXNlcjoyMzQ1OTg5NDU0",
+              "rest_id": "2345989454"
+            }
+          },
+          "media_entities2": [],
+          "mention_entities": [
+            {
+              "id_str": "2345989454",
+              "indices": [
+                0,
+                6
+              ],
+              "screen_name": "fxmqs"
+            }
+          ],
+          "url_entities": [],
+          "views": {
+            "count": "16"
+          }
+        }
+      }
+    },
+    {
+      "tweet_results": {
+        "result": {
+          "__typename": "Tweet",
+          "rest_id": "2119049251233866006",
+          "core": {
+            "user_results": {
+              "result": {
+                "__typename": "User",
+                "rest_id": "1029534461858340864",
+                "core": {
+                  "name": "Code Trainer | 代码训练师",
+                  "screen_name": "TrainCodeMan"
+                },
+                "avatar": {
+                  "image_url": "https://pbs.twimg.com/profile_images/2110570783399669760/9RwVTyv-_normal.jpg"
+                }
+              }
+            }
+          },
+          "legacy": {
+            "conversation_id_str": "2119005016740741146",
+            "entities": {},
+            "lang": "zh"
+          },
+          "details": {
+            "cashtag_entities": [],
+            "created_at_ms": 1794055686000,
+            "display_text_range": [
+              7,
+              16
+            ],
+            "full_text": "@fxmqs 这种动画挺抓眼球的",
+            "hashtag_entities": [],
+            "smarttags": []
+          },
+          "counts": {
+            "bookmark_count": 0,
+            "favorite_count": 0,
+            "quote_count": 0,
+            "reply_count": 0,
+            "retweet_count": 0
+          },
+          "perspective": {
+            "favorited": false,
+            "retweeted": false
+          },
+          "reply_to_results": {
+            "__typename": "TweetResults",
+            "id": "VHdlZXRSZXN1bHRzOjIxMTkwMDUwMTY3NDA3NDExNDY=",
+            "rest_id": "2119005016740741146"
+          },
+          "reply_to_user_results": {
+            "id": "VXNlclJlc3VsdHM6MjM0NTk4OTQ1NA==",
+            "rest_id": "2345989454",
+            "result": {
+              "__typename": "User",
+              "core": {
+                "screen_name": "fxmqs"
+              },
+              "id": "VXNlcjoyMzQ1OTg5NDU0",
+              "rest_id": "2345989454"
+            }
+          },
+          "media_entities2": [],
+          "mention_entities": [
+            {
+              "id_str": "2345989454",
+              "indices": [
+                0,
+                6
+              ],
+              "screen_name": "fxmqs"
+            }
+          ],
+          "url_entities": [],
+          "views": {
+            "count": "5"
+          }
+        }
+      }
+    },
+    {
+      "tweet_results": {
+        "result": {
+          "__typename": "Tweet",
+          "rest_id": "2119093834353406015",
+          "core": {
+            "user_results": {
+              "result": {
+                "__typename": "User",
+                "rest_id": "1454322584871325697",
+                "core": {
+                  "name": "cyberkk",
+                  "screen_name": "krienknight"
+                },
+                "avatar": {
+                  "image_url": "https://pbs.twimg.com/profile_images/2065077377785577472/OPNI9LBa_normal.jpg"
+                }
+              }
+            }
+          },
+          "legacy": {
+            "conversation_id_str": "2119005016740741146",
+            "entities": {},
+            "lang": "zh"
+          },
+          "details": {
+            "cashtag_entities": [],
+            "created_at_ms": 1794066315000,
+            "display_text_range": [
+              7,
+              15
+            ],
+            "full_text": "@fxmqs 看来用不完额度呀",
+            "hashtag_entities": [],
+            "smarttags": []
+          },
+          "counts": {
+            "bookmark_count": 0,
+            "favorite_count": 0,
+            "quote_count": 0,
+            "reply_count": 0,
+            "retweet_count": 0
+          },
+          "perspective": {
+            "favorited": false,
+            "retweeted": false
+          },
+          "reply_to_results": {
+            "__typename": "TweetResults",
+            "id": "VHdlZXRSZXN1bHRzOjIxMTkwMDUwMTY3NDA3NDExNDY=",
+            "rest_id": "2119005016740741146"
+          },
+          "reply_to_user_results": {
+            "id": "VXNlclJlc3VsdHM6MjM0NTk4OTQ1NA==",
+            "rest_id": "2345989454",
+            "result": {
+              "__typename": "User",
+              "core": {
+                "screen_name": "fxmqs"
+              },
+              "id": "VXNlcjoyMzQ1OTg5NDU0",
+              "rest_id": "2345989454"
+            }
+          },
+          "media_entities2": [],
+          "mention_entities": [
+            {
+              "id_str": "2345989454",
+              "indices": [
+                0,
+                6
+              ],
+              "screen_name": "fxmqs"
+            }
+          ],
+          "url_entities": [],
+          "views": {
+            "count": "3"
+          }
+        }
+      }
+    }
+  ]
+}

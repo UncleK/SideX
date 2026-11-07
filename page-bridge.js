@@ -32,6 +32,42 @@
   const observedThreadCache = new Map();
   const observedCursorScopes = new Map();
   const OBSERVED_THREAD_TTL = 5 * 60 * 1000;
+  // Read-only compatibility for x-web's Relay client (observed 2026-11-08).
+  // Native observations always take precedence. The Vite client has no
+  // Webpack registry to discover an unvisited TweetDetail operation from.
+  const X_WEB_TWEET_DETAIL = {
+    queryId: "L4cB5UHNoH3-RjFtwlfluw",
+    operationName: "TweetDetail",
+    modern: true,
+    variables: {
+      cursor: null, rankingMode: null, referrer: null, withFocalTweet: true,
+      __relay_internal__pv__xclientsfeaturesappviewerisloggedinrelayprovider: true,
+      __relay_internal__pv__xclientsfeaturestranslationgroktranslatedpostenabledrelayprovider: false,
+      __relay_internal__pv__postctafetchenabledrelayprovider: false,
+      __relay_internal__pv__xclientsfeaturestweetcomponentsgrokanalyzepostrelayprovider: false,
+      __relay_internal__pv__xclientsfeaturestranslationnoteautotranslationenabledrelayprovider: false,
+      __relay_internal__pv__liveeventpostcontextenabledrelayprovider: false,
+      __relay_internal__pv__sportspostcontextenabledrelayprovider: false
+    }
+  };
+  // Persisted-operation data from X's current Relay artifacts. These are
+  // parameters, never downloaded executable code; native observations win.
+  const X_WEB_OPERATIONS = {
+    TweetDetail: X_WEB_TWEET_DETAIL,
+    UserByScreenName: { queryId: '8UhuvB9RJovmX8e5Qu2tNg', operationName: 'UserByScreenName' },
+    CreateTweet: { queryId: 'oYN2wNon5cYp3VrfXrwImw', operationName: 'CreateTweet' },
+    CreateNoteTweet: { queryId: '_cIwQ6XY_C81R09ZGyWc-Q', operationName: 'createTweetNoteTweetMutation' },
+    FavoriteTweet: { queryId: 'gWHQmsY1Atd_XuOoMR2v5A', operationName: 'FavoriteTweet' },
+    UnfavoriteTweet: { queryId: 'jd_5MSDRzKH4MJ3c4BmrqQ', operationName: 'likeButtonControlUnfavoriteMutation' },
+    CreateBookmark: { queryId: '9559L3Eb62SZndMSVHIeNw', operationName: 'BookmarkAdd' },
+    DeleteBookmark: { queryId: 'jTTS9lZmxUq-eYwmY8pHiA', operationName: 'BookmarkDelete' },
+    CreateRetweet: { queryId: 'lBRHQaQKWQwF0eaGzH209w', operationName: 'CreateRetweet' },
+    DeleteRetweet: { queryId: 'TSIYEnua4u_yleM5nrWzFw', operationName: 'retweetButtonUnretweetMutation' }
+  };
+
+  function isXWebClient() {
+    return Boolean(document.querySelector('script[src*="abs.twimg.com/x-web/"], main article[class~="group/post"]'));
+  }
   let webpackRuntime = null;
   let transactionIdFunction = null;
 
@@ -75,6 +111,7 @@
     if (!match) return;
     const queryId = match[1];
     const operationName = match[2];
+    if (operationCache.get(operationName)?.queryId !== queryId) operationCache.delete(operationName);
     captured.queryIds.set(operationName, queryId);
     captured.templates.set(operationName, {
       url,
@@ -243,6 +280,9 @@
   }
 
   function findOperation(operationName) {
+    const modern = isXWebClient() && X_WEB_OPERATIONS[operationName];
+    if (modern) return { ...modern, modern: true,
+      queryId: captured.queryIds.get(modern.operationName) || modern.queryId };
     const cached = operationCache.get(operationName);
     if (cached) return cached;
     const runtime = getWebpackRuntime();
@@ -379,11 +419,27 @@
   async function graphql(operationName, variables, method = "POST", signal) {
     const operation = findOperation(operationName);
     if (!operation) throw new Error(`当前页面尚未加载 ${operationName} 操作，请刷新页面后重试`);
-    const path = `/i/api/graphql/${operation.queryId}/${operationName}`;
+    const transportName = operation.operationName || operationName;
+    const template = captured.templates.get(transportName) || captured.templates.get(operationName);
+    const templateUrl = template ? new URL(template.url, location.origin) : null;
+    const modern = operation.modern || (templateUrl?.hostname === "api.x.com" && templateUrl.pathname.startsWith('/graphql/'));
+    const path = `${modern ? '/graphql' : '/i/api/graphql'}/${operation.queryId}/${transportName}`;
+    const endpoint = new URL(path, modern ? 'https://api.x.com' : location.origin);
+    if (modern && operationName === "TweetDetail") {
+      let observed = {};
+      try { observed = JSON.parse(templateUrl?.searchParams.get('variables') || template?.body || '{}');
+        if (observed.variables) observed = observed.variables;
+      } catch {}
+      variables = { ...X_WEB_TWEET_DETAIL.variables, ...observed, focalTweetId: variables.focalTweetId, cursor: variables.cursor || null };
+    }
+    if (modern && method === 'POST') {
+      const json = await executeXWebMutation(operation, variables);
+      if (json?.errors?.length || !json?.data) throw new Error(json?.errors?.[0]?.message || 'X 未返回操作确认，请在 X 核对状态');
+      return json;
+    }
     let features = toggleMap(operation.metadata?.featureSwitches);
     let fieldToggles = toggleMap(operation.metadata?.fieldToggles);
     // Preserve switches observed on the official client instead of enabling all of them.
-    const template = captured.templates.get(operationName);
     if (template) {
       try {
         const params = new URL(template.url, location.origin).searchParams;
@@ -395,13 +451,15 @@
     const headers = await requestHeaders(path, method, method === "POST");
     let response;
     if (method === "GET") {
-      const url = new URL(path, location.origin);
+      const url = endpoint;
       url.searchParams.set("variables", JSON.stringify(variables));
-      url.searchParams.set("features", JSON.stringify(features));
-      url.searchParams.set("fieldToggles", JSON.stringify(fieldToggles));
+      if (!modern) {
+        url.searchParams.set("features", JSON.stringify(features));
+        url.searchParams.set("fieldToggles", JSON.stringify(fieldToggles));
+      }
       response = await nativeFetch(url.toString(), { method, headers, credentials: "include", cache: "no-store", signal });
     } else {
-      response = await nativeFetch(path, {
+      response = await nativeFetch(endpoint.toString(), {
         method,
         headers,
         credentials: "include",
@@ -415,6 +473,41 @@
       throw new Error(message);
     }
     return json;
+  }
+
+  function nativeRelayEnvironment() {
+    for (const link of document.querySelectorAll('a[href="/compose/post"], a[href="/compose/tweet"]')) {
+      const key = Object.keys(link).find(name => name.startsWith('__reactFiber$'));
+      for (let fiber = key && link[key], depth = 0; fiber && depth < 800; fiber = fiber.return, depth++) {
+        const environment = fiber.memoizedProps?.value?.environment;
+        if (typeof environment?.getNetwork === 'function') return environment;
+      }
+    }
+    return null;
+  }
+
+  function executeXWebMutation(operation, variables) {
+    const environment = nativeRelayEnvironment();
+    if (!environment) throw new Error('X 原生请求入口尚未就绪，请刷新后重试或使用官方回复框');
+    return new Promise((resolve, reject) => {
+      let subscription, response, settled = false;
+      const finish = (error, value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (error) reject(error); else resolve(value);
+      };
+      const timer = setTimeout(() => {
+        subscription?.unsubscribe();
+        finish(new Error('X 操作确认超时，请先在 X 核对结果，草稿已保留'));
+      }, 25000);
+      try {
+        subscription = environment.getNetwork().execute({ id: operation.queryId,
+          name: operation.operationName, operationKind: 'mutation', text: null, metadata: {} }, variables, { force: true }).subscribe({
+          next(value) { response = value; }, error(error) { finish(error); }, complete() { finish(null, response); }
+        });
+      } catch (error) { finish(error); }
+    });
   }
 
   async function replayTweetDetail(tweetId, cursor) {
@@ -466,7 +559,7 @@
     const mapping = ACTIONS[action];
     if (!mapping) throw new Error("不支持的互动操作");
     const operationName = desiredActive ? mapping.inactive : mapping.active;
-    const variables = action === "repost" && !desiredActive
+    const variables = isXWebClient() ? { tweetId: String(tweetId) } : action === "repost" && !desiredActive
       ? { source_tweet_id: tweetId, dark_request: false }
       : action === "repost"
         ? { tweet_id: tweetId, dark_request: false }
@@ -566,6 +659,14 @@
       reply: { in_reply_to_tweet_id: tweetId, exclude_reply_user_ids: [] }
     };
 
+    if (isXWebClient()) {
+      delete variables.dark_request;
+      delete variables.disallowed_reply_options;
+      for (const [name, value] of Object.entries(X_WEB_TWEET_DETAIL.variables)) {
+        if (name.startsWith('__relay_internal__pv__')) variables[name] = value;
+      }
+    }
+
     const textLen = globalThis.SidePeekTwitterText.parseTweet(replyText).weightedLength;
 
     // If text exceeds standard 280 characters, use CreateNoteTweet for Premium members
@@ -587,9 +688,11 @@
   async function fetchUserProfile(screenName) {
     const handle = String(screenName || "").trim();
     if (!handle) throw new Error("用户名不能为空");
-    const variables = { screen_name: handle, withSafetyModeUserFields: true };
+    const variables = isXWebClient() ? { screenName: handle, withIdentity: false,
+      __relay_internal__pv__xclientsfeaturesappviewerisloggedinrelayprovider: true }
+      : { screen_name: handle, withSafetyModeUserFields: true };
     const res = await graphql("UserByScreenName", variables, "GET");
-    const userResult = res?.data?.user?.result;
+    const userResult = res?.data?.user_result_by_screen_name?.result || res?.data?.user?.result;
     if (!userResult) throw new Error("未找到用户信息");
     return userResult;
   }
@@ -720,11 +823,168 @@
   }
 
   let quickToolSession = null;
+
+  function nativeComposerEditors() {
+    return [...document.querySelectorAll('#layers [role="dialog"] [data-testid="tweetTextarea_0"], [role="dialog"][data-slot="xds-modal-surface"] textarea[aria-multiline="true"]')]
+      .filter(editor => !editor.closest('[role="dialog"]')?.querySelector('[data-testid="swipe-to-dismiss"], svg[data-icon="icon-double-chevron-right"], svg[data-icon="icon-double-chevron-left"]'));
+  }
+
+  function xWebNavigation() {
+    let navigation, history, router;
+    for (const link of document.querySelectorAll('a[href="/compose/post"], a[href="/compose/tweet"]')) {
+      const key = Object.keys(link).find(name => name.startsWith('__reactFiber$'));
+      for (let fiber = key && link[key], depth = 0; fiber && depth < 800; fiber = fiber.return, depth++) {
+        const value = fiber.memoizedProps?.value;
+        if (!value || typeof value !== 'object') continue;
+        if (typeof value.push === 'function' && typeof value.replace === 'function' &&
+            typeof value.goBack === 'function' && typeof value.preload === 'function') navigation ||= value;
+        if (typeof value.buildLocation === 'function' && typeof value.history?.go === 'function') {
+          history ||= value.history; router ||= value;
+        }
+      }
+      if (navigation && history) break;
+    }
+    return navigation ? { navigation, history, router } : null;
+  }
+
+  const xWebMounts = new WeakMap();
+  let xWebMountSequence = 0;
+  const xWebElement = (type, props, children) => ({ $$typeof: Symbol.for('react.transitional.element'),
+    type, key: props?.key ?? null, props: children === undefined ? props : { ...props, children }, _owner: null });
+
+  // Use the already mounted native renderer. No remote imports, copied React
+  // runtime, source-row props mutation, or replacement of X's DOM are needed.
+  function xWebCreateRoot(host, options = {}) {
+    let boundary;
+    for (const element of document.querySelectorAll('main article[class~="group/post"] a[href]')) {
+      const key = Object.keys(element).find(name => name.startsWith('__reactFiber$'));
+      for (let fiber = key && element[key], depth = 0; fiber && depth < 800; fiber = fiber.return, depth++) {
+        if (fiber.tag === 1 && typeof fiber.stateNode?.forceUpdate === 'function') { boundary = fiber; break; }
+      }
+      if (boundary) break;
+    }
+    if (!boundary) throw new Error('X_NATIVE_RENDERER_UNAVAILABLE');
+    let Base = boundary.type;
+    while (Base && !Object.hasOwn(Base.prototype || {}, 'setState')) Base = Object.getPrototypeOf(Base);
+    if (!Base) throw new Error('X_NATIVE_COMPONENT_UNAVAILABLE');
+    const instance = boundary.stateNode;
+    let mount = xWebMounts.get(instance), component, tree = null, closed = false;
+    if (!mount) {
+      const original = instance.render;
+      mount = { original, children: new Map(), wrapper: null };
+      mount.wrapper = function () { return [original.call(this), ...mount.children.values()]; };
+      instance.render = mount.wrapper;
+      xWebMounts.set(instance, mount);
+    }
+    const key = `sidex-native-${++xWebMountSequence}`;
+    class SideXNativeHost extends Base {
+      constructor(props) { super(props); this.state = { tree, failed: false }; }
+      static getDerivedStateFromError() { return { failed: true }; }
+      componentDidCatch(error) { options.onUncaughtError?.(error); }
+      render() { return this.state.failed ? null : { $$typeof: Symbol.for('react.portal'), key,
+        children: this.state.tree, containerInfo: host, implementation: null }; }
+    }
+    const ref = value => { component = value; };
+    mount.children.set(key, xWebElement(SideXNativeHost, { key, ref }));
+    return {
+      render(next) {
+        if (closed) return;
+        tree = next;
+        if (component) component.setState({ tree, failed: false });
+        else instance.forceUpdate();
+      },
+      unmount() {
+        if (closed) return;
+        closed = true;
+        mount.children.delete(key);
+        if (!mount.children.size) {
+          if (instance.render === mount.wrapper) instance.render = mount.original;
+          xWebMounts.delete(instance);
+        }
+        instance.forceUpdate();
+      }
+    };
+  }
+
+  function xWebTemplate(kind, tweetId, focalTweetId) {
+    const selectors = { more: 'button:has(use[href="#icon-more-dots-hor"])', share: '[data-engagement-action="share"]',
+      grok: 'button:has(svg[data-icon="icon-logo-grok"])' };
+    const fragment = { more: 'moreMenu_tweet', share: 'shareButton_tweet', grok: 'grokAnalyzeButton_tweet' }[kind];
+    let fallback;
+    for (const button of document.querySelectorAll(`main article[class~="group/post"] ${selectors[kind]}`)) {
+      const key = Object.keys(button).find(name => name.startsWith('__reactFiber$'));
+      let template;
+      const providers = [];
+      for (let fiber = key && button[key], depth = 0; fiber && depth < 800; fiber = fiber.return, depth++) {
+        if (!template && fiber.memoizedProps?.tweet?.__fragments?.[fragment]) template = fiber;
+        if (template && fiber.tag === 10 && fiber.memoizedProps && 'value' in fiber.memoizedProps) {
+          const original = fiber.memoizedProps.value;
+          // Feed-entry callbacks belong to the original row, not this reply.
+          let value = original && typeof original === 'object' && ('entryId' in original || 'dismiss' in original)
+            ? { ...original, entryId: undefined, feedbackInfo: undefined, dismiss: undefined } : original;
+          if (original && typeof original === 'object' && 'focalTweetId' in original) value = { ...value, focalTweetId: focalTweetId || tweetId };
+          providers.push({ type: fiber.type, value });
+        }
+      }
+      if (!template) continue;
+      const found = { template, providers };
+      if (template.memoizedProps.tweet.permalink?.restId === tweetId) return found;
+      fallback ||= found;
+    }
+    return fallback;
+  }
+
+  async function xWebTweetReference(tweetId, source) {
+    const environment = nativeRelayEnvironment();
+    if (!environment) return null;
+    const supportsTarget = request => ['TweetDetail', 'TweetResultByRestId'].includes(request?.node?.params?.name);
+    const retainedRequest = () => [...(environment.getStore()._roots?.values() || [])].reverse()
+      .map(entry => entry.operation?.request).find(supportsTarget);
+    let request = supportsTarget(source.__fragmentOwner) ? source.__fragmentOwner : retainedRequest();
+    if (!request) {
+      const native = xWebNavigation(), raw = cachedRawTweet(tweetId);
+      const handle = raw?.core?.user_results?.result?.core?.screen_name || 'i';
+      if (typeof native?.router?.preloadRoute !== 'function') return null;
+      let timer;
+      try {
+        await Promise.race([native.router.preloadRoute({ to: `/${handle}/status/${tweetId}` }),
+          new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('X_NATIVE_READ_TIMEOUT')), 12000); })]);
+      } finally { clearTimeout(timer); }
+      request = retainedRequest();
+    }
+    if (!request) return null;
+    const variables = request.node.params.name === 'TweetResultByRestId'
+      ? { ...request.variables, restId: tweetId, withFocalTweet: true }
+      : { ...request.variables, focalTweetId: tweetId, cursor: null, withFocalTweet: true };
+    const descriptor = { ...request, variables,
+      identifier: request.node.params.id + JSON.stringify(Object.fromEntries(Object.entries(variables).sort(([a], [b]) => a.localeCompare(b)))) };
+    const operation = { request: descriptor,
+      root: { dataID: 'client:root', node: request.node.operation, variables },
+      fragment: { dataID: 'client:root', node: request.node.fragment, variables, owner: descriptor, isWithinUnmatchedTypeRefinement: false } };
+    let raw;
+    const retention = environment.retain(operation);
+    try {
+      await new Promise((resolve, reject) => {
+        let subscription;
+        const timer = setTimeout(() => { subscription?.unsubscribe(); reject(new Error('X_NATIVE_READ_TIMEOUT')); }, 12000);
+        subscription = environment.execute({ operation }).subscribe({ next(json) {
+          const visit = node => {
+            if (!node || typeof node !== 'object' || raw) return;
+            if (node.rest_id === tweetId && node.id && node.core) { raw = node; return; }
+            Object.values(node).forEach(visit);
+          };
+          visit(json?.data);
+        }, error(error) { clearTimeout(timer); reject(error); }, complete() { clearTimeout(timer); resolve(); } });
+      });
+      if (!raw) { retention.dispose(); return null; }
+      return { reference: { __id: raw.id, __fragments: source.__fragments, __fragmentOwner: descriptor }, release: () => retention.dispose() };
+    } catch (error) { retention.dispose(); throw error; }
+  }
   // Installed at document_start, before X's own Escape handler. A quick tool
   // owns the whole modal stack it opened, rather than just its last picker.
   window.addEventListener("keydown", event => {
     const session = quickToolSession;
-    if (event.key !== "Escape" || !session || !document.querySelector('#layers [role="dialog"]')) return;
+    if (event.key !== "Escape" || !session || !document.querySelector('#layers [role="dialog"], [role="dialog"][data-slot="xds-modal-surface"]')) return;
     quickToolSession = null;
     try {
       const index = session.router._currentLocationIndex;
@@ -744,8 +1004,7 @@
   window.addEventListener("popstate", clearFinishedToolSession);
 
   function openNativeReply(tweetId, quickTool = false) {
-    if ([...document.querySelectorAll('#layers [role="dialog"] [data-testid="tweetTextarea_0"]')]
-      .some(editor => !editor.closest('[role="dialog"]')?.querySelector('[data-testid="swipe-to-dismiss"]'))) throw new Error("NATIVE_DRAFT_ALREADY_OPEN");
+    if (nativeComposerEditors().length) throw new Error("NATIVE_DRAFT_ALREADY_OPEN");
     // Use X's own router so a full reply editor opens without replacing the
     // reading page. Avoid fixed webpack IDs and do not mutate React props.
     for (const link of document.querySelectorAll('a[href="/compose/post"], a[href="/compose/tweet"]')) {
@@ -761,12 +1020,27 @@
         return { opened: true };
       }
     }
+    const modern = xWebNavigation();
+    if (modern) {
+      const index = modern.history?.location?.state?.__TSR_index;
+      if (quickTool && !Number.isInteger(index)) return { opened: false };
+      const path = location.pathname + location.search;
+      quickToolSession = quickTool ? {
+        path, index, router: {
+          get _currentLocationIndex() { return modern.history.location.state.__TSR_index; },
+          go(delta) { modern.history.go(delta); }
+        }
+      } : null;
+      modern.navigation.push(`/compose/post?in_reply_to=${tweetId}`);
+      return { opened: true };
+    }
     return { opened: false };
   }
 
   // Use X's loaded schemas and React components. Do not copy a timeline
   // button's handlers: those closures would still act on the timeline post.
   function nativePostRuntime() {
+    if (isXWebClient()) return { react: { createElement: xWebElement }, reactDom: { createRoot: xWebCreateRoot } };
     const modules = Object.values(getWebpackRuntime()?.c || {}).map(module => module?.exports).filter(Boolean);
     let normalize, denormalize, tweetSchema, tweetApi, react, reactDom;
     for (const exports of modules) {
@@ -811,8 +1085,11 @@
         // X's own profile-hover wrapper accepts screenName and a child link.
         // Re-render it for the requested handle instead of copying callbacks
         // that still refer to the timeline author's profile.
-        if (!template && typeof props?.screenName === 'string' && props.children &&
-            ('onAvatarClick' in props || 'onScreenNameClick' in props)) template = fiber;
+        if (typeof props?.screenName === 'string' && props.children &&
+            (isXWebClient() || (!template && ('onAvatarClick' in props || 'onScreenNameClick' in props)))) {
+          template = fiber;
+          providers.length = 0;
+        }
         if (template && fiber.tag === 10 && props && 'value' in props) providers.push({ type: fiber.type, value: props.value });
       }
       if (template) break;
@@ -842,7 +1119,23 @@
       session.root = runtime.reactDom.createRoot(host, { onUncaughtError: () => closeNativeUserHover(token) });
       session.root.render(tree);
       if (host.querySelector('a')) session.finish(true);
-      if (await ready && nativeUserHover === session) return { ready: true };
+      if (await ready && nativeUserHover === session) {
+        if (isXWebClient()) {
+          const link = host.querySelector('a');
+          const key = Object.keys(link).find(name => name.startsWith('__reactFiber$'));
+          let opened = false;
+          for (let fiber = key && link[key], depth = 0; fiber && depth < 100; fiber = fiber.return, depth++) {
+            const store = fiber.memoizedProps?.value;
+            if (typeof store?.setOpen !== 'function' || !store.state?.floatingRootContext) continue;
+            store.setOpen(true, { trigger: link, reason: 'trigger-hover',
+              event: new MouseEvent('mouseenter', { clientX: coord(anchor?.left) + 4, clientY: coord(anchor?.top) + 4 }) });
+            opened = true;
+            break;
+          }
+          if (!opened) { closeNativeUserHover(token); return { ready: false }; }
+        }
+        return { ready: true };
+      }
     } catch { /* The readable fallback remains available if X changes its wrapper. */ }
     closeNativeUserHover(token);
     return { ready: false };
@@ -900,6 +1193,7 @@
   }
 
   async function openNativeGrok(tweetId) {
+    if (isXWebClient()) return openXWebNativeControl(tweetId, { left: 0, top: 0, width: 32, height: 32 }, undefined, 'grok');
     const found = nativeHeaderTemplate(tweetId, "grok");
     if (!found) return { opened: false };
     const tweet = await nativeTweet(tweetId, found.owner, nativePostRuntime());
@@ -920,11 +1214,11 @@
     function visit(value) {
       if (!value || typeof value !== "object" || seen.has(value)) return null;
       seen.add(value);
-      if (value.tweet && String(value.tweet.rest_id) === tweetId && value.tweet.legacy && value.tweet.core) {
+      if (value.tweet && String(value.tweet.rest_id) === tweetId && (value.tweet.legacy || value.tweet.details) && value.tweet.core) {
         return { ...value.tweet, limitedActionResults: value.limitedActionResults || value.tweet.limitedActionResults,
           mediaVisibilityResults: value.mediaVisibilityResults || value.tweet.mediaVisibilityResults };
       }
-      if (String(value.rest_id || value.legacy?.id_str || "") === tweetId && value.legacy && value.core) return value;
+      if (String(value.rest_id || value.legacy?.id_str || "") === tweetId && (value.legacy || value.details) && value.core) return value;
       for (const child of Object.values(value)) {
         const found = visit(child);
         if (found) return found;
@@ -967,12 +1261,17 @@
   }
 
   function hasNativeComposer() {
-    return [...document.querySelectorAll('#layers [role="dialog"] [data-testid="tweetTextarea_0"]')]
-      .some(editor => !editor.closest('[role="dialog"]')?.querySelector('[data-testid="swipe-to-dismiss"]'));
+    return nativeComposerEditors().length > 0;
   }
 
   async function openNativeQuote(tweetId) {
     if (hasNativeComposer()) throw new Error("NATIVE_DRAFT_ALREADY_OPEN");
+    if (isXWebClient()) {
+      const native = xWebNavigation();
+      if (!native) return { opened: false };
+      native.navigation.push(`/compose/post?quote_tweet_id=${tweetId}`);
+      return { opened: true };
+    }
     const { template } = nativeActionTemplate(tweetId) || {};
     const tweet = await nativeTweet(tweetId, template, nativePostRuntime());
     if (!tweet) return { opened: false };
@@ -995,7 +1294,57 @@
     return { closed: true };
   }
 
+  async function openXWebNativeControl(tweetId, anchor, menuToken, kind, focalTweetId) {
+    closeNativeShare();
+    const generation = nativeShareGeneration;
+    const found = xWebTemplate(kind, tweetId, focalTweetId);
+    if (!found || !anchor || ![anchor.left, anchor.top, anchor.width, anchor.height].every(Number.isFinite)) return { opened: false };
+    const target = await xWebTweetReference(tweetId, found.template.memoizedProps.tweet);
+    if (!target || generation !== nativeShareGeneration) { target?.release(); return { opened: false }; }
+    const host = document.createElement('div');
+    host.setAttribute(`data-sidex-native-${kind}`, tweetId);
+    Object.assign(host.style, { position: 'fixed', left: `${anchor.left}px`, top: `${anchor.top}px`,
+      width: `${anchor.width}px`, height: `${anchor.height}px`, opacity: '0', pointerEvents: 'none' });
+    document.body.append(host);
+    const props = { ...found.template.memoizedProps, tweet: target.reference, promotion: undefined };
+    for (const key of Object.keys(props)) if (/^on[A-Z]/.test(key)) delete props[key];
+    let tree = xWebElement(found.template.type, props);
+    for (const provider of found.providers) tree = xWebElement(provider.type, { value: provider.value, children: tree });
+    return new Promise(resolve => {
+      let root, observer, timer, clicked = false, opened = false, settled = false, closed = false;
+      const finish = value => { if (!settled) { settled = true; resolve({ opened: value }); } };
+      const close = () => {
+        if (closed) return;
+        closed = true;
+        clearTimeout(timer); observer?.disconnect(); root?.unmount(); host.remove(); target.release();
+        if (nativeShareSession?.close === close) nativeShareSession = null;
+        if (kind !== 'grok') window.postMessage({ source: PAGE_SOURCE, type: kind === 'more' ? 'NATIVE_MORE_CLOSED' : 'NATIVE_SHARE_CLOSED', tweetId, menuToken }, location.origin);
+        finish(false);
+      };
+      nativeShareSession = { close };
+      try {
+        root = xWebCreateRoot(host, { onUncaughtError: close });
+        observer = new MutationObserver(() => {
+          if (!host.isConnected || generation !== nativeShareGeneration) { close(); return; }
+          const button = host.querySelector(kind === 'grok' ? 'button' : 'button[aria-haspopup="menu"]');
+          if (!button) return;
+          if (!clicked) {
+            if (button.disabled || button.getAttribute('aria-disabled') === 'true') { close(); return; }
+            clicked = true; button.click();
+            if (kind === 'grok') { clearTimeout(timer); finish(true); timer = setTimeout(close, 15000); }
+          } else if (button.getAttribute('aria-expanded') === 'true' && document.querySelector('[data-base-ui-portal] [role="menu"]')) {
+            opened = true; clearTimeout(timer); finish(true);
+          } else if (opened && button.getAttribute('aria-expanded') !== 'true' && !nativeComposerEditors().length && !document.querySelector('[data-base-ui-portal] [role="dialog"]')) close();
+        });
+        observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-expanded'] });
+        timer = setTimeout(close, 5000);
+        root.render(tree);
+      } catch { close(); }
+    });
+  }
+
   async function openNativeShare(tweetId, anchor, menuToken, kind = "share", focalTweetId) {
+    if (isXWebClient()) return openXWebNativeControl(tweetId, anchor, menuToken, kind, focalTweetId);
     closeNativeShare();
     const generation = nativeShareGeneration;
     if (!anchor || ![anchor.left, anchor.top, anchor.width, anchor.height].every(Number.isFinite)) return { opened: false };
