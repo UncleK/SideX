@@ -84,7 +84,7 @@ test('the default auto-pin preference starts off, applies to future sessions, an
   p.clickPost(0);
   await tick();
   assert.equal(p.query('.sidepeek-btn-pin').getAttribute('aria-pressed'), 'true');
-  assert.equal(nativePost(p, '100').getAttribute('data-sidex-pinned-active'), 'light');
+  assert.equal(nativePost(p, '100').getAttribute('data-sidex-focal-active'), 'light');
 
   const popup = new JSDOM(source('popup.html'), { runScripts: 'outside-only' });
   t.after(() => popup.window.close());
@@ -103,7 +103,7 @@ test('the default auto-pin preference starts off, applies to future sessions, an
   assert.equal(popup.window.document.querySelector('#txt-auto-pin-hint').textContent, 'Pin new panels so outside clicks and Esc do not close them.');
 });
 
-test('pinned highlight survives X replacing the post class, follows the panel, and clears on unpin or close', async t => {
+test('focal highlight survives X replacing the post class and stays until the panel closes', async t => {
   const p = createPage();
   t.after(() => p.w.close());
   await tick();
@@ -113,22 +113,20 @@ test('pinned highlight survives X replacing the post class, follows the panel, a
   const second = nativePost(p, '200');
   p.query('.sidepeek-btn-pin').click();
 
-  assert.equal(first.getAttribute('data-sidex-pinned-active'), 'light');
-  assert.equal(second.hasAttribute('data-sidex-pinned-active'), false);
+  assert.equal(first.getAttribute('data-sidex-focal-active'), 'light');
+  assert.equal(second.hasAttribute('data-sidex-focal-active'), false);
   first.className = 'x-hover-state-replaced-the-entire-class';
-  assert.equal(first.getAttribute('data-sidex-pinned-active'), 'light', 'X class rewrites do not remove the independent pinned marker');
+  assert.equal(first.getAttribute('data-sidex-focal-active'), 'light', 'X class rewrites do not remove the independent marker');
 
   p.clickPost(1);
   await tick();
-  assert.equal(first.hasAttribute('data-sidex-pinned-active'), false);
-  assert.equal(second.getAttribute('data-sidex-pinned-active'), 'light');
+  assert.equal(first.hasAttribute('data-sidex-focal-active'), false);
+  assert.equal(second.getAttribute('data-sidex-focal-active'), 'light');
 
   p.query('.sidepeek-btn-pin').click();
-  assert.equal(second.hasAttribute('data-sidex-pinned-active'), false);
-  p.query('.sidepeek-btn-pin').click();
-  assert.equal(second.getAttribute('data-sidex-pinned-active'), 'light');
+  assert.equal(second.getAttribute('data-sidex-focal-active'), 'light');
   p.query('.sidepeek-btn-close').click();
-  assert.equal(second.hasAttribute('data-sidex-pinned-active'), false);
+  assert.equal(second.hasAttribute('data-sidex-focal-active'), false);
 });
 
 test('Pin toggles and empty-thread navigation leave the original article classes alone', async t => {
@@ -144,15 +142,15 @@ test('Pin toggles and empty-thread navigation leave the original article classes
   first.className = 'x-managed-post-state';
   second.className = 'x-managed-other-post-state';
   p.query('.sidepeek-btn-pin').click();
-  assert.equal(first.getAttribute('data-sidex-pinned-active'), 'light');
+  assert.equal(first.getAttribute('data-sidex-focal-active'), 'light');
   p.query('.sidepeek-btn-pin').click();
   assert.equal(first.className, 'x-managed-post-state');
-  assert.equal(first.hasAttribute('data-sidex-pinned-active'), false);
+  assert.equal(first.getAttribute('data-sidex-focal-active'), 'light');
   p.query('.sidepeek-btn-pin').click();
   p.w.history.pushState({}, '', '/reader/status/200');
   p.w.dispatchEvent(new p.w.PopStateEvent('popstate'));
   await tick();
-  assert.equal(second.getAttribute('data-sidex-pinned-active'), 'light');
+  assert.equal(second.getAttribute('data-sidex-focal-active'), 'light');
   assert.equal(second.className, 'x-managed-other-post-state');
 });
 
@@ -164,10 +162,10 @@ test('disabling SideX clears a pinned focal marker and closes the panel', async 
   await tick();
   const article = nativePost(p, '100');
   p.query('.sidepeek-btn-pin').click();
-  assert.equal(article.getAttribute('data-sidex-pinned-active'), 'light');
+  assert.equal(article.getAttribute('data-sidex-focal-active'), 'light');
 
   p.change({ sidex_enabled: { newValue: false } });
-  assert.equal(article.hasAttribute('data-sidex-pinned-active'), false);
+  assert.equal(article.hasAttribute('data-sidex-focal-active'), false);
   assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), false);
 });
 
@@ -183,37 +181,32 @@ test('auto-pinned highlight follows theme changes and a remounted own post, with
   quote.innerHTML = '<a href="/quoted/status/999"><time>Today</time></a><div data-testid="tweetText">Quoted post</div>';
   original.append(quote);
   await tick(20);
-  assert.equal(original.getAttribute('data-sidex-pinned-active'), 'light');
-  assert.equal(quote.hasAttribute('data-sidex-pinned-active'), false);
+  assert.equal(original.getAttribute('data-sidex-focal-active'), 'light');
+  assert.equal(quote.hasAttribute('data-sidex-focal-active'), false);
 
   p.w.document.body.style.backgroundColor = 'rgb(0, 0, 0)';
   await tick(20);
-  assert.equal(original.getAttribute('data-sidex-pinned-active'), 'dark');
+  assert.equal(original.getAttribute('data-sidex-focal-active'), 'dark');
   p.w.document.body.style.backgroundColor = 'rgb(21, 31, 42)';
   await tick(20);
-  assert.equal(original.getAttribute('data-sidex-pinned-active'), 'dim');
+  assert.equal(original.getAttribute('data-sidex-focal-active'), 'dim');
 
   const ownTimeLink = original.querySelector('time').closest('a');
   ownTimeLink.setAttribute('href', '/reader/status/777');
   await tick(20);
-  assert.equal(original.hasAttribute('data-sidex-pinned-active'), false, 'a recycled post link loses the marker when it no longer matches the panel');
+  assert.equal(original.hasAttribute('data-sidex-focal-active'), false, 'a recycled post link loses the marker when it no longer matches the panel');
   ownTimeLink.setAttribute('href', '/reader/status/100');
   await tick(20);
-  assert.equal(original.getAttribute('data-sidex-pinned-active'), 'dim');
+  assert.equal(original.getAttribute('data-sidex-focal-active'), 'dim');
 
   const replacement = p.w.document.createElement('article');
   replacement.dataset.testid = 'tweet';
   replacement.innerHTML = '<a href="/reader/status/100"><time>Today</time></a><div data-testid="tweetText">Post A remounted</div>';
   original.replaceWith(replacement);
   await tick(20);
-  assert.equal(original.hasAttribute('data-sidex-pinned-active'), false);
-  assert.equal(replacement.getAttribute('data-sidex-pinned-active'), 'dim');
-  assert.equal(nativePost(p, '200').hasAttribute('data-sidex-pinned-active'), false);
-
-  const css = source('sidebar.css');
-  assert.match(css, /article\[data-testid="tweet"\]\[data-sidex-pinned-active\]/);
-  assert.match(css, /background-color: rgba\(0, 0, 0, 0\.03\)/);
-  assert.match(css, /background-color: rgba\(255, 255, 255, 0\.03\)/);
+  assert.equal(original.hasAttribute('data-sidex-focal-active'), false);
+  assert.equal(replacement.getAttribute('data-sidex-focal-active'), 'dim');
+  assert.equal(nativePost(p, '200').hasAttribute('data-sidex-focal-active'), false);
 });
 
 test('a pinned sidebar switches posts and restores its text draft and highlight on return', async t => {
@@ -233,18 +226,18 @@ test('a pinned sidebar switches posts and restores its text draft and highlight 
   p.clickPost(1);
   await tick();
   assert.equal(p.query('.sidepeek-comment-item').dataset.id, '201');
-  assert.equal(first.hasAttribute('data-sidex-pinned-active'), false);
-  assert.equal(second.getAttribute('data-sidex-pinned-active'), 'light');
+  assert.equal(first.hasAttribute('data-sidex-focal-active'), false);
+  assert.equal(second.getAttribute('data-sidex-focal-active'), 'light');
   assert.equal(p.query('.sidepeek-footer-textarea').value, '');
 
   p.clickPost(0);
   await tick();
   assert.equal(p.query('.sidepeek-footer-textarea').value, 'Reply draft');
-  assert.equal(first.getAttribute('data-sidex-pinned-active'), 'light');
-  assert.equal(second.hasAttribute('data-sidex-pinned-active'), false);
+  assert.equal(first.getAttribute('data-sidex-focal-active'), 'light');
+  assert.equal(second.hasAttribute('data-sidex-focal-active'), false);
 
   p.query('.sidepeek-btn-close').click();
-  assert.equal(first.hasAttribute('data-sidex-pinned-active'), false);
+  assert.equal(first.hasAttribute('data-sidex-focal-active'), false);
 });
 
 test('a pinned child draft restores its recipient after switching posts and closing', async t => {
@@ -280,14 +273,14 @@ test('a pinned panel follows X detail navigation and remains open on an empty th
   p.clickPost(0);
   await tick();
   p.query('.sidepeek-btn-pin').click();
-  assert.equal(nativePost(p, '100').getAttribute('data-sidex-pinned-active'), 'light');
+  assert.equal(nativePost(p, '100').getAttribute('data-sidex-focal-active'), 'light');
 
   p.w.history.pushState({}, '', '/reader/status/200');
   p.w.dispatchEvent(new p.w.PopStateEvent('popstate'));
   await tick();
   assert.equal(p.query('.sidepeek-comment-item').dataset.id, '201');
-  assert.equal(nativePost(p, '100').hasAttribute('data-sidex-pinned-active'), false);
-  assert.equal(nativePost(p, '200').getAttribute('data-sidex-pinned-active'), 'light');
+  assert.equal(nativePost(p, '100').hasAttribute('data-sidex-focal-active'), false);
+  assert.equal(nativePost(p, '200').getAttribute('data-sidex-focal-active'), 'light');
 
   p.w.history.pushState({}, '', '/reader/status/300');
   p.w.dispatchEvent(new p.w.PopStateEvent('popstate'));
@@ -385,7 +378,7 @@ test('auto-pin also applies when a detail route opens the sidebar without a time
   await tick();
   assert.equal(p.query('#sidepeek-drawer-root').classList.contains('sidepeek-open'), true);
   assert.equal(p.query('.sidepeek-btn-pin').getAttribute('aria-pressed'), 'true');
-  assert.equal(nativePost(p, '200').getAttribute('data-sidex-pinned-active'), 'light');
+  assert.equal(nativePost(p, '200').getAttribute('data-sidex-focal-active'), 'light');
 });
 
 test('pinned highlight follows the active post when switching from a detail-page main post to a reply', async t => {
@@ -398,7 +391,7 @@ test('pinned highlight follows the active post when switching from a detail-page
 
   const mainPost = nativePost(p, '100');
   assert.equal(p.query('.sidepeek-btn-pin').getAttribute('aria-pressed'), 'true');
-  assert.equal(mainPost.getAttribute('data-sidex-pinned-active'), 'light');
+  assert.equal(mainPost.getAttribute('data-sidex-focal-active'), 'light');
 
   const replyPost = p.w.document.createElement('article');
   replyPost.dataset.testid = 'tweet';
@@ -408,8 +401,8 @@ test('pinned highlight follows the active post when switching from a detail-page
   await tick();
 
   assert.equal(p.query('.sidepeek-comment-item').dataset.id, '202');
-  assert.equal(mainPost.hasAttribute('data-sidex-pinned-active'), false);
-  assert.equal(replyPost.getAttribute('data-sidex-pinned-active'), 'light', 'a thread reply opened by SideX remains the highlighted focal post');
+  assert.equal(mainPost.hasAttribute('data-sidex-focal-active'), false);
+  assert.equal(replyPost.getAttribute('data-sidex-focal-active'), 'light', 'a thread reply opened by SideX remains the highlighted focal post');
 });
 
 test('unpinning during reply composition restores dismissal and keeps the text draft', async t => {
@@ -468,7 +461,7 @@ test('the photo viewer hides Pin, preserves its native controls, then restores t
   const pin = p.query('.sidepeek-btn-pin');
   assert.equal(pin.getAttribute('aria-pressed'), 'true');
   assert.equal(pin.style.display, 'none');
-  assert.equal(p.query('article[data-testid="tweet"]').hasAttribute('data-sidex-pinned-active'), false);
+  assert.equal(p.query('article[data-testid="tweet"]').hasAttribute('data-sidex-focal-active'), false);
   assert.equal(drawer.parentElement, photo.panel);
   assert.equal(p.query('.sidepeek-btn-photo-collapse').style.display, 'inline-flex');
   assert.equal(p.query('.sidepeek-btn-close').style.display, 'inline-flex');
@@ -480,5 +473,5 @@ test('the photo viewer hides Pin, preserves its native controls, then restores t
   assert.equal(drawer.parentElement, p.w.document.body);
   assert.equal(p.query('.sidepeek-btn-pin').style.display, 'inline-flex');
   assert.equal(p.query('.sidepeek-btn-pin').getAttribute('aria-pressed'), 'true');
-  assert.equal(p.query('article[data-testid="tweet"]').getAttribute('data-sidex-pinned-active'), 'light', 'the active post highlight resumes after leaving the photo viewer');
+  assert.equal(p.query('article[data-testid="tweet"]').getAttribute('data-sidex-focal-active'), 'light', 'the active post highlight resumes after leaving the photo viewer');
 });

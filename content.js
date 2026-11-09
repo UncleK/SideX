@@ -45,6 +45,7 @@
   const Core = globalThis.SidePeekCore;
   const ROOT_ID = "sidepeek-drawer-root";
   const NATIVE_POST_SELECTOR = 'article[data-testid="tweet"], main article[class~="group/post"]';
+  const NATIVE_POST_ROW_SELECTOR = '[data-navigation-stop][data-href]';
   const CONTENT_SOURCE = "sidepeek-content";
   const PAGE_SOURCE = "sidepeek-page";
   const PHOTO_COLLAPSE_PATH = "M11.59 12L3.54 3.96l1.42-1.42L14.41 12l-9.45 9.46-1.42-1.42L11.59 12zm7 0l-8.05-8.04 1.42-1.42L21.41 12l-9.45 9.46-1.42-1.42L18.59 12z";
@@ -106,8 +107,7 @@
   const state = {
     open: false,
     focalTweetId: null,
-    focalArticle: null,
-    pinnedFocalArticle: null,
+    focalHighlightTarget: null,
     focalModel: null,
     replies: [],
     tree: null,
@@ -847,11 +847,11 @@
 
   function syncPhotoViewer() {
     if (!settingsLoaded || !isSideXEnabled) {
-      syncPinnedFocalHighlight();
+      syncFocalHighlight();
       return false;
     }
     const match = location.pathname.match(/\/status\/(\d+)\/photo\/\d+\/?$/);
-    if (match) syncPinnedFocalHighlight();
+    if (match) syncFocalHighlight();
     if (match) {
       const swipe = document.querySelector('#layers [data-testid="swipe-to-dismiss"]');
       const viewer = swipe?.closest('[role="dialog"]') ||
@@ -906,7 +906,7 @@
       lastCheckedUrl = "";
       updateDrawerPosition();
       if (wasDocked && state.open) renderDrawer();
-      syncPinnedFocalHighlight();
+      syncFocalHighlight();
     }
     document.documentElement.removeAttribute("data-sidex-photo-view");
     return false;
@@ -1361,7 +1361,6 @@
       root.querySelector(".sidepeek-btn-photo-collapse")?.addEventListener("click", () => findPhotoCollapseButton()?.click());
       root.querySelector(".sidepeek-btn-pin")?.addEventListener("click", () => {
         state.pinned = !state.pinned;
-        syncPinnedFocalHighlight();
         syncPhotoHeader(root);
       });
       root.querySelector(".sidepeek-back-btn")?.addEventListener("click", () => {
@@ -4227,14 +4226,9 @@
       !article.closest(`#${ROOT_ID}`) && Core.postIdFromUrl(nativePostUrl(article)) === String(tweetId)) || null;
   }
 
-  function findPinnedFocalArticle(tweetId) {
-    if (!tweetId) return null;
-    return findDetailFocalArticle(tweetId);
-  }
-
   function nativePostUrl(article) {
     if (!article) return null;
-    const rowUrl = article.closest('[data-navigation-stop][data-href]')?.getAttribute('data-href');
+    const rowUrl = article.closest(NATIVE_POST_ROW_SELECTOR)?.getAttribute('data-href');
     if (Core.postIdFromUrl(rowUrl)) return rowUrl;
     const timeUrl = article.querySelector('time')?.closest('a[href*="/status/"]')?.getAttribute('href');
     if (timeUrl) return timeUrl;
@@ -4247,21 +4241,21 @@
     return timestamp?.getAttribute('href') || Core.selectOwnPostUrl(ownLinks.map(link => link.getAttribute('href')), profile, location.href);
   }
 
-  function syncPinnedFocalHighlight() {
-    const shouldHighlight = settingsLoaded && isSideXEnabled && state.open && state.pinned &&
-      !isPhotoViewerRoute() && Boolean(state.focalTweetId);
-    const article = shouldHighlight ? findPinnedFocalArticle(state.focalTweetId) : null;
-    const previous = state.pinnedFocalArticle;
-    if (previous && previous !== article) previous.removeAttribute("data-sidex-pinned-active");
-    if (!article) {
-      state.pinnedFocalArticle = null;
-      return;
+  function syncFocalHighlight() {
+    const shouldHighlight = settingsLoaded && isSideXEnabled && state.open && !isPhotoViewerRoute();
+    const article = shouldHighlight ? findDetailFocalArticle(state.focalTweetId) : null;
+    const row = article?.closest(NATIVE_POST_ROW_SELECTOR);
+    // x-web paints its hover background on the outer navigation row.
+    const target = row && Core.postIdFromUrl(row.getAttribute('data-href')) === state.focalTweetId ? row : article;
+    const previous = state.focalHighlightTarget;
+    if (previous && previous !== target) previous.removeAttribute("data-sidex-focal-active");
+    if (target) {
+      const theme = currentThemeClass().replace("sidepeek-theme-", "");
+      if (target.getAttribute("data-sidex-focal-active") !== theme) {
+        target.setAttribute("data-sidex-focal-active", theme);
+      }
     }
-    const theme = currentThemeClass().replace("sidepeek-theme-", "");
-    if (article.getAttribute("data-sidex-pinned-active") !== theme) {
-      article.setAttribute("data-sidex-pinned-active", theme);
-    }
-    state.pinnedFocalArticle = article;
+    state.focalHighlightTarget = target;
   }
 
   function expandFocalShowMore(tweetId) {
@@ -4312,7 +4306,7 @@
         clearCommentNodes();
         state.focalTweetId = tweetId;
         state.manualReplyLoading = false;
-        syncPinnedFocalHighlight();
+        syncFocalHighlight();
         state.focalModel = null;
         state.replies = [];
         state.tree = null;
@@ -4359,20 +4353,12 @@
           return;
         }
 
-        // 存在下级回复：此时再从容滑出抽屉，内容秒出
-        let focalArticle = findDetailFocalArticle(tweetId);
-        if (state.focalArticle) {
-          state.focalArticle.classList.remove("sidepeek-focal-active");
-        }
-        state.focalArticle = focalArticle;
-        if (hasThreadContent) state.focalArticle?.classList.add("sidepeek-focal-active");
-
         const wasOpenForTweet = state.open && state.focalTweetId === tweetId;
         if (!state.open) state.pinned = autoPinDefault;
         state.open = true;
         clearCommentNodes();
         state.focalTweetId = tweetId;
-        syncPinnedFocalHighlight();
+        syncFocalHighlight();
         state.focalModel = focal;
         state.replies = replies;
         state.unavailableReplyIds = new Set(unavailableIds);
@@ -4423,23 +4409,14 @@
     userClosedTweetId = null;
     lastHandledDetailTweetId = tweetId;
 
-    // 1. Update focal tweet highlight
-    if (state.focalArticle) {
-      state.focalArticle.classList.remove("sidepeek-focal-active");
-    }
-    state.focalArticle = articleNode;
-    state.focalArticle?.classList.add("sidepeek-focal-active");
-
-    // 2. Expand "Show more" on focal tweet automatically
     const showMoreBtn = nativeShowMore(articleNode);
     if (showMoreBtn) {
       showMoreBtn.click();
     }
 
-    // 3. Open drawer & fetch replies
     state.open = true;
     state.focalTweetId = tweetId;
-    syncPinnedFocalHighlight();
+    syncFocalHighlight();
     state.resetScrollOnRender = true;
     state.activeView = "root";
     state.replyTarget = null;
@@ -4466,15 +4443,11 @@
     hideUserHoverCard();
     state.open = false;
     state.pinned = false;
-    syncPinnedFocalHighlight();
+    syncFocalHighlight();
     state.replyTarget = null;
     state.resetScrollOnRender = true;
     userClosedTweetId = state.focalTweetId;
     lastCheckedUrl = location.href;
-    if (state.focalArticle) {
-      state.focalArticle.classList.remove("sidepeek-focal-active");
-      state.focalArticle = null;
-    }
     renderDrawer();
   }
 
@@ -4612,7 +4585,7 @@
     if (lightbox && lightbox.contains(event.target)) return;
 
     const article = event.target.closest?.(NATIVE_POST_SELECTOR) ||
-      event.target.closest?.('main [data-navigation-stop][data-href]')?.querySelector(NATIVE_POST_SELECTOR);
+      event.target.closest?.(`main ${NATIVE_POST_ROW_SELECTOR}`)?.querySelector(NATIVE_POST_SELECTOR);
     if (!article) {
       // Clicked blank space outside drawer -> close drawer
       if (state.open && drawer && !drawer.contains(event.target) && !isPinProtectionActive()) {
@@ -4693,7 +4666,7 @@
     requestAnimationFrame(() => {
       nativeSyncScheduled = false;
       syncArticleQuoteLayouts();
-      syncPinnedFocalHighlight();
+      syncFocalHighlight();
       if (syncPhotoViewer()) return;
       if (!state.open) return;
       nativeLayers?.sync(document.getElementById(ROOT_ID));
@@ -4710,18 +4683,18 @@
     attributeFilter: ["href", "data-href"]
   });
 
-  let pinnedThemeSyncScheduled = false;
-  const schedulePinnedThemeSync = () => {
-    if (pinnedThemeSyncScheduled) return;
-    pinnedThemeSyncScheduled = true;
+  let focalThemeSyncScheduled = false;
+  const scheduleFocalThemeSync = () => {
+    if (focalThemeSyncScheduled) return;
+    focalThemeSyncScheduled = true;
     requestAnimationFrame(() => {
-      pinnedThemeSyncScheduled = false;
-      syncPinnedFocalHighlight();
+      focalThemeSyncScheduled = false;
+      syncFocalHighlight();
     });
   };
-  const pinnedThemeObserver = new MutationObserver(schedulePinnedThemeSync);
+  const focalThemeObserver = new MutationObserver(scheduleFocalThemeSync);
   for (const target of [document.documentElement, document.body]) {
-    if (target) pinnedThemeObserver.observe(target, { attributes: true, attributeFilter: ["class", "style"] });
+    if (target) focalThemeObserver.observe(target, { attributes: true, attributeFilter: ["class", "style"] });
   }
 
   // ESC key to close (Lightbox first, then Menus, then Hover Card, then Drawer)

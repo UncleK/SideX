@@ -32,6 +32,15 @@
   const observedThreadCache = new Map();
   const observedCursorScopes = new Map();
   const OBSERVED_THREAD_TTL = 5 * 60 * 1000;
+  const X_WEB_POST_PROVIDED_VARIABLES = {
+    __relay_internal__pv__xclientsfeaturesappviewerisloggedinrelayprovider: true,
+    __relay_internal__pv__xclientsfeaturestranslationgroktranslatedpostenabledrelayprovider: false,
+    __relay_internal__pv__postctafetchenabledrelayprovider: false,
+    __relay_internal__pv__xclientsfeaturestweetcomponentsgrokanalyzepostrelayprovider: false,
+    __relay_internal__pv__xclientsfeaturestranslationnoteautotranslationenabledrelayprovider: false,
+    __relay_internal__pv__liveeventpostcontextenabledrelayprovider: false,
+    __relay_internal__pv__sportspostcontextenabledrelayprovider: false
+  };
   // Read-only compatibility for x-web's Relay client (observed 2026-11-08).
   // Native observations always take precedence. The Vite client has no
   // Webpack registry to discover an unvisited TweetDetail operation from.
@@ -41,13 +50,7 @@
     modern: true,
     variables: {
       cursor: null, rankingMode: null, referrer: null, withFocalTweet: true,
-      __relay_internal__pv__xclientsfeaturesappviewerisloggedinrelayprovider: true,
-      __relay_internal__pv__xclientsfeaturestranslationgroktranslatedpostenabledrelayprovider: false,
-      __relay_internal__pv__postctafetchenabledrelayprovider: false,
-      __relay_internal__pv__xclientsfeaturestweetcomponentsgrokanalyzepostrelayprovider: false,
-      __relay_internal__pv__xclientsfeaturestranslationnoteautotranslationenabledrelayprovider: false,
-      __relay_internal__pv__liveeventpostcontextenabledrelayprovider: false,
-      __relay_internal__pv__sportspostcontextenabledrelayprovider: false
+      ...X_WEB_POST_PROVIDED_VARIABLES
     }
   };
   // Persisted-operation data from X's current Relay artifacts. These are
@@ -55,8 +58,8 @@
   const X_WEB_OPERATIONS = {
     TweetDetail: X_WEB_TWEET_DETAIL,
     UserByScreenName: { queryId: '8UhuvB9RJovmX8e5Qu2tNg', operationName: 'UserByScreenName' },
-    CreateTweet: { queryId: 'oYN2wNon5cYp3VrfXrwImw', operationName: 'CreateTweet' },
-    CreateNoteTweet: { queryId: '_cIwQ6XY_C81R09ZGyWc-Q', operationName: 'createTweetNoteTweetMutation' },
+    CreateTweet: { queryId: 'JUPTZ5nUJjopwMyPw0DYiQ', operationName: 'CreateTweet' },
+    CreateNoteTweet: { queryId: '8TlLvl0sHLceb7rlGZZ6bg', operationName: 'createTweetNoteTweetMutation' },
     FavoriteTweet: { queryId: 'gWHQmsY1Atd_XuOoMR2v5A', operationName: 'FavoriteTweet' },
     UnfavoriteTweet: { queryId: 'jd_5MSDRzKH4MJ3c4BmrqQ', operationName: 'likeButtonControlUnfavoriteMutation' },
     CreateBookmark: { queryId: '9559L3Eb62SZndMSVHIeNw', operationName: 'BookmarkAdd' },
@@ -652,19 +655,18 @@
 
     const variables = {
       tweet_text: replyText,
-      dark_request: false,
-      media: { media_entities: mediaEntities, possibly_sensitive: false },
-      semantic_annotation_ids: [],
-      disallowed_reply_options: null,
       reply: { in_reply_to_tweet_id: tweetId, exclude_reply_user_ids: [] }
     };
+    const media = { media_entities: mediaEntities, possibly_sensitive: false };
 
     if (isXWebClient()) {
-      delete variables.dark_request;
-      delete variables.disallowed_reply_options;
-      for (const [name, value] of Object.entries(X_WEB_TWEET_DETAIL.variables)) {
-        if (name.startsWith('__relay_internal__pv__')) variables[name] = value;
-      }
+      // The reply artifacts now require this provider in addition to the shared post providers.
+      Object.assign(variables, X_WEB_POST_PROVIDED_VARIABLES, {
+        __relay_internal__pv__replydownvoteenabledrelayprovider: false
+      });
+      if (mediaEntities.length) variables.media = media;
+    } else {
+      Object.assign(variables, { dark_request: false, media, semantic_annotation_ids: [], disallowed_reply_options: null });
     }
 
     const textLen = globalThis.SidePeekTwitterText.parseTweet(replyText).weightedLength;

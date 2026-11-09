@@ -32,32 +32,14 @@
   --sp-shadow: -4px 0 32px rgba(0, 0, 0, 0.4);
 }
 
-/* Middle Timeline Focal Tweet Highlight */
-article[data-testid="tweet"].sidepeek-focal-active,
-main article[class~="group/post"].sidepeek-focal-active {
-  box-shadow: inset 0 0 0 2px rgba(29, 155, 240, 0.45), 0 2px 12px rgba(29, 155, 240, 0.12) !important;
-  border-radius: 8px !important;
-  transition: box-shadow 0.25s ease !important;
+/* Keep the native hover paint on the post owned by the open drawer. */
+[data-sidex-focal-active="light"] {
+  background-color: var(--x-hover-faint, rgba(0, 0, 0, 0.03)) !important;
 }
 
-/* A pinned focal post keeps its marker after X rewrites the article's class. */
-article[data-testid="tweet"][data-sidex-pinned-active],
-main article[class~="group/post"][data-sidex-pinned-active] {
-  box-shadow: inset 0 0 0 2px rgba(29, 155, 240, 0.45), 0 2px 12px rgba(29, 155, 240, 0.12) !important;
-  border-radius: 8px !important;
-  transition: background-color 0.2s ease, box-shadow 0.25s ease !important;
-}
-
-article[data-testid="tweet"][data-sidex-pinned-active="light"],
-main article[class~="group/post"][data-sidex-pinned-active="light"] {
-  background-color: rgba(0, 0, 0, 0.03) !important;
-}
-
-article[data-testid="tweet"][data-sidex-pinned-active="dark"],
-article[data-testid="tweet"][data-sidex-pinned-active="dim"],
-main article[class~="group/post"][data-sidex-pinned-active="dark"],
-main article[class~="group/post"][data-sidex-pinned-active="dim"] {
-  background-color: rgba(255, 255, 255, 0.03) !important;
+[data-sidex-focal-active="dark"],
+[data-sidex-focal-active="dim"] {
+  background-color: var(--x-hover-faint, rgba(255, 255, 255, 0.03)) !important;
 }
 
 /* Repair only native Article quotes whose sibling text collapsed to zero width. */

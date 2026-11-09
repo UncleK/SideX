@@ -129,25 +129,33 @@ test('x-web writes fail before sending if the native Relay environment is unavai
 
 test('x-web replies retain the 280-character boundary, exact recipient, media and original success payload', async t => {
   const success = { data: { create_tweet: { tweet_results: { result: tweet('999', '123') } } }, extensions: { trace: 'native-confirmation' } };
+  const downvoteProvider = '__relay_internal__pv__replydownvoteenabledrelayprovider';
   let fixture;
-  const b = bridge(null, w => { fixture = xWebBridgeFixture(w, { respond: () => success }); }); t.after(() => b.w.close());
-  for (const [text, name, id] of [
-    ['x'.repeat(280), 'CreateTweet', 'oYN2wNon5cYp3VrfXrwImw'],
-    ['x'.repeat(281), 'createTweetNoteTweetMutation', '_cIwQ6XY_C81R09ZGyWc-Q'],
-    ['https://example.com/' + 'a'.repeat(350), 'CreateTweet', 'oYN2wNon5cYp3VrfXrwImw']
+  const b = bridge(null, w => { fixture = xWebBridgeFixture(w, { respond: ({ variables }) =>
+    Object.hasOwn(variables, downvoteProvider) ? success : new w.Error('HTTP 422: missing Relay variable') }); });
+  t.after(() => b.w.close());
+  for (const [text, name, id, mediaIds] of [
+    ['x'.repeat(280), 'CreateTweet', 'JUPTZ5nUJjopwMyPw0DYiQ', []],
+    ['x'.repeat(281), 'createTweetNoteTweetMutation', '8TlLvl0sHLceb7rlGZZ6bg', ['456']],
+    ['https://example.com/' + 'a'.repeat(350), 'CreateTweet', 'JUPTZ5nUJjopwMyPw0DYiQ', []],
+    ['', 'CreateTweet', 'JUPTZ5nUJjopwMyPw0DYiQ', ['456']]
   ]) {
-    const result = await b.send({ type: 'CREATE_REPLY', tweetId: '123', text, mediaIds: ['456'] });
+    const result = await b.send({ type: 'CREATE_REPLY', tweetId: '123', text, mediaIds });
     assert.deepEqual(result, success);
     const call = fixture.calls.at(-1), variables = call.variables;
     assert.equal(call.operation.name, name); assert.equal(call.operation.id, id);
     assert.equal(variables.tweet_text, text);
     assert.deepEqual(JSON.parse(JSON.stringify(variables.reply)), { in_reply_to_tweet_id: '123', exclude_reply_user_ids: [] });
-    assert.deepEqual(JSON.parse(JSON.stringify(variables.media)), { media_entities: [{ media_id: '456', tagged_users: [] }], possibly_sensitive: false });
+    if (mediaIds.length) {
+      assert.deepEqual(JSON.parse(JSON.stringify(variables.media)), { media_entities: [{ media_id: '456', tagged_users: [] }], possibly_sensitive: false });
+    } else assert.equal(Object.hasOwn(variables, 'media'), false);
     assert.equal(Object.hasOwn(variables, 'dark_request'), false);
     assert.equal(Object.hasOwn(variables, 'disallowed_reply_options'), false);
+    assert.equal(Object.hasOwn(variables, 'semantic_annotation_ids'), false);
+    assert.equal(variables[downvoteProvider], false);
     assert.equal(variables.__relay_internal__pv__xclientsfeaturesappviewerisloggedinrelayprovider, true);
   }
-  assert.equal(fixture.calls.length, 3);
+  assert.equal(fixture.calls.length, 4);
   assert.equal(b.requests.length, 0);
 });
 

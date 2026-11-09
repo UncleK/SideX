@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { JSDOM } = require('jsdom');
-const { source } = require('./helpers.cjs');
+const { source, createPage, tick } = require('./helpers.cjs');
 
 for (const [theme, color] of [['light', 'rgb(255, 255, 255)'], ['dark', 'rgb(0, 0, 0)'], ['dim', 'rgb(21, 32, 43)']]) {
   test(`promoting an x-web profile surface preserves its native paint and banner clipping in ${theme}`, t => {
@@ -30,12 +30,51 @@ test('legacy hover promotion still leaves the wrapper transparent and its inner 
   assert.equal(dom.window.getComputedStyle(dom.window.document.querySelector('.inner')).backgroundColor, 'rgb(0, 0, 0)');
 });
 
-test('modern focal and pinned posts receive the same marker as legacy posts', t => {
-  const dom = new JSDOM('<main><article class="group/post sidepeek-focal-active"></article><article class="group/post" data-sidex-pinned-active="dark"></article></main>');
-  t.after(() => dom.window.close());
-  const style = dom.window.document.createElement('style'); style.textContent = source('sidebar.css'); dom.window.document.head.append(style);
-  for (const post of dom.window.document.querySelectorAll('article')) {
-    assert.match(dom.window.getComputedStyle(post).boxShadow, /inset/);
-  }
-  assert.equal(dom.window.getComputedStyle(dom.window.document.querySelector('[data-sidex-pinned-active]')).backgroundColor, 'rgba(255, 255, 255, 0.03)');
-});
+for (const client of ['legacy', 'x-web']) {
+  test(`${client} selection keeps the native row background until the panel switches or closes`, async t => {
+    const modern = client === 'x-web';
+    // JSDOM exposes the declared var() expression without resolving it.
+    const selectedColor = 'var(--x-hover-faint, rgba(0, 0, 0, 0.03))';
+    const p = createPage({ setupWindow(w) {
+      const style = w.document.createElement('style');
+      style.textContent = source('sidebar.css');
+      w.document.head.append(style);
+      if (modern) {
+        w.document.querySelector('main').innerHTML = ['100', '200'].map(id => `
+          <div data-navigation-stop role="link" data-href="/reader/status/${id}">
+            <article class="group/post"><div dir="auto">Long post ${id} with replies</div></article>
+          </div>`).join('');
+      }
+    } });
+    t.after(() => p.w.close());
+    await tick();
+    const [first, second] = p.w.document.querySelectorAll('main article');
+    const firstRow = modern ? first.parentElement : first;
+    const secondRow = modern ? second.parentElement : second;
+    const readPaint = node => {
+      const { backgroundColor, boxShadow, outline, border } = p.w.getComputedStyle(node);
+      return { backgroundColor, boxShadow, outline, border };
+    };
+    const firstPaint = readPaint(firstRow);
+    const secondPaint = readPaint(secondRow);
+    const articlePaint = readPaint(first);
+    first.querySelector('[dir="auto"], [data-testid="tweetText"]').click();
+    await tick();
+    assert.ok(p.query('#sidepeek-drawer-root.sidepeek-open'));
+    firstRow.dispatchEvent(new p.w.MouseEvent('mouseleave'));
+    assert.deepEqual(readPaint(firstRow), { ...firstPaint, backgroundColor: selectedColor });
+    if (modern) assert.deepEqual(readPaint(first), articlePaint);
+    assert.deepEqual(readPaint(secondRow), secondPaint);
+
+    p.query('.sidepeek-btn-pin').click();
+    p.query('.sidepeek-btn-pin').click();
+    assert.equal(readPaint(firstRow).backgroundColor, selectedColor);
+
+    second.querySelector('[dir="auto"], [data-testid="tweetText"]').click();
+    await tick();
+    assert.deepEqual(readPaint(firstRow), firstPaint);
+    assert.deepEqual(readPaint(secondRow), { ...secondPaint, backgroundColor: selectedColor });
+    p.query('.sidepeek-btn-close').click();
+    assert.deepEqual(readPaint(secondRow), secondPaint);
+  });
+}
