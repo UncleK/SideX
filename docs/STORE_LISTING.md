@@ -1,6 +1,6 @@
 # Chrome Web Store Listing Description
 
-v1.1.39：中英文合并说明，英文在前、中文在后。将下方全文粘贴到现有商店项目的详细说明中；上传 ZIP 不会自动更新说明。
+v1.1.40：中英文合并说明，英文在前、中文在后。将下方全文粘贴到现有商店项目的详细说明中；上传 ZIP 不会自动更新说明。
 
 ```text
 SideX brings X (Twitter) comments beside your timeline. Click a post's text or blank area to read replies in the right-hand column without losing your place.
@@ -16,9 +16,9 @@ FEATURES
 • Translation: show or hide translations with the icon after Like. Choose X official translation, Google, or use your existing translation extension.
 • Appearance: follow X's theme, resize the sidebar, or pin it to keep it open. Auto-pin is off by default.
 
-WHAT'S NEW IN 1.1.39
-• Updates inline replies for X's current posting API, addressing HTTP 422 errors.
-• Keeps X's native hover background on the selected post while its replies are open. The highlight follows the selected post and clears when the sidebar closes.
+WHAT'S NEW IN 1.1.40
+• Restores in-place opening from a post's text or blank area after a change to X's web layout.
+• Keeps your scroll position when you load more replies in a comment thread.
 
 Refresh X after updating SideX or changing settings. Send or copy unfinished drafts first. A previously saved preference to fold long replies is preserved.
 
@@ -48,9 +48,9 @@ SideX 把 X 的评论区放到右侧。点击帖子正文或空白处，即可�
 • 翻译：点击点赞后的翻译图标显示或隐藏译文，可选 X 官方、Google，或使用已有翻译插件。
 • 外观与固定：跟随 X 主题，支持调整宽度和固定侧栏；自动固定默认关闭。
 
-1.1.39 更新
-• 适配 X 当前回帖接口，修复侧栏发送回复时的 HTTP 422 兼容问题。
-• 侧栏打开时，当前主帖保留 X 原生悬停底色。切换帖子时底色跟随，关闭侧栏后恢复。
+1.1.40 更新
+• 适配 X 网页布局变化，点击帖子正文或空白处时恢复原位打开侧栏。
+• 在评论分支中加载更多回复时，保留右侧栏的滚动位置。
 
 更新扩展或修改设置后，请刷新 X；刷新前先发送或复制未完成的草稿。此前明确关闭长回复全文的设置会保留。
 

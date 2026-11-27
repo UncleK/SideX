@@ -44,7 +44,7 @@
 
   const Core = globalThis.SidePeekCore;
   const ROOT_ID = "sidepeek-drawer-root";
-  const NATIVE_POST_SELECTOR = 'article[data-testid="tweet"], main article[class~="group/post"]';
+  const NATIVE_POST_SELECTOR = 'article[data-testid="tweet"], main article:not(article article)';
   const NATIVE_POST_ROW_SELECTOR = '[data-navigation-stop][data-href]';
   const CONTENT_SOURCE = "sidepeek-content";
   const PAGE_SOURCE = "sidepeek-page";
@@ -126,7 +126,7 @@
     unavailableReplyIds: new Set(),
     openGatedThreads: new Set(),
     consumedCursors: new Map(),
-    anchorCommentId: null,
+    collapseAnchorId: null,
     resetScrollOnRender: false,
     activeView: "root", // "root" or { type: "drilldown", parentId: string }
     replyTarget: null, // Comment model being replied to, or null for focal tweet
@@ -860,7 +860,7 @@
       // X unmounts virtualized posts once their section is hidden by our dock.
       // Its labelled timeline section remains mounted, even while loading.
       const region = viewer?.querySelector('section[role="region"], section[aria-labelledby]') ||
-        [...(viewer?.querySelectorAll('section') || [])].find(section => section.querySelector('article[class~="group/post"]'));
+        [...(viewer?.querySelectorAll('section') || [])].find(section => section.querySelector('article'));
       const panel = region?.parentElement;
       if (!panel || panel.contains(swipe)) {
         releasePhotoPanel();
@@ -1601,10 +1601,10 @@
     // 恢复滚动条位置，彻底解决“点击展开回复后页面跳回顶部”的问题
     body.scrollTop = prevScrollTop;
 
-    // 若收起后父评论跑到了视口上方，平滑将其拉回视口顶部，避免视口掉入空白
-    if (state.anchorCommentId) {
-      const anchorCommentId = state.anchorCommentId;
-      state.anchorCommentId = null;
+    // When collapsing a branch, bring its parent back if it is above the viewport.
+    if (state.collapseAnchorId) {
+      const anchorCommentId = state.collapseAnchorId;
+      state.collapseAnchorId = null;
       const targetItem = body.querySelector(`.sidepeek-comment-item[data-id="${anchorCommentId}"]`);
       if (targetItem) {
         const bodyRect = body.getBoundingClientRect();
@@ -2007,7 +2007,7 @@
     button.className = "sidepeek-collapse-btn";
     button.textContent = `▲ ${t("collapseReplies")}`;
     button.addEventListener("click", () => {
-      state.anchorCommentId = id;
+      state.collapseAnchorId = id;
       state.expandedThreadIds.delete(id);
       state.previewMoreThreadIds.delete(id);
       state.branchLoadJobs.delete(id);
@@ -2054,7 +2054,6 @@
     const job = {};
     state.branchLoadJobs.set(rootId, job);
     state.manualReplyLoading = true;
-    state.anchorCommentId = rootId;
     state.pausedPreviewIds.delete(rootId);
     state.previewMoreThreadIds.add(rootId);
     if (all) state.expandedThreadIds.add(rootId);
@@ -3411,7 +3410,7 @@
       if (link.closest('#layers, #sidepeek-drawer-root')) return false;
       try { return new URL(link.href).pathname.toLowerCase() === `/${handle}`; } catch { return false; }
     });
-    const modern = Boolean(document.querySelector('main article[class~="group/post"]'));
+    const modern = Boolean(document.querySelector('script[src*="abs.twimg.com/x-web/"], main [data-post-avatar]'));
     if (modern) source = null;
     const layers = document.getElementById("layers") || (modern ? document.body : null);
     if (!layers || typeof HTMLElement.prototype.showPopover !== "function") return false;
@@ -4230,6 +4229,7 @@
     if (!article) return null;
     const rowUrl = article.closest(NATIVE_POST_ROW_SELECTOR)?.getAttribute('data-href');
     if (Core.postIdFromUrl(rowUrl)) return rowUrl;
+    if (!article.matches('article[data-testid="tweet"]') && !article.querySelector('[data-post-avatar]')) return null;
     const timeUrl = article.querySelector('time')?.closest('a[href*="/status/"]')?.getAttribute('href');
     if (timeUrl) return timeUrl;
     const ownLinks = [...article.querySelectorAll('a[href*="/status/"]')].filter(link => {

@@ -56,6 +56,36 @@ test('first click appends N+2 replies; second drains only this branch and leaves
   assert.ok(p.query('.sidepeek-body > .sidepeek-pagination .sidepeek-load-more-btn'));
 });
 
+test('loading more stays at the current scroll position when the branch parent is above the viewport', async t => {
+  let finish;
+  const p = await open(t, m => m.tweetId === '100'
+    ? page([post('100'), post('101', '100', 8), ...children(102, 4)])
+    : new Promise(resolve => { finish = resolve; }));
+  const body = p.query('.sidepeek-body');
+  const parent = p.query('[data-id="101"]');
+  parent.getBoundingClientRect = () => ({ top: 240 - body.scrollTop });
+
+  body.scrollTop = 600;
+  more(p).click();
+  await tick();
+  assert.equal(visible(p), 4);
+  assert.equal(body.scrollTop, 600, 'revealing cached replies keeps the viewport');
+
+  body.scrollTop = 900;
+  more(p).click();
+  await tick();
+  assert.equal(body.scrollTop, 900, 'starting a network load keeps the viewport');
+  body.scrollTop = 950;
+  finish(page([post('101', '100', 8), ...children(106, 4)]));
+  await tick();
+  assert.equal(visible(p), 8);
+  assert.equal(body.scrollTop, 950, 'the response respects scrolling during the load');
+
+  group(p).querySelector('.sidepeek-collapse-btn').click();
+  assert.equal(visible(p), 1);
+  assert.equal(body.scrollTop, 240, 'collapsing a branch returns to its parent when needed');
+});
+
 test('all-reply loading stops after an empty page and retains its manual continuation', async t => {
   const p = await open(t, m => m.tweetId === '100'
     ? page([post('100'), post('101', '100', 20), ...children(102, 5)])

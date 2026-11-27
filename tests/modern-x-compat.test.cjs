@@ -4,13 +4,13 @@ const vm = require('node:vm');
 const { createPage, tick, tweet, user, source } = require('./helpers.cjs');
 const actualDetail = require('./fixtures/x-web-tweet-detail-20261108.json');
 
-// Reduced from X's x-web DOM and TweetDetail response observed on 2026-11-08.
+// Reduced from X's x-web DOM observed on 2026-11-08 and 2026-11-27.
 // The outer navigation row is a link; the post itself has no data-testid/time.
-function modernPost(w) {
+function modernPost(w, postClass = 'group/post') {
   const main = w.document.querySelector('main');
   main.innerHTML = `<div data-navigation-stop role="link" data-href="/reader/status/100">
     <a aria-hidden="true" tabindex="-1" href="/reader/status/100"></a>
-    <article class="group/post"><div data-post-avatar><a href="/reader">Reader</a></div>
+    <article class="${postClass}"><div data-post-avatar><a href="/reader">Reader</a></div>
       <a data-base-ui-tooltip-trigger href="/reader/status/100">1h</a>
       <div dir="auto"><span>Modern post body</span></div>
       <div role="link" data-href="/quoted/status/900">Quoted body</div>
@@ -20,24 +20,27 @@ function modernPost(w) {
   </div>`;
 }
 
-for (const target of ['article [dir="auto"] span', 'article', '[data-padding]']) {
-  test(`x-web ${target} opens replies without navigating through the outer link`, async t => {
-    const p = createPage({ setupWindow: modernPost });
-    t.after(() => p.w.close()); await tick();
-    const navigated = [];
-    p.w.document.querySelector('main').addEventListener('click', e => {
-      if (!e.defaultPrevented) navigated.push(e.target.closest('[data-href]')?.dataset.href);
+for (const postClass of ['group/post', 'flex flex-col gap-1']) {
+  for (const target of ['article [dir="auto"] span', 'article', '[data-padding]']) {
+    test(`x-web ${postClass} ${target} opens replies without navigating through the outer link`, async t => {
+      const p = createPage({ setupWindow: w => modernPost(w, postClass) });
+      t.after(() => p.w.close()); await tick();
+      const navigated = [];
+      p.w.document.querySelector('main').addEventListener('click', e => {
+        if (!e.defaultPrevented) navigated.push(e.target.closest('[data-href]')?.dataset.href);
+      });
+      p.query(target).click(); await tick();
+      assert.deepEqual(navigated, []);
+      assert.ok(p.query('#sidepeek-drawer-root.sidepeek-open'));
+      assert.equal(p.calls.find(m => m.type === 'READ_THREAD')?.tweetId, '100');
+      assert.equal(p.w.location.pathname, '/home');
+      assert.equal(p.query('main [data-navigation-stop]').getAttribute('data-sidex-focal-active'), 'light');
     });
-    p.query(target).click(); await tick();
-    assert.deepEqual(navigated, []);
-    assert.ok(p.query('#sidepeek-drawer-root.sidepeek-open'));
-    assert.equal(p.calls.find(m => m.type === 'READ_THREAD')?.tweetId, '100');
-    assert.equal(p.w.location.pathname, '/home');
-  });
+  }
 }
 
 test('x-web explicit links, quotes and engagement controls retain native behavior', async t => {
-  const p = createPage({ setupWindow: modernPost });
+  const p = createPage({ setupWindow: w => modernPost(w, 'flex flex-col gap-1') });
   t.after(() => p.w.close()); await tick();
   const targets = ['[data-post-avatar] a', 'article > a', 'article [data-href]', '[data-engagement-action="reply"] a', 'button'];
   const allowed = [];
@@ -47,6 +50,38 @@ test('x-web explicit links, quotes and engagement controls retain native behavio
     node.click();
   }
   assert.deepEqual(allowed, targets.map(() => true));
+  assert.equal(p.calls.length, 0);
+});
+
+test('x-web detail posts without a navigation row or former class still open the matching conversation', async t => {
+  const p = createPage({ setupWindow(w) {
+    modernPost(w, 'flex flex-col gap-1');
+    const article = w.document.querySelector('main article');
+    w.document.querySelector('main').replaceChildren(article);
+  } });
+  t.after(() => p.w.close()); await tick();
+  p.query('article [dir="auto"] span').click(); await tick();
+  assert.equal(p.calls.find(m => m.type === 'READ_THREAD')?.tweetId, '100');
+  assert.equal(p.query('main article').getAttribute('data-sidex-focal-active'), 'light');
+});
+
+test('x-web nested quoted articles and unrelated articles keep their own native navigation', async t => {
+  const p = createPage({ setupWindow(w) {
+    modernPost(w, 'flex flex-col gap-1');
+    const quote = w.document.querySelector('article [data-href]');
+    quote.innerHTML = '<article><div data-post-avatar><a href="/quoted">Quoted</a></div><span>Nested quote</span></article>';
+    const other = w.document.createElement('article');
+    other.innerHTML = '<span>Unrelated article</span><a href="/quoted/status/900">A post mentioned in the article</a>';
+    w.document.querySelector('main').append(other);
+  } });
+  t.after(() => p.w.close()); await tick();
+  for (const selector of ['article [data-href] span', 'main > article span']) {
+    let allowed;
+    const target = p.query(selector);
+    target.addEventListener('click', e => { allowed = !e.defaultPrevented; });
+    target.click();
+    assert.equal(allowed, true);
+  }
   assert.equal(p.calls.length, 0);
 });
 
@@ -104,8 +139,8 @@ test('the reported public x-web thread retains all three bodies, reply parents, 
   assert.equal(tree.childrenMap.get(detail.replies[0].id)[0].id, nested.rest_id);
 });
 
-test('x-web native Like is reused and its aria-pressed update reaches the sidebar', async t => {
-  const p = createPage({ setupWindow: modernPost }); t.after(() => p.w.close()); await tick();
+test('x-web native Like without the former post class is reused and its aria-pressed update reaches the sidebar', async t => {
+  const p = createPage({ setupWindow: w => modernPost(w, 'flex flex-col gap-1') }); t.after(() => p.w.close()); await tick();
   const button = p.query('[data-engagement-action="like"] button');
   let clicks = 0;
   button.addEventListener('click', () => {

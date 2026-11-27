@@ -42,7 +42,7 @@ for (const client of ['legacy', 'x-web']) {
       if (modern) {
         w.document.querySelector('main').innerHTML = ['100', '200'].map(id => `
           <div data-navigation-stop role="link" data-href="/reader/status/${id}">
-            <article class="group/post"><div dir="auto">Long post ${id} with replies</div></article>
+            <article class="flex flex-col gap-1"><div dir="auto">Long post ${id} with replies</div></article>
           </div>`).join('');
       }
     } });

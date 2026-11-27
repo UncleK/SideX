@@ -17,7 +17,7 @@ function mountPhoto(p, id = '300') {
 test('x-web photo viewer docks only its right panel, preserves its inline draft and uses the native collapse control', async t => {
   const p = createPage(); t.after(() => p.w.close()); await tick();
   const portal = p.w.document.createElement('div'); portal.dataset.baseUiPortal = '';
-  portal.innerHTML = '<div role="dialog" data-slot="xds-modal-surface"><div><img alt="Full-size photo"><button><svg data-icon="icon-double-chevron-right"></svg></button></div><div class="modern-photo-panel"><section><article class="group/post">Photo post</article><textarea aria-multiline="true">Existing inline draft</textarea></section></div></div>';
+  portal.innerHTML = '<div role="dialog" data-slot="xds-modal-surface"><div><img alt="Full-size photo"><button><svg data-icon="icon-double-chevron-right"></svg></button></div><div class="modern-photo-panel"><section><article class="flex flex-col gap-1">Photo post</article><textarea aria-multiline="true">Existing inline draft</textarea></section></div></div>';
   p.w.document.body.append(portal);
   let collapsed = 0;
   portal.querySelector('button').addEventListener('click', () => { collapsed++; });

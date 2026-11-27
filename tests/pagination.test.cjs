@@ -83,7 +83,10 @@ test('a clicked subthread loads one page and collapsing it never starts another 
   p.query('.sidepeek-collapse-btn').click(); await tick();
   io.fire(); await tick();
   assert.equal(p.calls.length, 2, 'collapsing does not load other posts');
+  const body = p.query('.sidepeek-body');
+  body.scrollTop = 400;
   p.query('.sidepeek-body > .sidepeek-pagination .sidepeek-load-more-btn').click(); await tick();
+  assert.equal(body.scrollTop, 400, 'manual pagination keeps the viewport');
   assert.equal(p.calls.length, 3);
   assert.equal(p.calls.at(-1).tweetId, '100');
   assert.equal(p.calls.at(-1).cursor, 'outer-next');

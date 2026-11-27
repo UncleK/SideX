@@ -69,7 +69,7 @@
   };
 
   function isXWebClient() {
-    return Boolean(document.querySelector('script[src*="abs.twimg.com/x-web/"], main article[class~="group/post"]'));
+    return Boolean(document.querySelector('script[src*="abs.twimg.com/x-web/"], main [data-post-avatar]'));
   }
   let webpackRuntime = null;
   let transactionIdFunction = null;
@@ -858,7 +858,7 @@
   // runtime, source-row props mutation, or replacement of X's DOM are needed.
   function xWebCreateRoot(host, options = {}) {
     let boundary;
-    for (const element of document.querySelectorAll('main article[class~="group/post"] a[href]')) {
+    for (const element of document.querySelectorAll('main article a[href]')) {
       const key = Object.keys(element).find(name => name.startsWith('__reactFiber$'));
       for (let fiber = key && element[key], depth = 0; fiber && depth < 800; fiber = fiber.return, depth++) {
         if (fiber.tag === 1 && typeof fiber.stateNode?.forceUpdate === 'function') { boundary = fiber; break; }
@@ -913,7 +913,7 @@
       grok: 'button:has(svg[data-icon="icon-logo-grok"])' };
     const fragment = { more: 'moreMenu_tweet', share: 'shareButton_tweet', grok: 'grokAnalyzeButton_tweet' }[kind];
     let fallback;
-    for (const button of document.querySelectorAll(`main article[class~="group/post"] ${selectors[kind]}`)) {
+    for (const button of document.querySelectorAll(`main article ${selectors[kind]}`)) {
       const key = Object.keys(button).find(name => name.startsWith('__reactFiber$'));
       let template;
       const providers = [];
